@@ -101,6 +101,10 @@ export function nearlyEqualVec(a: Vec2, b: Vec2, eps: number = GEOM_EPS): boolea
   return nearlyEqual(a.x, b.x, eps) && nearlyEqual(a.y, b.y, eps);
 }
 
+export function clampToRange(value: number, min: number, max: number): number {
+  return value < min ? min : value > max ? max : value;
+}
+
 export const DEG_TO_RAD = Math.PI / 180;
 export const RAD_TO_DEG = 180 / Math.PI;
 

@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"]
+  },
+  "overrides": [
+    {
+      "comment": "tokens.css is the single source of literal color values (CLAUDE.md); everywhere else must reference var(--token).",
+      "files": ["src/app/ui-tokens/tokens.css"],
+      "rules": {
+        "color-no-hex": null,
+        "color-named": null,
+        "function-disallowed-list": null
+      }
+    }
+  ]
+}

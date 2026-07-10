@@ -1,0 +1,36 @@
+/**
+ * NomaDirection design tokens (MASTER_DOCUMENT §12). The only place hex/rgb
+ * color literals are allowed to live — every other stylesheet must reference
+ * these custom properties (stylelint `no-hardcoded-color` rule, CLAUDE.md).
+ * Light theme only in v1.
+ */
+:root {
+  /* Brand */
+  --color-teal: #1a6b5a;
+  --color-teal-alpha-40: rgb(26 107 90 / 40%);
+  --color-navy: #0d1b2a;
+  --color-canvas: #faf7f0;
+  --color-border: #c9c2b4;
+
+  /* Semantic aliases */
+  --color-primary: var(--color-teal);
+  --color-active: var(--color-teal);
+  --color-selection: var(--color-teal-alpha-40);
+  --color-panel-bg: var(--color-navy);
+  --color-panel-fg: var(--color-canvas);
+  --color-canvas-bg: var(--color-canvas);
+  --color-canvas-fg: var(--color-navy);
+
+  /* Typography — Barlow, system-font fallback until the webfont is bundled
+     locally (ADR: no CDN font fetch, keeps C1 "no server calls" honest). */
+  --font-heading: 'Barlow', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Barlow', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --font-weight-heading: 600;
+  --font-weight-body: 400;
+
+  /* Layout */
+  --grid-unit: 8px;
+  --border-width: 1px;
+  --radius-flat: 0;
+}

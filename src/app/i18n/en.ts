@@ -5,6 +5,11 @@ export const en = {
   'viewport.origin.xy': 'XY Plane',
   'viewport.origin.xz': 'XZ Plane',
   'viewport.origin.yz': 'YZ Plane',
+  'kernelDemo.status.loading': 'Loading kernel…',
+  'kernelDemo.status.error': 'Kernel error:',
+  'kernelDemo.exportStl': 'Export STL',
+  'kernelDemo.dispose': 'Dispose Body',
+  'kernelDemo.liveHandlesLabel': 'Live handles:',
 } as const;
 
 export type TranslationKey = keyof typeof en;

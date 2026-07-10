@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "fast-xml-parser": "^5.9.3",
+    "opencascade.js": "^2.0.0-beta.b5ff984",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.185.1",

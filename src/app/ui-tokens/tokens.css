@@ -11,6 +11,7 @@
   --color-navy: #0d1b2a;
   --color-canvas: #faf7f0;
   --color-border: #c9c2b4;
+  --color-error-red: #b3261e;
 
   /* Semantic aliases */
   --color-primary: var(--color-teal);
@@ -20,6 +21,7 @@
   --color-panel-fg: var(--color-canvas);
   --color-canvas-bg: var(--color-canvas);
   --color-canvas-fg: var(--color-navy);
+  --color-error: var(--color-error-red);
 
   /* Typography — Barlow, system-font fallback until the webfont is bundled
      locally (ADR: no CDN font fetch, keeps C1 "no server calls" honest). */

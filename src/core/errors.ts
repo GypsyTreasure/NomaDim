@@ -19,8 +19,8 @@ export class KernelError extends Error {
   override readonly name = 'KernelError';
   constructor(
     message: string,
-    readonly opId: string,
-    readonly code: string
+    readonly code: string,
+    readonly opId?: string
   ) {
     super(message);
   }

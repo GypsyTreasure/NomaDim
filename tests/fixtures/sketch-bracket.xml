@@ -1,0 +1,22 @@
+<sketch id="sk1" plane="XY" name="Bracket">
+  <points>
+    <point id="pta" x="0" y="0"/>
+    <point id="ptb" x="60" y="0"/>
+    <point id="ptc" x="60" y="20"/>
+    <point id="ptd" x="20" y="20"/>
+    <point id="pte" x="20" y="40"/>
+    <point id="ptf" x="0" y="40"/>
+    <point id="ptg" x="10" y="30"/>
+  </points>
+  <entities>
+    <line id="e1" start="pta" end="ptb" construction="false"/>
+    <line id="e2" start="ptb" end="ptc" construction="false"/>
+    <line id="e3" start="ptc" end="ptd" construction="false"/>
+    <line id="e4" start="ptd" end="pte" construction="false"/>
+    <line id="e5" start="pte" end="ptf" construction="false"/>
+    <line id="e6" start="ptf" end="pta" construction="false"/>
+    <circle id="e7" center="ptg" r="4" construction="false"/>
+  </entities>
+  <constraints/>
+  <dimensions/>
+</sketch>

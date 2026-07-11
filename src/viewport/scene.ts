@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { MeshTransfer } from '../kernel';
+import type { OriginPlaneId } from './planeMapping';
 
 /**
  * Scene-construction helpers for the viewport: grid, origin planes, body
@@ -29,10 +30,12 @@ export function createGrid(): THREE.GridHelper {
     GRID_COLOR_LINES
   );
   grid.name = 'ReferenceGrid';
+  // World is Z-up (CAD convention); GridHelper spans XZ by default → rotate into XY.
+  grid.rotation.x = Math.PI / 2;
   return grid;
 }
 
-export type OriginPlaneId = 'XY' | 'XZ' | 'YZ';
+export type { OriginPlaneId };
 
 function makePlane(id: OriginPlaneId, color: number, rotation: THREE.Euler): THREE.Group {
   const group = new THREE.Group();

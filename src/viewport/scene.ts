@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import type { MeshTransfer } from '../kernel';
 
 /**
- * Scene-construction helpers for the M0 viewport: grid, origin planes,
- * zoom-to-fit. Pure Three.js — no React, no application state. The
- * `viewport/` layer owns all scene mutation (ARCHITECTURE §3); nothing
- * outside this layer touches these objects directly.
+ * Scene-construction helpers for the viewport: grid, origin planes, body
+ * meshes, lighting, zoom-to-fit. Pure Three.js — no React, no application
+ * state. The `viewport/` layer owns all scene mutation (ARCHITECTURE §3);
+ * nothing outside this layer touches these objects directly.
  */
 
 const GRID_SIZE_MM = 500;
@@ -68,17 +69,47 @@ export function createOriginPlanes(): Record<OriginPlaneId, THREE.Group> {
   };
 }
 
+const BODY_COLOR = 0x1a6b5a; // MASTER_DOCUMENT §12 brand teal — default body color.
+
+/** Basic shading rig (F11 "solid" shading) — plain ambient + one directional light. */
+export function createLighting(): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'Lighting';
+  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+  const directional = new THREE.DirectionalLight(0xffffff, 1.2);
+  directional.position.set(1, 2, 1.5);
+  group.add(ambient, directional);
+  return group;
+}
+
+/** Builds a shaded body mesh from a worker-tessellated MeshTransfer (R5 Transferable buffers). */
+export function createBodyMesh(mesh: MeshTransfer): THREE.Mesh {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
+  geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+
+  const material = new THREE.MeshStandardMaterial({
+    color: BODY_COLOR,
+    metalness: 0.1,
+    roughness: 0.6,
+  });
+  const object = new THREE.Mesh(geometry, material);
+  object.name = `Body:${mesh.bodyId}`;
+  return object;
+}
+
 /**
- * Frees GPU buffers for every disposable object in `scene` (ARCHITECTURE R8
- * discipline extends to viewport resources, not just OCCT handles).
+ * Frees GPU buffers for every disposable object under `root` (ARCHITECTURE
+ * R8 discipline extends to viewport resources, not just OCCT handles).
  *
  * Re-casts after the `instanceof` check: @types/three's `Mesh`/`LineSegments`
  * take 2-3 generic params with defaults, and TS does not apply those
  * defaults through `instanceof` narrowing on a generic class — the narrowed
  * type resolves to `Mesh<any, any, any>` without the cast.
  */
-export function disposeSceneObjects(scene: THREE.Scene): void {
-  scene.traverse((object) => {
+export function disposeSceneObjects(root: THREE.Object3D): void {
+  root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.LineSegments)) return;
     const disposable = object as THREE.Mesh | THREE.LineSegments;
     disposable.geometry.dispose();

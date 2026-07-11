@@ -12,6 +12,8 @@
   --color-canvas: #faf7f0;
   --color-border: #c9c2b4;
   --color-error-red: #b3261e;
+  --color-grey-muted: #8a8578;
+  --color-amber: #b5860a;
 
   /* Semantic aliases */
   --color-primary: var(--color-teal);
@@ -22,6 +24,11 @@
   --color-canvas-bg: var(--color-canvas);
   --color-canvas-fg: var(--color-navy);
   --color-error: var(--color-error-red);
+  /* Timeline op status (F1 chip colours) */
+  --color-status-ok: var(--color-teal);
+  --color-status-error: var(--color-error-red);
+  --color-status-skipped: var(--color-grey-muted);
+  --color-status-suppressed: var(--color-amber);
 
   /* Typography — Barlow, system-font fallback until the webfont is bundled
      locally (ADR: no CDN font fetch, keeps C1 "no server calls" honest). */

@@ -1,16 +1,23 @@
 import type { Sketch } from './sketch/types';
+import type { TimelineOp } from './ops/types';
 
 /**
  * Document root (ARCHITECTURE §5: shape defined here, held by the Zustand
- * `documentStore` in app/store). M2 scope: sketches only — the operation
- * timeline, body metadata, and rollback position join this shape in M3.
+ * `documentStore` in app/store).
  */
 export interface DocumentState {
   readonly sketches: readonly Sketch[];
+  /** The timeline — a multi-body DAG evaluated in order (§9). */
+  readonly ops: readonly TimelineOp[];
+  /**
+   * Rollback marker (F1): ops at index >= rollbackIndex exist and serialize
+   * but never evaluate. New ops insert AT the marker; it advances past them.
+   */
+  readonly rollbackIndex: number;
 }
 
 export function emptyDocument(): DocumentState {
-  return { sketches: [] };
+  return { sketches: [], ops: [], rollbackIndex: 0 };
 }
 
 export function findSketch(state: DocumentState, sketchId: string): Sketch | undefined {

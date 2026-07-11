@@ -13,6 +13,8 @@ import { referencedPointIds } from './sketch/roles';
 import type { Sketch, SketchEntity, SketchPlaneRef, SketchPoint } from './sketch/types';
 import { validateSketch } from './sketch/validate';
 import type { SketchPatch, Transaction } from './history';
+import type { OpId } from '../core';
+import { applyTimelineCommand, type TimelineCommand } from './timelineCommands';
 
 /**
  * Commands (ARCHITECTURE §4, R1-R3): plain serializable `{ type, payload }`
@@ -23,9 +25,11 @@ import type { SketchPatch, Transaction } from './history';
  */
 
 export type Command =
+  | TimelineCommand
   | {
       readonly type: 'CreateSketch';
-      readonly payload: { sketchId: SketchId; name: string; plane: SketchPlaneRef };
+      /** `opId` mints the timeline SketchOp in the same transaction (commands stay serializable, R3). */
+      readonly payload: { sketchId: SketchId; opId: OpId; name: string; plane: SketchPlaneRef };
     }
   | {
       readonly type: 'AddSketchGeometry';
@@ -99,13 +103,44 @@ export function applyCommand(
   command: Command
 ): Result<CommandResult, ValidationError> {
   switch (command.type) {
+    // Timeline commands (F1) — delegated to the registry-driven applier.
+    case 'AddOp':
+    case 'EditOp':
+    case 'SetOpSuppressed':
+    case 'DeleteOp':
+    case 'RenameOp':
+    case 'SetRollback':
+      return applyTimelineCommand(state, command);
+
     case 'CreateSketch': {
-      const { sketchId, name, plane } = command.payload;
+      const { sketchId, opId, name, plane } = command.payload;
       if (findSketch(state, sketchId)) {
         return err(new ValidationError(`Sketch "${sketchId}" already exists`));
       }
+      if (state.ops.some((op) => op.id === opId)) {
+        return err(new ValidationError(`Op "${opId}" already exists`));
+      }
+      // One transaction, two patches: the sketch AND its timeline op appear
+      // (and undo) together — a sketch is a timeline citizen (§7).
       const sketch = emptySketch(sketchId, name, plane);
-      return ok(sketchReplacement(state, 'Create Sketch', null, sketch, sketchId));
+      const withSketch = sketchReplacement(state, 'Create Sketch', null, sketch, sketchId);
+      const opResult = applyTimelineCommand(withSketch.state, {
+        type: 'AddOp',
+        payload: {
+          op: { type: 'Sketch', id: opId, name, suppressed: false, sketchId },
+        },
+      });
+      if (!opResult.ok) return opResult;
+      return ok({
+        state: opResult.value.state,
+        transaction: {
+          label: 'Create Sketch',
+          patches: [
+            ...withSketch.transaction.patches,
+            ...opResult.value.transaction.patches,
+          ],
+        },
+      });
     }
     case 'AddSketchGeometry': {
       const found = requireSketch(state, command.payload.sketchId);

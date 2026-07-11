@@ -1,0 +1,192 @@
+.bar {
+  position: absolute;
+  bottom: var(--grid-unit);
+  left: var(--grid-unit);
+  right: var(--grid-unit);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--grid-unit) * 0.5);
+  padding: calc(var(--grid-unit) * 0.75);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.createRow {
+  display: flex;
+  gap: calc(var(--grid-unit) * 0.5);
+}
+
+.chips {
+  display: flex;
+  align-items: stretch;
+  gap: calc(var(--grid-unit) * 0.5);
+  overflow-x: auto;
+}
+
+.button {
+  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-flat);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background-color: var(--color-primary);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonPrimary {
+  background-color: var(--color-primary);
+}
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  min-width: 88px;
+  border: var(--border-width) solid var(--color-border);
+  border-left-width: calc(var(--grid-unit) * 0.5);
+  border-left-color: var(--color-status-ok);
+}
+
+.chip[data-status='error'] {
+  border-left-color: var(--color-status-error);
+}
+
+.chip[data-status='skipped'] {
+  border-left-color: var(--color-status-skipped);
+}
+
+.chip[data-status='suppressed'] {
+  border-left-color: var(--color-status-suppressed);
+}
+
+.chipRolledBack {
+  opacity: 0.45;
+}
+
+.chipName {
+  padding: calc(var(--grid-unit) * 0.4) calc(var(--grid-unit) * 0.6);
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chipName:disabled {
+  cursor: default;
+}
+
+.chipActions {
+  display: flex;
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.chipActions button {
+  flex: 1;
+  padding: 2px;
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chipActions button:hover {
+  background-color: var(--color-primary);
+}
+
+.rollbackEnd {
+  padding: 0 calc(var(--grid-unit) * 0.6);
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: var(--border-width) dashed var(--color-border);
+  cursor: pointer;
+}
+
+/* --- Dialogs ------------------------------------------------------------ */
+
+.dialogBackdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-selection);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-unit);
+  width: 320px;
+  max-height: 80%;
+  overflow-y: auto;
+  padding: var(--grid-unit);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  font-size: 15px;
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--grid-unit) * 0.75);
+}
+
+.dialogButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--grid-unit) * 0.5);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--grid-unit);
+  font-size: 12px;
+}
+
+.input {
+  width: 160px;
+  padding: 2px 4px;
+  background-color: var(--color-canvas-bg);
+  color: var(--color-canvas-fg);
+  border: var(--border-width) solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--grid-unit) * 0.25);
+  padding: calc(var(--grid-unit) * 0.5);
+  border: var(--border-width) solid var(--color-border);
+  font-size: 12px;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid-unit) * 0.5);
+}

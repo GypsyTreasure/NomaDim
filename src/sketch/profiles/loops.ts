@@ -1,5 +1,5 @@
 import { angleOf, normalizeAngle, sub, type EntityId, type PointId, type Vec2 } from '../../core';
-import { pointMap, type Sketch } from '../../document';
+import { pointMap, type LoopGeometry, type LoopSegment, type Sketch } from '../../document';
 import { evaluateEntity, type ArcCurve } from '../entities/curves';
 import { sampleCurve } from '../entities/queries';
 
@@ -21,6 +21,8 @@ export interface TraversedLoop {
   readonly polygon: readonly Vec2[];
   /** Enclosed area (positive). */
   readonly area: number;
+  /** Travel-ordered oriented segments — the worker builds wires from these (R7). */
+  readonly segments: LoopGeometry;
 }
 
 export interface LoopExtraction {
@@ -44,6 +46,24 @@ interface GraphEdge {
   readonly depA: number;
   /** Exact tangent departure angle at b, traveling b→a. */
   readonly depB: number;
+  /** Oriented segment for travel a→b (reverse for b→a). */
+  readonly segmentAB: LoopSegment;
+}
+
+/** Reverses an oriented loop segment. */
+function reverseSegment(segment: LoopSegment): LoopSegment {
+  switch (segment.kind) {
+    case 'line':
+      return { kind: 'line', a: segment.b, b: segment.a };
+    case 'arc':
+      return { kind: 'arc', a: segment.b, b: segment.a, center: segment.center, ccw: !segment.ccw };
+    case 'circle':
+      return segment;
+    default: {
+      const exhaustive: never = segment;
+      return exhaustive;
+    }
+  }
 }
 
 /** Wraps into (-PI, PI] so sorting is total and stable. */
@@ -81,11 +101,15 @@ function buildEdges(sketch: Sketch): GraphEdge[] {
         samplesAB: [curve.a, curve.b],
         depA: angleOf(sub(curve.b, curve.a)),
         depB: angleOf(sub(curve.a, curve.b)),
+        segmentAB: { kind: 'line', a: curve.a, b: curve.b },
       });
     } else if (entity.type === 'arc' && curve.kind === 'arc') {
       const samples = sampleCurve(curve, PROFILE_CHORD_TOL_MM);
       const samplesAB = entity.ccw ? [...samples] : [...samples].reverse();
       const { depA, depB } = arcDepartures(curve, entity.ccw);
+      const first = samplesAB[0];
+      const last = samplesAB[samplesAB.length - 1];
+      if (!first || !last) continue;
       edges.push({
         entityId: entity.id,
         aId: entity.start,
@@ -93,6 +117,9 @@ function buildEdges(sketch: Sketch): GraphEdge[] {
         samplesAB,
         depA,
         depB,
+        // Traveling entity.start→entity.end runs along the canonical CCW
+        // curve exactly when the entity itself is CCW.
+        segmentAB: { kind: 'arc', a: first, b: last, center: curve.center, ccw: entity.ccw },
       });
     }
   }
@@ -192,9 +219,10 @@ export function extractLoops(sketch: Sketch): LoopExtraction {
         h = nextHalfEdge(h);
       } while (h !== start && face.length <= 4 * edges.length);
 
-      // Assemble the polygon in travel order (skip each half-edge's last sample).
+      // Assemble polygon + oriented segments in travel order.
       const polygon: Vec2[] = [];
       const faceEntities: EntityId[] = [];
+      const segments: LoopSegment[] = [];
       for (const he of face) {
         const edge = edges[he >> 1];
         if (!edge) continue;
@@ -203,13 +231,14 @@ export function extractLoops(sketch: Sketch): LoopExtraction {
           const p = travel[s];
           if (p) polygon.push(p);
         }
+        segments.push(he % 2 === 0 ? edge.segmentAB : reverseSegment(edge.segmentAB));
         faceEntities.push(edge.entityId);
       }
 
       const area = shoelace(polygon);
       if (area > AREA_EPS_MM2) {
         const entityIds = [...new Set(faceEntities)];
-        loops.push({ entityIds, polygon, area });
+        loops.push({ entityIds, polygon, area, segments });
         for (const id of entityIds) closedEntities.add(id);
       }
     }

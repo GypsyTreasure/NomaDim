@@ -11,6 +11,7 @@ import {
 import type { Sketch, SketchEntity, SketchPlaneRef, SketchPoint } from '../sketch/types';
 import { validateSketch } from '../sketch/validate';
 import { writeXml, type XmlElement } from './xmlWriter';
+import { asRaw, asRawArray, boolAttr, numAttr, strAttr, type Raw } from './xmlRaw';
 
 /**
  * Sketch element codec (MASTER_DOCUMENT F7 shape). Deterministic: points
@@ -118,40 +119,6 @@ export function sketchToXml(sketch: Sketch): string {
 
 // ---------------------------------------------------------------------------
 // Parsing
-
-type Raw = Record<string, unknown>;
-
-function asRaw(value: unknown): Raw | null {
-  return typeof value === 'object' && value !== null ? (value as Raw) : null;
-}
-
-function asRawArray(value: unknown): Raw[] {
-  if (value === undefined) return [];
-  const list = Array.isArray(value) ? value : [value];
-  return list.flatMap((item) => {
-    const raw = asRaw(item);
-    return raw ? [raw] : [];
-  });
-}
-
-function strAttr(raw: Raw, name: string): string | null {
-  const value = raw[`@_${name}`];
-  return typeof value === 'string' ? value : null;
-}
-
-function numAttr(raw: Raw, name: string): number | null {
-  const text = strAttr(raw, name);
-  if (text === null) return null;
-  const value = Number(text);
-  return Number.isFinite(value) ? value : null;
-}
-
-function boolAttr(raw: Raw, name: string): boolean | null {
-  const text = strAttr(raw, name);
-  if (text === 'true') return true;
-  if (text === 'false') return false;
-  return null;
-}
 
 function fail(detail: string): Result<never, ImportError> {
   return err(new ImportError('Invalid sketch XML', undefined, detail));

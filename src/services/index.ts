@@ -5,3 +5,10 @@
  * autosave arrive in M3/M6.
  */
 export { CommandBus, type DocumentHost } from './CommandBus';
+export {
+  RegenScheduler,
+  computeFromIndex,
+  type RegenListener,
+  type RegenOutcome,
+} from './RegenScheduler';
+export { buildRegenPlan, placementForPlane, OP_PLAN_RESOLVERS } from './regenPlan';

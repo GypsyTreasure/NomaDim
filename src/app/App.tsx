@@ -1,17 +1,29 @@
+import { useEffect } from 'react';
 import { Viewport } from '../viewport';
-import { KernelDemoPanel } from './features/kernelDemo/KernelDemoPanel';
-import { useKernelDemo } from './features/kernelDemo/useKernelDemo';
 import { NumericHud } from './features/sketcher/NumericHud';
 import { PropertiesPanel } from './features/sketcher/PropertiesPanel';
 import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
+import { ExportStlButton } from './features/timeline/ExportStlButton';
+import { OpDialogHost } from './features/timeline/OpDialogHost';
+import { TimelineBar } from './features/timeline/TimelineBar';
+import { useTimeline } from './features/timeline/useTimeline';
 import { t } from './i18n/t';
+import { startRegen, useKernelStore } from './store/kernelStore';
 import styles from './App.module.css';
 import sketcherStyles from './features/sketcher/Sketcher.module.css';
 
 export function App(): React.JSX.Element {
-  const kernelDemo = useKernelDemo();
   const sketcher = useSketcher();
+  const timeline = useTimeline();
+  const bodies = useKernelStore((s) => s.bodies);
+  const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
+  const kernelError = useKernelStore((s) => s.error);
+
+  // Boot the worker + RegenScheduler once, on first mount (§4).
+  useEffect(() => {
+    startRegen();
+  }, []);
 
   return (
     <div className={styles.shell}>
@@ -21,7 +33,7 @@ export function App(): React.JSX.Element {
       <main className={styles.viewportArea}>
         <Viewport
           zoomToFitLabel={t('viewport.zoomToFit')}
-          bodies={kernelDemo.bodies}
+          bodies={bodies}
           sketchMode={sketcher.viewportSketchMode}
         />
         {sketcher.activeSketch ? (
@@ -36,6 +48,15 @@ export function App(): React.JSX.Element {
               <button type="button" className={sketcherStyles.button} onClick={sketcher.newSketch}>
                 {t('sketch.newSketch')}
               </button>
+              <ExportStlButton />
+              <span className={sketcherStyles.button} data-testid="body-count">
+                {liveBodyIds.length}
+              </span>
+              {kernelError && (
+                <span className={sketcherStyles.summary}>
+                  {t('kernel.status.error')} {kernelError}
+                </span>
+              )}
             </div>
             {sketcher.lastFinish && (
               <div className={sketcherStyles.summary} data-testid="finish-summary">
@@ -44,7 +65,8 @@ export function App(): React.JSX.Element {
                 {t('sketch.summary.open')} {sketcher.lastFinish.open}
               </div>
             )}
-            <KernelDemoPanel {...kernelDemo} />
+            <TimelineBar timeline={timeline} />
+            <OpDialogHost timeline={timeline} />
           </>
         )}
       </main>

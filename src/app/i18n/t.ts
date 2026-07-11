@@ -1,5 +1,7 @@
 import { en, type TranslationKey } from './en';
 
+export type { TranslationKey } from './en';
+
 /**
  * In-house minimal translation function (ADR-0007). EN-only catalog for v1;
  * a PL catalog drops in at v1.1 by adding a second flat map here — no

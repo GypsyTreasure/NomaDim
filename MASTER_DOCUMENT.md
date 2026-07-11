@@ -131,14 +131,19 @@ Export **`.nomadim.xml`** / import via picker + drag-drop. Contains: schema vers
       <points/><entities/><constraints/><dimensions/>
     </sketch>
   </sketches>
-  <timeline rollback="end">
-    <op id="op1" type="Sketch" ref="sk1"/>
+  <!-- rollback is a 0-based op index; index == op count is the "past all
+       ops" (roll-forward-to-end) state. Each op is its OWN element (tag owned
+       by its OpDefinition, R10); the explicit index preserves timeline order
+       through XML regrouping. -->
+  <timeline rollback="2">
+    <sketchOp index="0" id="op1" name="Sketch1" suppressed="false" sketch="sk1"/>
     <!-- profile ref = entity-set hash, never a detection index (R7a) -->
-    <op id="op2" type="Extrude" profiles="sk1:p-8f3a2c" distance="10"
-        direction="one-side" operation="NewBody" result="b1"/>
-    <op id="op3" type="Fillet" body="b1" radius="2">
-      <edgeRef fingerprint="…"/>
-    </op>
+    <extrude index="1" id="op2" name="Extrude1" suppressed="false" sketch="sk1"
+        distance="10" direction="one-side" distance2="0" operation="NewBody"
+        target="" body="b1">
+      <profile ref="sk1:p-8f3a2c"/>
+    </extrude>
+    <!-- Fillet arrives in M4 via the same registry pattern -->
   </timeline>
   <bodies>
     <body id="b1" name="Base" color="#1A6B5A" visible="true"/>

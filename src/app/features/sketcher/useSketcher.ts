@@ -266,15 +266,20 @@ export function useSketcher(): SketcherApi {
   }, []);
 
   const newSketch = useCallback(() => {
-    const existing = new Set<string>(
-      useDocumentStore.getState().document.sketches.map((s) => s.id)
-    );
+    const doc = useDocumentStore.getState().document;
+    const existing = new Set<string>([
+      ...doc.sketches.map((s) => s.id),
+      ...doc.ops.map((o) => o.id),
+    ]);
     const sketchId = createId<'SketchId'>(existing);
+    existing.add(sketchId);
+    const opId = createId<'OpId'>(existing);
     const result = commandBus.dispatch({
       type: 'CreateSketch',
       payload: {
         sketchId,
-        name: `Sketch${String(existing.size + 1)}`,
+        opId,
+        name: `Sketch${String(doc.sketches.length + 1)}`,
         plane: { kind: 'origin', plane: 'XY' },
       },
     });

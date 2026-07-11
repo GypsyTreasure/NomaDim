@@ -65,6 +65,7 @@ function circleLoops(sketch: Sketch): TraversedLoop[] {
       entityIds: [entity.id],
       polygon: sampleCurve(curve, PROFILE_CHORD_TOL_MM),
       area: Math.PI * curve.r * curve.r,
+      segments: [{ kind: 'circle', center: curve.center, r: curve.r }],
     });
   }
   return out;

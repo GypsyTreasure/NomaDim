@@ -1,0 +1,30 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--color-canvas-bg);
+  color: var(--color-canvas-fg);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body);
+}
+
+.header {
+  flex: 0 0 auto;
+  padding: var(--grid-unit) calc(var(--grid-unit) * 2);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  font-size: 16px;
+}
+
+.viewportArea {
+  flex: 1 1 auto;
+  min-height: 0;
+}

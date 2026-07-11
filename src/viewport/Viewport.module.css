@@ -1,0 +1,35 @@
+.container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-canvas-bg);
+}
+
+.canvasHost {
+  width: 100%;
+  height: 100%;
+}
+
+.overlay {
+  position: absolute;
+  top: var(--grid-unit);
+  right: var(--grid-unit);
+  display: flex;
+  gap: var(--grid-unit);
+}
+
+.button {
+  padding: calc(var(--grid-unit) * 0.75) var(--grid-unit);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-flat);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background-color: var(--color-primary);
+}

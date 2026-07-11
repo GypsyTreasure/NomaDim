@@ -1,0 +1,12 @@
+dist
+node_modules
+coverage
+playwright-report
+public/wasm
+package-lock.json
+
+# Binding project docs — hand-maintained, not reformatted by tooling.
+ARCHITECTURE.md
+MASTER_DOCUMENT.md
+CLAUDE.md
+DECISIONS.md

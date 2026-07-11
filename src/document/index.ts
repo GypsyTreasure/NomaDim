@@ -8,3 +8,6 @@ export * from './sketch/roles';
 export * from './sketch/access';
 export { validateSketch } from './sketch/validate';
 export { sketchToXml, sketchFromXml } from './xml/sketchXml';
+export * from './model';
+export * from './history';
+export * from './commands';

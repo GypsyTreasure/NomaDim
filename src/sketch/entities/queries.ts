@@ -46,6 +46,11 @@ function pointAtAngle(curve: CircleCurve | ArcCurve, angleRad: number): Vec2 {
   return add(curve.center, scale(fromAngle(angleRad), curve.r));
 }
 
+/** Shortest distance from p to the curve (hit-testing/selection). */
+export function distanceToCurve(curve: Curve, p: Vec2): number {
+  return distance(p, closestPointOnCurve(curve, p));
+}
+
 /** Curve midpoint — segment middle or arc mid-sweep; null for full circles. */
 export function curveMidpoint(curve: Curve): Vec2 | null {
   switch (curve.kind) {

@@ -70,6 +70,7 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 **Creation with numeric input (Shapr3D-style):**
 - Starting a tool shows floating input fields next to cursor (Line: length + angle — **angle is absolute to the sketch +X axis**; chained segments additionally expose a relative-to-previous-segment angle field in the Tab cycle; Circle: diameter; Rectangle: width + height; Arc per variant; Polygon: sides + inscribed diameter).
 - Typing focuses first field, `Tab` cycles fields, `Enter` commits with typed values overriding cursor position, `Esc` cancels. Chained tools (Line) continue from last endpoint until `Esc`/double-click.
+- Keyboard-only starts: a tool invoked purely via numeric input with no prior click anchors at the sketch origin (Line's first chain point, Circle/Polygon center). Committed endpoints landing exactly on an existing point merge with it — keyboard-drawn closed shapes share corner points like snapped ones (ADR-0012).
 - Committed values bake into geometry (explicit coordinates). No solver propagation: moving one entity later does not drag others (design decision ADR-0002; documented in UI onboarding).
 
 **Snapping & guides (the precision system):**

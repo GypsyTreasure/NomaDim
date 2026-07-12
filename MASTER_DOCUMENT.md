@@ -143,7 +143,12 @@ Export **`.nomadim.xml`** / import via picker + drag-drop. Contains: schema vers
         target="" body="b1">
       <profile ref="sk1:p-8f3a2c"/>
     </extrude>
-    <!-- Fillet arrives in M4 via the same registry pattern -->
+    <!-- Finishing ops (M4): edge references are geometric fingerprints
+         resolved at regen (midpoint/direction/adjacent-face-kinds/tol),
+         never topology indices — unresolvable → op error, user re-picks. -->
+    <fillet index="2" id="op3" name="Fillet1" suppressed="false" body="b1" radius="2">
+      <edge mx="10" my="0" mz="5" dx="1" dy="0" dz="0" kinds="cylinder,plane" tol="5"/>
+    </fillet>
   </timeline>
   <bodies>
     <body id="b1" name="Base" color="#1A6B5A" visible="true"/>

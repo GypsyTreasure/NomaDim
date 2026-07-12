@@ -106,15 +106,16 @@ export function createBodyMesh(mesh: MeshTransfer): THREE.Mesh {
  * Frees GPU buffers for every disposable object under `root` (ARCHITECTURE
  * R8 discipline extends to viewport resources, not just OCCT handles).
  *
- * Re-casts after the `instanceof` check: @types/three's `Mesh`/`LineSegments`
- * take 2-3 generic params with defaults, and TS does not apply those
- * defaults through `instanceof` narrowing on a generic class — the narrowed
- * type resolves to `Mesh<any, any, any>` without the cast.
+ * Re-casts after the `instanceof` check: @types/three's `Mesh`/`Line` take
+ * 2-3 generic params with defaults, and TS does not apply those defaults
+ * through `instanceof` narrowing on a generic class — the narrowed type
+ * resolves to `Mesh<any, any, any>` without the cast. `THREE.Line` also
+ * covers `LineSegments` (a subclass) and the F4 pickable edge lines.
  */
 export function disposeSceneObjects(root: THREE.Object3D): void {
   root.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.LineSegments)) return;
-    const disposable = object as THREE.Mesh | THREE.LineSegments;
+    if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.Line)) return;
+    const disposable = object as THREE.Mesh | THREE.Line;
     disposable.geometry.dispose();
     const material = disposable.material;
     if (Array.isArray(material)) {

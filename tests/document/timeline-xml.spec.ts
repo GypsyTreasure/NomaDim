@@ -1,13 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import type { BodyId, OpId, ProfileId, SketchId } from '../../src/core/ids';
-import type { ExtrudeOp, RevolveOp, SketchOp, TimelineData } from '../../src/document';
+import type {
+  ChamferOp,
+  CombineOp,
+  ExtrudeOp,
+  FilletOp,
+  RevolveOp,
+  SketchOp,
+  TimelineData,
+} from '../../src/document';
 import { timelineFromXml, timelineToXml } from '../../src/document';
 
 /**
  * Timeline codec round-trip (R10): the codec iterates the op registry, so
- * every OpType — Sketch, Extrude, Revolve — must survive model → XML → model
- * unchanged, and timeline ORDER (significant, unlike sketch entities) must be
- * preserved regardless of how the XML parser regroups elements by tag.
+ * every OpType — Sketch/Extrude/Revolve/Fillet/Chamfer/Combine — must survive
+ * model → XML → model unchanged, and timeline ORDER (significant, unlike
+ * sketch entities) must be preserved regardless of how the XML parser
+ * regroups elements by tag.
  */
 
 const sk = (id: string): SketchId => id as SketchId;
@@ -50,6 +59,54 @@ function revolveOp(overrides: Partial<RevolveOp> = {}): RevolveOp {
     operation: 'Cut',
     targetBodyId: body('b1'),
     bodyId: body('b2'),
+    ...overrides,
+  };
+}
+
+function filletOp(overrides: Partial<FilletOp> = {}): FilletOp {
+  return {
+    type: 'Fillet',
+    id: op('fl1'),
+    name: 'Fillet1',
+    suppressed: false,
+    bodyId: body('b1'),
+    edges: [
+      {
+        midpoint: [1.5, -2.25, 10],
+        direction: [1, 0, 0],
+        adjFaceKinds: ['cylinder', 'plane'],
+        tolMm: 5,
+      },
+      { midpoint: [0, 0, 0], direction: [0, 0, 1], adjFaceKinds: [], tolMm: 2 },
+    ],
+    radiusMm: 2.5,
+    ...overrides,
+  };
+}
+
+function chamferOp(overrides: Partial<ChamferOp> = {}): ChamferOp {
+  return {
+    type: 'Chamfer',
+    id: op('ch1'),
+    name: 'Chamfer1',
+    suppressed: true,
+    bodyId: body('b2'),
+    edges: [{ midpoint: [5, 5, 5], direction: [0, 1, 0], adjFaceKinds: ['plane', 'plane'], tolMm: 5 }],
+    distanceMm: 1.25,
+    ...overrides,
+  };
+}
+
+function combineOp(overrides: Partial<CombineOp> = {}): CombineOp {
+  return {
+    type: 'Combine',
+    id: op('cb1'),
+    name: 'Combine1',
+    suppressed: false,
+    targetBodyId: body('b1'),
+    toolBodyIds: [body('b2'), body('b3')],
+    operation: 'Cut',
+    keepTools: true,
     ...overrides,
   };
 }
@@ -111,6 +168,36 @@ describe('timeline XML round-trip', () => {
     const parsed = timelineFromXml(xml);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(timelineToXml(parsed.value)).toBe(xml);
+  });
+
+  it('round-trips Fillet/Chamfer/Combine incl. edge fingerprints + tool refs', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({ id: op('e1'), bodyId: body('b1') }),
+        extrudeOp({ id: op('e2'), bodyId: body('b2'), name: 'Extrude2' }),
+        extrudeOp({ id: op('e3'), bodyId: body('b3'), name: 'Extrude3' }),
+        combineOp(),
+        filletOp(),
+        chamferOp(),
+      ],
+      rollbackIndex: 7,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.ops.map((o) => o.id)).toEqual([
+        'so1',
+        'e1',
+        'e2',
+        'e3',
+        'cb1',
+        'fl1',
+        'ch1',
+      ]);
+      expect(parsed.value).toEqual(data);
+    }
   });
 
   it('rejects malformed timeline XML with ImportError', () => {

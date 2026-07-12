@@ -1,5 +1,6 @@
 import { createId, KernelError, InternalError, type BodyId } from '../core';
 import type {
+  BodyEdges,
   KernelRequest,
   KernelResponse,
   MeshQuality,
@@ -25,6 +26,7 @@ export interface RegenResult {
   readonly generation: number;
   readonly statuses: readonly OpStatusReport[];
   readonly meshes: MeshTransfer[];
+  readonly bodyEdges: BodyEdges[];
   readonly liveBodyIds: readonly BodyId[];
 }
 
@@ -81,6 +83,7 @@ export class KernelClient {
         generation: response.generation,
         statuses: response.statuses,
         meshes: response.meshes,
+        bodyEdges: response.bodyEdges,
         liveBodyIds: response.liveBodyIds,
       };
     }

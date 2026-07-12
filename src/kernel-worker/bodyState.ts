@@ -5,12 +5,13 @@ import { trackShapeDisposal } from './handleCounter';
 import type { BodyStateMap } from './executors/types';
 
 /**
- * Per-op delta cache (ARCHITECTURE §9): `deltas[i]` holds the shapes CHANGED
- * by op i (their post-op state), so replay-from-k restores the BodyStateMap
- * cheaply by folding deltas 0..k-1. Every shape stored in a delta is owned
- * by this cache: freeing deltas ≥ k `.delete()`s their shapes and decrements
- * the live-handle counter (R8). Executors only ever hand shapes in via the
- * map diff — they never free cached shapes themselves.
+ * Per-op delta cache (ARCHITECTURE §9): `deltas[i]` holds the map changes an
+ * op made — bodies it CHANGED (their post-op shape) and bodies it REMOVED
+ * (e.g. Combine consuming a tool). Replay-from-k folds deltas 0..k-1 (set the
+ * changed, drop the removed) to restore the BodyStateMap cheaply. Every shape
+ * in a `changed` map is owned by this cache: freeing deltas ≥ k `.delete()`s
+ * those shapes and decrements the live-handle counter (R8). A `removed` id
+ * carries no owned shape — that shape belongs to the delta that produced it.
  *
  * Op statuses are cached alongside deltas: an aborted regen (R6) leaves a
  * shorter valid prefix than the next request's fromIndex may assume — the
@@ -18,7 +19,14 @@ import type { BodyStateMap } from './executors/types';
  * prefix, so no status is ever lost to a superseded generation.
  */
 
-export type OpDelta = ReadonlyMap<BodyId, TopoDS_Shape>;
+export interface OpDelta {
+  readonly changed: ReadonlyMap<BodyId, TopoDS_Shape>;
+  readonly removed: ReadonlySet<BodyId>;
+}
+
+export function emptyDelta(): OpDelta {
+  return { changed: new Map(), removed: new Set() };
+}
 
 interface CacheEntry {
   readonly delta: OpDelta;
@@ -34,9 +42,8 @@ export class ShapeCache {
     for (let i = 0; i < Math.min(k, this.entries.length); i += 1) {
       const entry = this.entries[i];
       if (!entry) continue;
-      for (const [bodyId, shape] of entry.delta) {
-        bodies.set(bodyId, shape);
-      }
+      for (const [bodyId, shape] of entry.delta.changed) bodies.set(bodyId, shape);
+      for (const bodyId of entry.delta.removed) bodies.delete(bodyId);
     }
     return bodies;
   }
@@ -46,7 +53,7 @@ export class ShapeCache {
     for (let i = k; i < this.entries.length; i += 1) {
       const entry = this.entries[i];
       if (!entry) continue;
-      for (const shape of entry.delta.values()) {
+      for (const shape of entry.delta.changed.values()) {
         shape.delete();
         trackShapeDisposal();
       }
@@ -74,7 +81,7 @@ export function snapshotRefs(bodies: BodyStateMap): ReadonlyMap<BodyId, TopoDS_S
   return new Map(bodies);
 }
 
-/** Bodies whose shape reference changed (new or replaced) during the op. */
+/** Bodies whose shape reference changed (new/replaced) or were removed by the op. */
 export function diffDelta(
   before: ReadonlyMap<BodyId, TopoDS_Shape>,
   after: BodyStateMap
@@ -83,5 +90,9 @@ export function diffDelta(
   for (const [bodyId, shape] of after) {
     if (before.get(bodyId) !== shape) changed.set(bodyId, shape);
   }
-  return changed;
+  const removed = new Set<BodyId>();
+  for (const bodyId of before.keys()) {
+    if (!after.has(bodyId)) removed.add(bodyId);
+  }
+  return { changed, removed };
 }

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { BodyId, OpId } from '../../core';
-import { KernelClient, type MeshTransfer, type OpStatusReport } from '../../kernel';
+import { KernelClient, type BodyEdges, type MeshTransfer, type OpStatusReport } from '../../kernel';
 import { RegenScheduler, type RegenOutcome } from '../../services';
 import { commandBus, useDocumentStore } from './documentStore';
 
@@ -15,6 +15,7 @@ import { commandBus, useDocumentStore } from './documentStore';
 
 interface KernelStore {
   readonly bodies: MeshTransfer[];
+  readonly bodyEdges: BodyEdges[];
   readonly statuses: ReadonlyMap<OpId, OpStatusReport>;
   readonly liveBodyIds: readonly BodyId[];
   readonly ready: boolean;
@@ -28,6 +29,7 @@ const EMPTY_STATUSES: ReadonlyMap<OpId, OpStatusReport> = new Map();
 
 export const useKernelStore = create<KernelStore>((set) => ({
   bodies: [],
+  bodyEdges: [],
   statuses: EMPTY_STATUSES,
   liveBodyIds: [],
   ready: false,
@@ -35,6 +37,7 @@ export const useKernelStore = create<KernelStore>((set) => ({
   __applyOutcome: (outcome) => {
     set({
       bodies: outcome.meshes,
+      bodyEdges: outcome.bodyEdges,
       statuses: outcome.statuses,
       liveBodyIds: outcome.liveBodyIds,
     });

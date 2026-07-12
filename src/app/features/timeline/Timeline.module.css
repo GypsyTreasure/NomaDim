@@ -117,13 +117,22 @@
 
 /* --- Dialogs ------------------------------------------------------------ */
 
+/* Non-modal: the backdrop lets pointer events through to the viewport so
+   edge picking (F4) works while a Fillet/Chamfer dialog is open; only the
+   dialog panel itself captures clicks. Anchored top-right to leave the model
+   centre pickable. */
 .dialogBackdrop {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--color-selection);
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: var(--grid-unit);
+  pointer-events: none;
+}
+
+.dialog {
+  pointer-events: auto;
 }
 
 .dialog {

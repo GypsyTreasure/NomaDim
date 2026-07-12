@@ -1,15 +1,38 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { BodyId, SketchId } from '../../../core';
 import {
   findSketch,
   opDefinition,
   type BooleanOperation,
   type DocumentState,
+  type EdgeFingerprint,
 } from '../../../document';
 import { detectProfiles, type SketchProfile } from '../../../sketch';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
+import { useSessionStore } from '../../store/sessionStore';
 import type { SelectOption } from './dialogShared';
+
+/**
+ * Initializes the session edge-pick state for a Fillet/Chamfer dialog on
+ * mount (seeding an existing op's edges when editing) and resets it on close.
+ * Store writes only — no React state, so no set-state-in-effect concern.
+ */
+export function useEdgePickLifecycle(
+  initialBodyId: BodyId | null,
+  initialEdges: readonly EdgeFingerprint[]
+): void {
+  useEffect(() => {
+    const session = useSessionStore.getState();
+    session.setPickedEdges(initialEdges);
+    session.setEdgePickBodyId(initialBodyId);
+    return () => {
+      useSessionStore.getState().resetEdgePick();
+    };
+    // Mount/unmount only — seeds are captured once when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
 
 /** Resolves the selectable profiles of a sketch (area-labelled, R7a ids). */
 export function useSketchProfiles(sketchId: SketchId | null): readonly SketchProfile[] {

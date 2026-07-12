@@ -1,5 +1,5 @@
 import type { Brand, BodyId, OpId, ProfileId } from '../core';
-import type { LoopGeometry, TimelineOp } from '../document';
+import type { EdgeFingerprint, LoopGeometry, TimelineOp } from '../document';
 
 /**
  * The ONLY main<->worker contract (ARCHITECTURE §6). Discriminated unions,
@@ -77,6 +77,22 @@ export interface RegenPlan {
   readonly ops: readonly PlanOp[];
 }
 
+/**
+ * One tessellated body edge shipped to the main thread for picking (F4):
+ * its resolve-at-regen fingerprint plus a flat world-space polyline
+ * [x,y,z, x,y,z, …] for hover-highlight and raycast. R5: the polyline
+ * crosses as a Transferable.
+ */
+export interface EdgeTessellation {
+  readonly fingerprint: EdgeFingerprint;
+  readonly polyline: Float32Array;
+}
+
+export interface BodyEdges {
+  readonly bodyId: BodyId;
+  readonly edges: readonly EdgeTessellation[];
+}
+
 export type OpRunStatus = 'ok' | 'suppressed' | 'skipped' | 'error';
 
 export interface OpStatusReport {
@@ -118,6 +134,8 @@ export type KernelResponse =
       statuses: readonly OpStatusReport[];
       /** Viewport-quality meshes of every live body (R5 Transferables). */
       meshes: MeshTransfer[];
+      /** Per-body pickable edge polylines + fingerprints (F4). */
+      bodyEdges: BodyEdges[];
       liveBodyIds: readonly BodyId[];
     }
   | { id: ReqId; kind: 'error'; error: KernelErrorPayload };

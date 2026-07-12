@@ -3,6 +3,9 @@ import type { TranslationKey } from '../../i18n/t';
 import type { OpDialogProps } from './dialogTypes';
 import { ExtrudeDialog } from './ExtrudeDialog';
 import { RevolveDialog } from './RevolveDialog';
+import { FilletDialog } from './FilletDialog';
+import { ChamferDialog } from './ChamferDialog';
+import { CombineDialog } from './CombineDialog';
 
 /**
  * App-side op feature registry (ARCHITECTURE §7, the third registry). One
@@ -20,11 +23,17 @@ export interface OpFeature {
 const sketchFeature: OpFeature = { type: 'Sketch', labelKey: 'op.sketch', dialog: null };
 const extrudeFeature: OpFeature = { type: 'Extrude', labelKey: 'op.extrude', dialog: ExtrudeDialog };
 const revolveFeature: OpFeature = { type: 'Revolve', labelKey: 'op.revolve', dialog: RevolveDialog };
+const filletFeature: OpFeature = { type: 'Fillet', labelKey: 'op.fillet', dialog: FilletDialog };
+const chamferFeature: OpFeature = { type: 'Chamfer', labelKey: 'op.chamfer', dialog: ChamferDialog };
+const combineFeature: OpFeature = { type: 'Combine', labelKey: 'op.combine', dialog: CombineDialog };
 
 export const OP_FEATURES: Record<OpType, OpFeature> = {
   Sketch: sketchFeature,
   Extrude: extrudeFeature,
   Revolve: revolveFeature,
+  Fillet: filletFeature,
+  Chamfer: chamferFeature,
+  Combine: combineFeature,
 };
 
 export const OP_FEATURE_TYPES: readonly OpType[] = Object.keys(OP_FEATURES) as OpType[];

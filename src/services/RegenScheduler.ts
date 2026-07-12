@@ -1,6 +1,6 @@
 import type { BodyId, OpId } from '../core';
 import { findSketch, opDefinition, type DocumentState } from '../document';
-import type { KernelClient} from '../kernel';
+import type { KernelClient, BodyEdges } from '../kernel';
 import { StaleRegenError, type MeshTransfer, type OpStatusReport } from '../kernel';
 import type { CommandBus } from './CommandBus';
 import { buildRegenPlan } from './regenPlan';
@@ -19,6 +19,8 @@ export interface RegenOutcome {
   readonly statuses: ReadonlyMap<OpId, OpStatusReport>;
   /** Viewport-quality meshes of every live body (R5 Transferables). */
   readonly meshes: MeshTransfer[];
+  /** Per-body pickable edge polylines + fingerprints (F4). */
+  readonly bodyEdges: BodyEdges[];
   readonly liveBodyIds: readonly BodyId[];
 }
 
@@ -104,7 +106,12 @@ export class RegenScheduler {
       if (generation < this.generation) return;
       const statuses = new Map(result.statuses.map((s) => [s.opId, s]));
       for (const listener of this.listeners) {
-        listener({ statuses, meshes: result.meshes, liveBodyIds: result.liveBodyIds });
+        listener({
+          statuses,
+          meshes: result.meshes,
+          bodyEdges: result.bodyEdges,
+          liveBodyIds: result.liveBodyIds,
+        });
       }
     } catch (error) {
       if (error instanceof StaleRegenError) return; // superseded (benign, R6)

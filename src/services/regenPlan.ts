@@ -109,7 +109,8 @@ function resolveAxis(doc: DocumentState, op: RevolveOp): WorldAxis | undefined {
   return { origin: wa, direction: [d[0] / len, d[1] / len, d[2] / len] };
 }
 
-const sketchPlanResolver: OpPlanResolver = {
+/** Ops that need no main-thread input resolution (edges resolve in the worker). */
+const noInputsResolver: OpPlanResolver = {
   resolve: () => ({ profiles: [] }),
 };
 
@@ -129,9 +130,12 @@ const revolvePlanResolver: OpPlanResolver<RevolveOp> = {
  * OP_TYPES is asserted by the registry-completeness test (R9).
  */
 export const OP_PLAN_RESOLVERS: Record<OpType, OpPlanResolver> = {
-  Sketch: sketchPlanResolver,
+  Sketch: noInputsResolver,
   Extrude: extrudePlanResolver,
   Revolve: revolvePlanResolver,
+  Fillet: noInputsResolver,
+  Chamfer: noInputsResolver,
+  Combine: noInputsResolver,
 };
 
 // --- Plan assembly ---------------------------------------------------------

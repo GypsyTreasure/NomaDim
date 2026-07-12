@@ -21,4 +21,8 @@ export type {
   PlanOp,
   RegenPlan,
   WorldAxis,
+  BodyEdges,
+  EdgeTessellation,
 } from './protocol';
+export type { EdgeFingerprint } from '../document';
+export { edgeFingerprintKey } from './edgeKey';

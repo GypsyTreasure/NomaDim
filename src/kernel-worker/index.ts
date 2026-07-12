@@ -3,6 +3,7 @@ import type { BodyId } from '../core';
 import { VIEWPORT_ANGULAR_DEFLECTION_DEG, VIEWPORT_LINEAR_DEFLECTION_MM } from '../core';
 import { OP_DEFINITIONS } from '../document';
 import type {
+  BodyEdges,
   KernelRequest,
   KernelResponse,
   MeshTransfer,
@@ -12,9 +13,10 @@ import type {
 } from '../kernel/protocol';
 import { loadOcct } from './occt';
 import { tessellateShape } from './tessellate';
+import { tessellateBodyEdges } from './edgeFingerprint';
 import { exportShapeToStl } from './stl';
 import { getLiveShapeCount } from './handleCounter';
-import { ShapeCache, diffDelta, snapshotRefs } from './bodyState';
+import { ShapeCache, diffDelta, emptyDelta, snapshotRefs } from './bodyState';
 import { OP_EXECUTORS } from './executors/registry';
 import { KernelExecError, type BodyStateMap } from './executors/types';
 
@@ -67,6 +69,14 @@ function tessellateLiveBodies(oc: OpenCascadeInstance): MeshTransfer[] {
   return meshes;
 }
 
+function tessellateLiveBodyEdges(oc: OpenCascadeInstance): BodyEdges[] {
+  const bodyEdges: BodyEdges[] = [];
+  for (const [bodyId, shape] of bodies) {
+    bodyEdges.push({ bodyId, edges: tessellateBodyEdges(oc, shape) });
+  }
+  return bodyEdges;
+}
+
 async function handleRegen(
   id: ReqId,
   generation: number,
@@ -94,18 +104,18 @@ async function handleRegen(
     const op = planOp.op;
 
     if (failed) {
-      cache.record(i, new Map(), { opId: op.id, status: 'skipped' });
+      cache.record(i, emptyDelta(), { opId: op.id, status: 'skipped' });
       continue;
     }
     if (op.suppressed) {
       // Body-producing op: its bodyId simply never enters the map.
       // Body-modifying op: target keeps prior state. Both = empty delta (§9).
-      cache.record(i, new Map(), { opId: op.id, status: 'suppressed' });
+      cache.record(i, emptyDelta(), { opId: op.id, status: 'suppressed' });
       continue;
     }
     const deps = OP_DEFINITIONS[op.type].dependencies(op);
     if (planOp.inputsSuppressed || deps.consumesBodies.some((b) => !bodies.has(b))) {
-      cache.record(i, new Map(), { opId: op.id, status: 'skipped' });
+      cache.record(i, emptyDelta(), { opId: op.id, status: 'skipped' });
       continue;
     }
 
@@ -123,7 +133,7 @@ async function handleRegen(
     } catch (error) {
       // Failed op: map keeps last good states; downstream ops → skipped (§9).
       bodies = cache.restoreTo(i);
-      cache.record(i, new Map(), {
+      cache.record(i, emptyDelta(), {
         opId: op.id,
         status: 'error',
         code: error instanceof KernelExecError ? error.code : 'KERNEL_ERROR',
@@ -149,7 +159,11 @@ async function handleRegen(
   }
 
   const meshes = tessellateLiveBodies(oc);
-  const transfer = meshes.flatMap((m) => [m.positions.buffer, m.normals.buffer, m.indices.buffer]);
+  const bodyEdges = tessellateLiveBodyEdges(oc);
+  const transfer = [
+    ...meshes.flatMap((m) => [m.positions.buffer, m.normals.buffer, m.indices.buffer]),
+    ...bodyEdges.flatMap((b) => b.edges.map((e) => e.polyline.buffer)),
+  ];
   respond(
     {
       id,
@@ -157,6 +171,7 @@ async function handleRegen(
       generation,
       statuses,
       meshes,
+      bodyEdges,
       liveBodyIds: [...bodies.keys()],
     },
     transfer

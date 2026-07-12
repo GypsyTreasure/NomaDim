@@ -8,7 +8,7 @@ import type { BodyId, EntityId, OpId, ProfileId, SketchId } from '../../core';
  * (document codec, worker executor, app feature) keyed by this union.
  */
 
-export type OpType = 'Sketch' | 'Extrude' | 'Revolve';
+export type OpType = 'Sketch' | 'Extrude' | 'Revolve' | 'Fillet' | 'Chamfer' | 'Combine';
 
 interface OpBase {
   readonly id: OpId;
@@ -58,7 +58,54 @@ export interface RevolveOp extends OpBase {
   readonly bodyId: BodyId;
 }
 
-export type TimelineOp = SketchOp | ExtrudeOp | RevolveOp;
+/**
+ * Persistent 3D edge reference (ARCHITECTURE §8, line 160): a geometric
+ * fingerprint resolved against the input body AT REGEN, never a topology
+ * index. A geometric edit that keeps the edge re-resolves it; an edit that
+ * removes it → the op enters error state and the user re-picks (accepted v1
+ * tradeoff, MASTER_DOCUMENT §4). All coordinates are world-space (mm).
+ */
+export interface EdgeFingerprint {
+  readonly midpoint: readonly [number, number, number];
+  /** Edge tangent at the midpoint, normalized; sign-normalized on resolve. */
+  readonly direction: readonly [number, number, number];
+  /** Sorted surface-kind tags of the ≤2 adjacent faces (disambiguates matches). */
+  readonly adjFaceKinds: readonly string[];
+  /** Match tolerance (mm) for midpoint proximity. */
+  readonly tolMm: number;
+}
+
+/** Fillet (F4): rounds picked edges of ONE body by a single radius. */
+export interface FilletOp extends OpBase {
+  readonly type: 'Fillet';
+  /** Body being filleted — modified in place (its id is unchanged, §9). */
+  readonly bodyId: BodyId;
+  readonly edges: readonly EdgeFingerprint[];
+  readonly radiusMm: number;
+}
+
+/** Chamfer (F4): equal-distance bevel of picked edges of ONE body. */
+export interface ChamferOp extends OpBase {
+  readonly type: 'Chamfer';
+  readonly bodyId: BodyId;
+  readonly edges: readonly EdgeFingerprint[];
+  readonly distanceMm: number;
+}
+
+/** Combine operation (F5): body-to-body boolean — never creates a new body. */
+export type CombineOperation = 'Join' | 'Cut' | 'Intersect';
+
+/** Combine (F5): target body + tool bodies → Join/Cut/Intersect, keep-tools option. */
+export interface CombineOp extends OpBase {
+  readonly type: 'Combine';
+  readonly targetBodyId: BodyId;
+  readonly toolBodyIds: readonly BodyId[];
+  readonly operation: CombineOperation;
+  /** When true, tool bodies remain after the combine (Fusion "Keep Tools"). */
+  readonly keepTools: boolean;
+}
+
+export type TimelineOp = SketchOp | ExtrudeOp | RevolveOp | FilletOp | ChamferOp | CombineOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

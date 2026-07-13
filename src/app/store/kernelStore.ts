@@ -23,6 +23,7 @@ interface KernelStore {
   readonly __applyOutcome: (outcome: RegenOutcome) => void;
   readonly __setReady: () => void;
   readonly __setError: (message: string) => void;
+  readonly __setBodyEdges: (bodyEdges: BodyEdges[]) => void;
 }
 
 const EMPTY_STATUSES: ReadonlyMap<OpId, OpStatusReport> = new Map();
@@ -37,10 +38,12 @@ export const useKernelStore = create<KernelStore>((set) => ({
   __applyOutcome: (outcome) => {
     set({
       bodies: outcome.meshes,
-      bodyEdges: outcome.bodyEdges,
       statuses: outcome.statuses,
       liveBodyIds: outcome.liveBodyIds,
     });
+    // Refresh pickable edges only while a consumer (edge-pick/measure) wants
+    // them — otherwise a 100-body regen never pays the edge-tessellation cost.
+    if (edgeConsumers > 0) refreshBodyEdges();
   },
   __setReady: () => {
     set({ ready: true });
@@ -48,7 +51,43 @@ export const useKernelStore = create<KernelStore>((set) => ({
   __setError: (message) => {
     set({ error: message });
   },
+  __setBodyEdges: (bodyEdges) => {
+    set({ bodyEdges });
+  },
 }));
+
+/**
+ * Edge-consumer refcount (F4 edge picking, F10 measure). Edges are fetched
+ * on demand while at least one consumer is active — never on every regen.
+ */
+let edgeConsumers = 0;
+
+/** Fetches pickable edges for the live bodies into the store (best-effort). */
+export function refreshBodyEdges(): void {
+  const activeClient = client;
+  if (!activeClient) return;
+  const ids = [...useKernelStore.getState().liveBodyIds];
+  activeClient.bodyEdges(ids).then(
+    (edges) => {
+      useKernelStore.getState().__setBodyEdges(edges);
+    },
+    () => {
+      /* transient — the next regen or re-acquire refreshes */
+    }
+  );
+}
+
+/** Marks a consumer as needing edges (fetches immediately). */
+export function acquireEdges(): void {
+  edgeConsumers += 1;
+  refreshBodyEdges();
+}
+
+/** Releases a consumer; clears cached edges when the last one leaves. */
+export function releaseEdges(): void {
+  edgeConsumers = Math.max(0, edgeConsumers - 1);
+  if (edgeConsumers === 0) useKernelStore.getState().__setBodyEdges([]);
+}
 
 let client: KernelClient | null = null;
 let scheduler: RegenScheduler | null = null;

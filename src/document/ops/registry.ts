@@ -6,6 +6,7 @@ import { revolveOpDefinition } from './revolveOp';
 import { filletOpDefinition } from './filletOp';
 import { chamferOpDefinition } from './chamferOp';
 import { combineOpDefinition } from './combineOp';
+import { copyBodyOpDefinition } from './copyBodyOp';
 
 /**
  * Document-side op registry (ARCHITECTURE §7). The XML codec, timeline UI,
@@ -20,6 +21,7 @@ export const OP_DEFINITIONS: Record<OpType, OpDefinition> = {
   Fillet: filletOpDefinition,
   Chamfer: chamferOpDefinition,
   Combine: combineOpDefinition,
+  CopyBody: copyBodyOpDefinition,
 };
 
 export function opDefinition(op: TimelineOp): OpDefinition {

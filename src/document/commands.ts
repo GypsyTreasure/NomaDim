@@ -2,6 +2,7 @@ import {
   err,
   ok,
   ValidationError,
+  type BodyId,
   type EntityId,
   type PointId,
   type Result,
@@ -9,10 +10,12 @@ import {
 } from '../core';
 import { findSketch, type DocumentState } from './model';
 import { emptySketch } from './sketch/access';
+import { getBodyMeta, upsertBodyMeta } from './bodies/access';
+import type { BodyMeta } from './bodies/types';
 import { referencedPointIds } from './sketch/roles';
 import type { Sketch, SketchEntity, SketchPlaneRef, SketchPoint } from './sketch/types';
 import { validateSketch } from './sketch/validate';
-import type { SketchPatch, Transaction } from './history';
+import type { BodyMetaPatch, SketchPatch, Transaction } from './history';
 import type { OpId } from '../core';
 import { applyTimelineCommand, type TimelineCommand } from './timelineCommands';
 
@@ -59,7 +62,10 @@ export type Command =
       readonly type: 'DeleteSketchEntities';
       readonly payload: { sketchId: SketchId; entityIds: readonly EntityId[] };
     }
-  | { readonly type: 'RenameSketch'; readonly payload: { sketchId: SketchId; name: string } };
+  | { readonly type: 'RenameSketch'; readonly payload: { sketchId: SketchId; name: string } }
+  | { readonly type: 'SetBodyName'; readonly payload: { bodyId: BodyId; name: string } }
+  | { readonly type: 'SetBodyColor'; readonly payload: { bodyId: BodyId; color: string } }
+  | { readonly type: 'SetBodyVisible'; readonly payload: { bodyId: BodyId; visible: boolean } };
 
 export interface CommandResult {
   readonly state: DocumentState;
@@ -96,6 +102,26 @@ function commitSketchEdit(
   const valid = validateSketch(after);
   if (!valid.ok) return valid;
   return ok(sketchReplacement(state, label, before, after, before.id));
+}
+
+/** Upserts one body's metadata (F8) as an undoable whole-list replacement. */
+function setBodyMeta(
+  state: DocumentState,
+  label: string,
+  bodyId: BodyId,
+  patch: Partial<Pick<BodyMeta, 'name' | 'color' | 'visible'>>
+): Result<CommandResult, ValidationError> {
+  const next: BodyMeta = { ...getBodyMeta(state, bodyId), ...patch };
+  const after = upsertBodyMeta(state, next);
+  const bodyMetaPatch: BodyMetaPatch = {
+    kind: 'replaceBodyMeta',
+    before: state.bodyMeta,
+    after,
+  };
+  return ok({
+    state: { ...state, bodyMeta: after },
+    transaction: { label, patches: [bodyMetaPatch] },
+  });
 }
 
 export function applyCommand(
@@ -224,6 +250,23 @@ export function applyCommand(
         name: command.payload.name,
       });
     }
+    case 'SetBodyName':
+      return setBodyMeta(state, 'Rename Body', command.payload.bodyId, {
+        name: command.payload.name,
+      });
+    case 'SetBodyColor':
+      return setBodyMeta(state, 'Set Body Colour', command.payload.bodyId, {
+        color: command.payload.color,
+      });
+    case 'SetBodyVisible':
+      return setBodyMeta(
+        state,
+        command.payload.visible ? 'Show Body' : 'Hide Body',
+        command.payload.bodyId,
+        {
+          visible: command.payload.visible,
+        }
+      );
     default: {
       const exhaustive: never = command;
       return exhaustive;

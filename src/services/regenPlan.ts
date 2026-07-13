@@ -132,6 +132,7 @@ export const OP_PLAN_RESOLVERS: Record<OpType, OpPlanResolver> = {
   Fillet: noInputsResolver,
   Chamfer: noInputsResolver,
   Combine: noInputsResolver,
+  CopyBody: noInputsResolver,
 };
 
 // --- Plan assembly ---------------------------------------------------------

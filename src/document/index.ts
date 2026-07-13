@@ -7,6 +7,8 @@ export * from './sketch/types';
 export * from './sketch/roles';
 export * from './sketch/access';
 export * from './sketch/loopGeometry';
+export * from './bodies/types';
+export * from './bodies/access';
 export { validateSketch } from './sketch/validate';
 export { sketchToXml, sketchFromXml } from './xml/sketchXml';
 export { timelineToXml, timelineFromXml, type TimelineData } from './xml/timelineXml';

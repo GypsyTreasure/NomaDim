@@ -86,16 +86,19 @@ export function createLighting(): THREE.Group {
 }
 
 /** Builds a shaded body mesh from a worker-tessellated MeshTransfer (R5 Transferable buffers). */
-export function createBodyMesh(mesh: MeshTransfer): THREE.Mesh {
+export function createBodyMesh(mesh: MeshTransfer, color?: string, selected = false): THREE.Mesh {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
   geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
 
-  const material = new THREE.MeshStandardMaterial({
-    color: BODY_COLOR,
-    metalness: 0.1,
-    roughness: 0.6,
+  // Lambert (per-vertex lighting) over Standard (per-fragment PBR): visually
+  // similar for opaque CAD bodies but far cheaper to shade, which keeps a
+  // 100-body session at ≥ 30 fps even on software rendering (M5 acceptance).
+  const material = new THREE.MeshLambertMaterial({
+    color: new THREE.Color(color ?? BODY_COLOR),
+    // Selection highlight (F8 tree ⇄ viewport sync): a subtle self-glow.
+    emissive: new THREE.Color(selected ? 0x2fa78d : 0x000000),
   });
   const object = new THREE.Mesh(geometry, material);
   object.name = `Body:${mesh.bodyId}`;

@@ -1,0 +1,85 @@
+.tree {
+  position: absolute;
+  top: var(--grid-unit);
+  left: var(--grid-unit);
+  width: 200px;
+  max-height: 70%;
+  overflow-y: auto;
+  padding: calc(var(--grid-unit) * 0.75);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+  font-size: 12px;
+}
+
+.section {
+  margin-bottom: calc(var(--grid-unit) * 0.75);
+}
+
+.heading {
+  margin: 0 0 calc(var(--grid-unit) * 0.25);
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid-unit) * 0.5);
+  padding: 2px 0;
+}
+
+.bodyRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid-unit) * 0.4);
+  padding: 2px 0;
+}
+
+.selected {
+  background-color: var(--color-selection);
+}
+
+.itemButton {
+  flex: 1;
+  padding: 2px 4px;
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemButton:hover {
+  color: var(--color-primary);
+}
+
+.iconButton {
+  padding: 0 4px;
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: none;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  color: var(--color-error);
+}
+
+.swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: var(--border-width) solid var(--color-border);
+  background: none;
+  cursor: pointer;
+}

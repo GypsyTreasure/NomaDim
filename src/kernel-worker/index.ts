@@ -69,10 +69,12 @@ function tessellateLiveBodies(oc: OpenCascadeInstance): MeshTransfer[] {
   return meshes;
 }
 
-function tessellateLiveBodyEdges(oc: OpenCascadeInstance): BodyEdges[] {
+/** On-demand edge tessellation (F4/F10) — kept OUT of regen for 100-body perf. */
+function edgesFor(oc: OpenCascadeInstance, bodyIds: readonly BodyId[]): BodyEdges[] {
   const bodyEdges: BodyEdges[] = [];
-  for (const [bodyId, shape] of bodies) {
-    bodyEdges.push({ bodyId, edges: tessellateBodyEdges(oc, shape) });
+  for (const bodyId of bodyIds) {
+    const shape = bodies.get(bodyId);
+    if (shape) bodyEdges.push({ bodyId, edges: tessellateBodyEdges(oc, shape) });
   }
   return bodyEdges;
 }
@@ -159,11 +161,7 @@ async function handleRegen(
   }
 
   const meshes = tessellateLiveBodies(oc);
-  const bodyEdges = tessellateLiveBodyEdges(oc);
-  const transfer = [
-    ...meshes.flatMap((m) => [m.positions.buffer, m.normals.buffer, m.indices.buffer]),
-    ...bodyEdges.flatMap((b) => b.edges.map((e) => e.polyline.buffer)),
-  ];
+  const transfer = meshes.flatMap((m) => [m.positions.buffer, m.normals.buffer, m.indices.buffer]);
   respond(
     {
       id,
@@ -171,7 +169,6 @@ async function handleRegen(
       generation,
       statuses,
       meshes,
-      bodyEdges,
       liveBodyIds: [...bodies.keys()],
     },
     transfer
@@ -197,6 +194,13 @@ async function handleRequest(request: KernelRequest): Promise<void> {
       }
       case 'regen': {
         await handleRegen(request.id, request.generation, request.fromIndex, request.plan);
+        return;
+      }
+      case 'bodyEdges': {
+        const oc = await ensureOcct();
+        const bodyEdges = edgesFor(oc, request.bodyIds);
+        const transfer = bodyEdges.flatMap((b) => b.edges.map((e) => e.polyline.buffer));
+        respond({ id: request.id, kind: 'bodyEdges', bodyEdges }, transfer);
         return;
       }
       case 'tessellate': {

@@ -1,6 +1,7 @@
 import { UNDO_STACK_MIN_DEPTH } from '../core';
 import type { DocumentState } from './model';
 import type { Sketch } from './sketch/types';
+import type { BodyMeta } from './bodies/types';
 
 /**
  * Undo/redo (ARCHITECTURE §4 R2): every command produces exactly one
@@ -31,7 +32,14 @@ export interface TimelineSnapshot {
   readonly rollbackIndex: number;
 }
 
-export type DocumentPatch = SketchPatch | TimelinePatch;
+/** Whole body-metadata replacement (F8) — the list is tiny, one row per body. */
+export interface BodyMetaPatch {
+  readonly kind: 'replaceBodyMeta';
+  readonly before: readonly BodyMeta[];
+  readonly after: readonly BodyMeta[];
+}
+
+export type DocumentPatch = SketchPatch | TimelinePatch | BodyMetaPatch;
 
 export interface Transaction {
   readonly label: string;
@@ -69,6 +77,10 @@ function applyPatches(
       case 'replaceTimeline': {
         const target = direction === 'forward' ? patch.after : patch.before;
         next = { ...next, ops: target.ops, rollbackIndex: target.rollbackIndex };
+        break;
+      }
+      case 'replaceBodyMeta': {
+        next = { ...next, bodyMeta: direction === 'forward' ? patch.after : patch.before };
         break;
       }
       default: {

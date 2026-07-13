@@ -3,6 +3,7 @@ import type { BodyId, OpId, ProfileId, SketchId } from '../../src/core/ids';
 import type {
   ChamferOp,
   CombineOp,
+  CopyBodyOp,
   ExtrudeOp,
   FilletOp,
   RevolveOp,
@@ -113,6 +114,19 @@ function combineOp(overrides: Partial<CombineOp> = {}): CombineOp {
   };
 }
 
+function copyBodyOp(overrides: Partial<CopyBodyOp> = {}): CopyBodyOp {
+  return {
+    type: 'CopyBody',
+    id: op('cp1'),
+    name: 'Copy1',
+    suppressed: false,
+    sourceBodyId: body('b1'),
+    translate: [12.5, -3, 0],
+    bodyId: body('b9'),
+    ...overrides,
+  };
+}
+
 describe('timeline XML round-trip', () => {
   it('round-trips all three op types and preserves order', () => {
     const data: TimelineData = {
@@ -212,6 +226,17 @@ describe('timeline XML round-trip', () => {
       ]);
       expect(parsed.value).toEqual(data);
     }
+  });
+
+  it('round-trips CopyBody with its translation', () => {
+    const data: TimelineData = {
+      ops: [sketchOp('so1', 's1'), extrudeOp({ id: op('e1'), bodyId: body('b1') }), copyBodyOp()],
+      rollbackIndex: 3,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
   });
 
   it('rejects malformed timeline XML with ImportError', () => {

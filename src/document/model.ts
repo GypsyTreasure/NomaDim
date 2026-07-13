@@ -1,5 +1,6 @@
 import type { Sketch } from './sketch/types';
 import type { TimelineOp } from './ops/types';
+import type { BodyMeta } from './bodies/types';
 
 /**
  * Document root (ARCHITECTURE §5: shape defined here, held by the Zustand
@@ -14,10 +15,12 @@ export interface DocumentState {
    * but never evaluate. New ops insert AT the marker; it advances past them.
    */
   readonly rollbackIndex: number;
+  /** Per-body name/colour/visibility (F8); lazily materialized on edit. */
+  readonly bodyMeta: readonly BodyMeta[];
 }
 
 export function emptyDocument(): DocumentState {
-  return { sketches: [], ops: [], rollbackIndex: 0 };
+  return { sketches: [], ops: [], rollbackIndex: 0, bodyMeta: [] };
 }
 
 export function findSketch(state: DocumentState, sketchId: string): Sketch | undefined {

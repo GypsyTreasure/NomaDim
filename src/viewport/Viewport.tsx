@@ -16,7 +16,13 @@ import {
   disposeSceneObjects,
   zoomToFit,
 } from './scene';
-import { planeMapping, pixelsPerMm, worldToPlane, type OriginPlaneId } from './planeMapping';
+import {
+  planeMapping,
+  planeToWorld,
+  pixelsPerMm,
+  worldToPlane,
+  type OriginPlaneId,
+} from './planeMapping';
 import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
@@ -61,6 +67,18 @@ export interface BodyStyle {
   readonly selected: boolean;
 }
 
+/**
+ * A committed sketch drawn as reference geometry in 3D (Fusion parity: a
+ * sketch's preview stays in the scene until a feature consumes it). The app
+ * evaluates entities to sketch-local polylines (mm); the viewport maps them
+ * onto the plane and owns the Three.js objects.
+ */
+export interface SketchPreview {
+  readonly sketchId: string;
+  readonly plane: OriginPlaneId;
+  readonly polylines: readonly (readonly Vec2[])[];
+}
+
 export interface ViewportProps {
   /** Label text for the zoom-to-fit button (translated by the caller — §3 viewport-scope). */
   zoomToFitLabel: string;
@@ -75,6 +93,8 @@ export interface ViewportProps {
   bodyStyles?: ReadonlyMap<BodyId, BodyStyle>;
   /** Origin plane visibility (F8). */
   planeVisibility?: Readonly<Record<OriginPlaneId, boolean>>;
+  /** Committed sketches shown as 3D reference geometry (visible + not being edited). */
+  sketchPreviews?: readonly SketchPreview[];
   /** A body was clicked in the viewport (null = empty space) — tree sync (F8). */
   onSelectBody?: (bodyId: BodyId | null) => void;
 }
@@ -83,6 +103,7 @@ const EDGE_COLOR = 0x0d1b2a; // navy
 const EDGE_PICKED_COLOR = 0x1a6b5a; // teal
 const EDGE_HOVER_COLOR = 0x2fa78d; // bright teal
 const EDGE_PICK_THRESHOLD_MM = 2;
+const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (tokens brand teal)
 
 /**
  * Owns the Three.js scene, camera/controls, picking, and the 2D sketch
@@ -98,6 +119,7 @@ export function Viewport({
   measure = null,
   bodyStyles,
   planeVisibility,
+  sketchPreviews,
   onSelectBody,
 }: ViewportProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -105,6 +127,7 @@ export function Viewport({
   const fitRequestRef = useRef<(() => void) | null>(null);
   const bodyGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
+  const sketchGroupRef = useRef<THREE.Group | null>(null);
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -168,6 +191,9 @@ export function Viewport({
     edgeGroup.name = 'Edges';
     edgeGroup.visible = false;
     edgeGroupRef.current = edgeGroup;
+    const sketchGroup = new THREE.Group();
+    sketchGroup.name = 'SketchPreviews';
+    sketchGroupRef.current = sketchGroup;
     scene.add(
       grid,
       originPlanes.XY,
@@ -175,7 +201,8 @@ export function Viewport({
       originPlanes.YZ,
       lighting,
       bodyGroup,
-      edgeGroup
+      edgeGroup,
+      sketchGroup
     );
 
     let width = 0;
@@ -417,6 +444,7 @@ export function Viewport({
       disposeSceneObjects(scene);
       bodyGroupRef.current = null;
       edgeGroupRef.current = null;
+      sketchGroupRef.current = null;
       originPlanesRef.current = null;
       cameraRef.current = null;
       controlsRef.current = null;
@@ -466,6 +494,31 @@ export function Viewport({
       }
     }
   }, [edgePick]);
+
+  // Rebuild committed-sketch preview lines (visible sketches not being edited).
+  useEffect(() => {
+    const group = sketchGroupRef.current;
+    if (!group) return;
+    disposeSceneObjects(group);
+    group.clear();
+    for (const preview of sketchPreviews ?? []) {
+      const mapping = planeMapping(preview.plane);
+      for (const polyline of preview.polylines) {
+        if (polyline.length < 2) continue;
+        const positions = new Float32Array(polyline.length * 3);
+        polyline.forEach((p, i) => {
+          const world = planeToWorld(mapping, p);
+          positions[i * 3] = world.x;
+          positions[i * 3 + 1] = world.y;
+          positions[i * 3 + 2] = world.z;
+        });
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const material = new THREE.LineBasicMaterial({ color: SKETCH_PREVIEW_COLOR });
+        group.add(new THREE.Line(geometry, material));
+      }
+    }
+  }, [sketchPreviews]);
 
   return (
     <div className={styles.container}>

@@ -26,6 +26,8 @@ export const en = {
   'tree.body.show': 'Show',
   'tree.body.hide': 'Hide',
   'tree.body.delete': 'Delete',
+  'tree.sketch.show': 'Show sketch',
+  'tree.sketch.hide': 'Hide sketch',
   'tree.empty': '—',
   'measure.toggle': 'Measure',
   'measure.distance': 'Distance',

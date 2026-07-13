@@ -1,6 +1,7 @@
 import { UNDO_STACK_MIN_DEPTH } from '../core';
 import type { DocumentState } from './model';
 import type { Sketch } from './sketch/types';
+import type { SketchMeta } from './sketch/meta';
 import type { BodyMeta } from './bodies/types';
 
 /**
@@ -39,7 +40,14 @@ export interface BodyMetaPatch {
   readonly after: readonly BodyMeta[];
 }
 
-export type DocumentPatch = SketchPatch | TimelinePatch | BodyMetaPatch;
+/** Whole sketch-metadata replacement (sketch visibility) — one row per sketch. */
+export interface SketchMetaPatch {
+  readonly kind: 'replaceSketchMeta';
+  readonly before: readonly SketchMeta[];
+  readonly after: readonly SketchMeta[];
+}
+
+export type DocumentPatch = SketchPatch | TimelinePatch | BodyMetaPatch | SketchMetaPatch;
 
 export interface Transaction {
   readonly label: string;
@@ -81,6 +89,10 @@ function applyPatches(
       }
       case 'replaceBodyMeta': {
         next = { ...next, bodyMeta: direction === 'forward' ? patch.after : patch.before };
+        break;
+      }
+      case 'replaceSketchMeta': {
+        next = { ...next, sketchMeta: direction === 'forward' ? patch.after : patch.before };
         break;
       }
       default: {

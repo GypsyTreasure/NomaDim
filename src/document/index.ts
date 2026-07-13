@@ -6,6 +6,7 @@
 export * from './sketch/types';
 export * from './sketch/roles';
 export * from './sketch/access';
+export * from './sketch/meta';
 export * from './sketch/loopGeometry';
 export * from './bodies/types';
 export * from './bodies/access';

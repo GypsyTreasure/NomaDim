@@ -160,7 +160,9 @@ Export **`.nomadim.xml`** / import via picker + drag-drop. Contains: schema vers
 ```
 
 ### F8 — Browser tree (left panel)
-Sections **Origin** (plane visibility), **Sketches**, **Bodies**. Per body: eye toggle, rename (double-click/F2), color swatch → picker, delete. Tree ⇄ viewport selection sync.
+Sections **Origin** (plane visibility), **Sketches**, **Bodies**. Per body: eye toggle, rename (double-click/F2), color swatch → picker, delete. Per sketch: eye toggle (visibility), click to edit. Tree ⇄ viewport selection sync.
+
+**Sketch preview visibility (Fusion parity).** A sketch is drawn as 3D reference geometry (its committed curves) while visible. A newly finished sketch is visible; the first feature that consumes it (Extrude/Revolve) auto-hides its preview, bundled into that feature's transaction so one undo restores both. Visibility is undoable per-sketch metadata (not part of the constraint-ready sketch geometry) toggled from the Sketches section; re-showing a sketch then editing the consuming feature does not re-hide it.
 
 ### F9 — Copy/Paste (whole body)
 Ctrl+C / Ctrl+V on a body appends a `CopyBody` op referencing the source body. Semantics are **parametric and positional** (consistent with C5 replay): at regen, the copy reproduces the source *as of the `CopyBody` op's timeline position. Consequently, edits to ops **earlier** in the timeline propagate into the copy (Fusion-like), while ops appended **after** the copy do not. Optional translate-XYZ dialog after paste. UI copy explains this once on first use.

@@ -12,10 +12,11 @@ import { findSketch, type DocumentState } from './model';
 import { emptySketch } from './sketch/access';
 import { getBodyMeta, upsertBodyMeta } from './bodies/access';
 import type { BodyMeta } from './bodies/types';
+import { getSketchMeta, upsertSketchMeta } from './sketch/meta';
 import { referencedPointIds } from './sketch/roles';
 import type { Sketch, SketchEntity, SketchPlaneRef, SketchPoint } from './sketch/types';
 import { validateSketch } from './sketch/validate';
-import type { BodyMetaPatch, SketchPatch, Transaction } from './history';
+import type { BodyMetaPatch, SketchMetaPatch, SketchPatch, Transaction } from './history';
 import type { OpId } from '../core';
 import { applyTimelineCommand, type TimelineCommand } from './timelineCommands';
 
@@ -65,7 +66,11 @@ export type Command =
   | { readonly type: 'RenameSketch'; readonly payload: { sketchId: SketchId; name: string } }
   | { readonly type: 'SetBodyName'; readonly payload: { bodyId: BodyId; name: string } }
   | { readonly type: 'SetBodyColor'; readonly payload: { bodyId: BodyId; color: string } }
-  | { readonly type: 'SetBodyVisible'; readonly payload: { bodyId: BodyId; visible: boolean } };
+  | { readonly type: 'SetBodyVisible'; readonly payload: { bodyId: BodyId; visible: boolean } }
+  | {
+      readonly type: 'SetSketchVisible';
+      readonly payload: { sketchId: SketchId; visible: boolean };
+    };
 
 export interface CommandResult {
   readonly state: DocumentState;
@@ -121,6 +126,23 @@ function setBodyMeta(
   return ok({
     state: { ...state, bodyMeta: after },
     transaction: { label, patches: [bodyMetaPatch] },
+  });
+}
+
+/** Sets one sketch's visibility as an undoable whole-list replacement. */
+function setSketchVisible(
+  state: DocumentState,
+  sketchId: SketchId,
+  visible: boolean
+): Result<CommandResult, ValidationError> {
+  if (!findSketch(state, sketchId)) {
+    return err(new ValidationError(`Unknown sketch "${sketchId}"`));
+  }
+  const after = upsertSketchMeta(state, { ...getSketchMeta(state, sketchId), visible });
+  const patch: SketchMetaPatch = { kind: 'replaceSketchMeta', before: state.sketchMeta, after };
+  return ok({
+    state: { ...state, sketchMeta: after },
+    transaction: { label: visible ? 'Show Sketch' : 'Hide Sketch', patches: [patch] },
   });
 }
 
@@ -267,6 +289,8 @@ export function applyCommand(
           visible: command.payload.visible,
         }
       );
+    case 'SetSketchVisible':
+      return setSketchVisible(state, command.payload.sketchId, command.payload.visible);
     default: {
       const exhaustive: never = command;
       return exhaustive;

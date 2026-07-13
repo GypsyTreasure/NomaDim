@@ -1,5 +1,11 @@
 import type { BodyId } from '../../../core';
-import { dependentOps, getBodyMeta, opDefinition, type TimelineOp } from '../../../document';
+import {
+  dependentOps,
+  getBodyMeta,
+  getSketchMeta,
+  opDefinition,
+  type TimelineOp,
+} from '../../../document';
 import { t } from '../../i18n/t';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
@@ -67,18 +73,33 @@ export function BrowserTree(): React.JSX.Element {
       <section className={styles.section}>
         <h3 className={styles.heading}>{t('tree.sketches')}</h3>
         {document.sketches.length === 0 && <div className={styles.row}>{t('tree.empty')}</div>}
-        {document.sketches.map((sketch) => (
-          <button
-            key={sketch.id}
-            type="button"
-            className={styles.itemButton}
-            onClick={() => {
-              useSessionStore.getState().enterSketch(sketch.id);
-            }}
-          >
-            {sketch.name}
-          </button>
-        ))}
+        {document.sketches.map((sketch) => {
+          const visible = getSketchMeta(document, sketch.id).visible;
+          return (
+            <div key={sketch.id} className={styles.bodyRow ?? ''} data-testid="tree-sketch">
+              <input
+                type="checkbox"
+                title={visible ? t('tree.sketch.hide') : t('tree.sketch.show')}
+                checked={visible}
+                onChange={(e) => {
+                  commandBus.dispatch({
+                    type: 'SetSketchVisible',
+                    payload: { sketchId: sketch.id, visible: e.target.checked },
+                  });
+                }}
+              />
+              <button
+                type="button"
+                className={styles.itemButton}
+                onClick={() => {
+                  useSessionStore.getState().enterSketch(sketch.id);
+                }}
+              >
+                {sketch.name}
+              </button>
+            </div>
+          );
+        })}
       </section>
 
       <section className={styles.section}>

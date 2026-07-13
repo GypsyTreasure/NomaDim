@@ -1,4 +1,5 @@
 import type { Sketch } from './sketch/types';
+import type { SketchMeta } from './sketch/meta';
 import type { TimelineOp } from './ops/types';
 import type { BodyMeta } from './bodies/types';
 
@@ -17,10 +18,12 @@ export interface DocumentState {
   readonly rollbackIndex: number;
   /** Per-body name/colour/visibility (F8); lazily materialized on edit. */
   readonly bodyMeta: readonly BodyMeta[];
+  /** Per-sketch visibility (preview shown until consumed); lazily materialized. */
+  readonly sketchMeta: readonly SketchMeta[];
 }
 
 export function emptyDocument(): DocumentState {
-  return { sketches: [], ops: [], rollbackIndex: 0, bodyMeta: [] };
+  return { sketches: [], ops: [], rollbackIndex: 0, bodyMeta: [], sketchMeta: [] };
 }
 
 export function findSketch(state: DocumentState, sketchId: string): Sketch | undefined {

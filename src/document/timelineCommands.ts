@@ -2,7 +2,8 @@ import { err, ok, ValidationError, type OpId, type Result } from '../core';
 import type { DocumentState } from './model';
 import type { TimelineOp } from './ops/types';
 import { opDefinition } from './ops/registry';
-import type { Transaction, TimelineSnapshot } from './history';
+import { getSketchMeta, upsertSketchMeta } from './sketch/meta';
+import type { SketchMetaPatch, Transaction, TimelineSnapshot } from './history';
 
 /**
  * Timeline commands (F1): insert-at-marker, edit, suppress, delete, rename,
@@ -50,6 +51,39 @@ function findOpIndex(state: DocumentState, opId: OpId): number {
   return state.ops.findIndex((op) => op.id === opId);
 }
 
+/**
+ * Fusion parity: the first feature to consume a sketch auto-hides its preview
+ * (sketch visibility). Bundled INTO the AddOp transaction so a single undo
+ * restores both the op and the sketch's visibility together. Only fires while
+ * the sketch is currently visible — re-showing a sketch then editing the
+ * consuming op never re-hides it (the auto-hide happens once, on first use).
+ */
+function autoHideConsumedSketch(
+  before: DocumentState,
+  base: TimelineCommandResult,
+  op: TimelineOp
+): TimelineCommandResult {
+  const deps = opDefinition(op).dependencies(op);
+  const sketchId = deps.consumesSketch;
+  // Skip the Sketch op itself (it "consumes" the very sketch it produces) —
+  // only a downstream feature (Extrude/Revolve) hides the preview.
+  if (sketchId === null || deps.producesSketch === sketchId) return base;
+  if (!getSketchMeta(before, sketchId).visible) return base;
+  const after = upsertSketchMeta(before, { id: sketchId, visible: false });
+  const patch: SketchMetaPatch = {
+    kind: 'replaceSketchMeta',
+    before: before.sketchMeta,
+    after,
+  };
+  return {
+    state: { ...base.state, sketchMeta: after },
+    transaction: {
+      label: base.transaction.label,
+      patches: [...base.transaction.patches, patch],
+    },
+  };
+}
+
 export function applyTimelineCommand(
   state: DocumentState,
   command: TimelineCommand
@@ -68,7 +102,8 @@ export function applyTimelineCommand(
         op,
         ...state.ops.slice(state.rollbackIndex),
       ];
-      return ok(commitTimeline(state, 'Add Operation', ops, state.rollbackIndex + 1));
+      const base = commitTimeline(state, 'Add Operation', ops, state.rollbackIndex + 1);
+      return ok(autoHideConsumedSketch(state, base, op));
     }
     case 'EditOp': {
       const { op } = command.payload;

@@ -8,7 +8,14 @@ import type { BodyId, EntityId, OpId, ProfileId, SketchId } from '../../core';
  * (document codec, worker executor, app feature) keyed by this union.
  */
 
-export type OpType = 'Sketch' | 'Extrude' | 'Revolve' | 'Fillet' | 'Chamfer' | 'Combine';
+export type OpType =
+  | 'Sketch'
+  | 'Extrude'
+  | 'Revolve'
+  | 'Fillet'
+  | 'Chamfer'
+  | 'Combine'
+  | 'CopyBody';
 
 interface OpBase {
   readonly id: OpId;
@@ -105,7 +112,28 @@ export interface CombineOp extends OpBase {
   readonly keepTools: boolean;
 }
 
-export type TimelineOp = SketchOp | ExtrudeOp | RevolveOp | FilletOp | ChamferOp | CombineOp;
+/**
+ * Copy/Paste a whole body (F9). Parametric + positional: at regen the copy
+ * reproduces the source body AS OF this op's timeline position (the worker
+ * evaluates it against the live BodyStateMap), so edits to earlier ops flow
+ * into the copy while later ops do not. Optional XYZ translation (mm).
+ */
+export interface CopyBodyOp extends OpBase {
+  readonly type: 'CopyBody';
+  readonly sourceBodyId: BodyId;
+  readonly translate: readonly [number, number, number];
+  /** Minted at creation — the produced copy, stable across regens (§8). */
+  readonly bodyId: BodyId;
+}
+
+export type TimelineOp =
+  | SketchOp
+  | ExtrudeOp
+  | RevolveOp
+  | FilletOp
+  | ChamferOp
+  | CombineOp
+  | CopyBodyOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

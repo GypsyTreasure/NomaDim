@@ -4,6 +4,7 @@ import { executeRevolve } from './revolve';
 import { executeFillet } from './fillet';
 import { executeChamfer } from './chamfer';
 import { executeCombine } from './combine';
+import { executeCopyBody } from './copyBody';
 import type { OpExecutor } from './types';
 
 /**
@@ -35,5 +36,9 @@ export const OP_EXECUTORS: Record<OpType, OpExecutor> = {
 
   Combine: (ctx, planOp) => {
     if (planOp.op.type === 'Combine') executeCombine(ctx, planOp.op);
+  },
+
+  CopyBody: (ctx, planOp) => {
+    if (planOp.op.type === 'CopyBody') executeCopyBody(ctx, planOp.op);
   },
 };

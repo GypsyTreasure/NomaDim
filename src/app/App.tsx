@@ -16,6 +16,7 @@ import { t } from './i18n/t';
 import { startRegen, useKernelStore } from './store/kernelStore';
 import { useDocumentStore } from './store/documentStore';
 import { useSessionStore } from './store/sessionStore';
+import { useGlobalShortcuts } from './useGlobalShortcuts';
 import styles from './App.module.css';
 import sketcherStyles from './features/sketcher/Sketcher.module.css';
 
@@ -35,6 +36,8 @@ export function App(): React.JSX.Element {
   const selectedBodyId = useSessionStore((s) => s.selectedBodyId);
   const planeVisibility = useSessionStore((s) => s.planeVisibility);
   const setSelectedBody = useSessionStore((s) => s.setSelectedBody);
+
+  useGlobalShortcuts(sketcher.activeSketch !== null);
 
   // Boot the worker + RegenScheduler once, on first mount (§4).
   useEffect(() => {

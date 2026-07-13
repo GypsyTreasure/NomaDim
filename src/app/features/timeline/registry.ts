@@ -6,6 +6,7 @@ import { RevolveDialog } from './RevolveDialog';
 import { FilletDialog } from './FilletDialog';
 import { ChamferDialog } from './ChamferDialog';
 import { CombineDialog } from './CombineDialog';
+import { CopyBodyDialog } from './CopyBodyDialog';
 
 /**
  * App-side op feature registry (ARCHITECTURE §7, the third registry). One
@@ -42,6 +43,11 @@ const combineFeature: OpFeature = {
   labelKey: 'op.combine',
   dialog: CombineDialog,
 };
+const copyBodyFeature: OpFeature = {
+  type: 'CopyBody',
+  labelKey: 'op.copyBody',
+  dialog: CopyBodyDialog,
+};
 
 export const OP_FEATURES: Record<OpType, OpFeature> = {
   Sketch: sketchFeature,
@@ -50,6 +56,7 @@ export const OP_FEATURES: Record<OpType, OpFeature> = {
   Fillet: filletFeature,
   Chamfer: chamferFeature,
   Combine: combineFeature,
+  CopyBody: copyBodyFeature,
 };
 
 export const OP_FEATURE_TYPES: readonly OpType[] = Object.keys(OP_FEATURES) as OpType[];

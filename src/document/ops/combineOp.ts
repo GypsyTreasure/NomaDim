@@ -1,11 +1,4 @@
-import {
-  err,
-  ok,
-  ImportError,
-  ValidationError,
-  type BodyId,
-  type OpId,
-} from '../../core';
+import { err, ok, ImportError, ValidationError, type BodyId, type OpId } from '../../core';
 import { asRawArray, boolAttr, strAttr } from '../xml/xmlRaw';
 import type { OpDefinition } from './definition';
 import type { CombineOp, CombineOperation } from './types';

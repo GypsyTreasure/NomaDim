@@ -82,10 +82,7 @@ export function snapshotRefs(bodies: BodyStateMap): ReadonlyMap<BodyId, TopoDS_S
 }
 
 /** Bodies whose shape reference changed (new/replaced) or were removed by the op. */
-export function diffDelta(
-  before: ReadonlyMap<BodyId, TopoDS_Shape>,
-  after: BodyStateMap
-): OpDelta {
+export function diffDelta(before: ReadonlyMap<BodyId, TopoDS_Shape>, after: BodyStateMap): OpDelta {
   const changed = new Map<BodyId, TopoDS_Shape>();
   for (const [bodyId, shape] of after) {
     if (before.get(bodyId) !== shape) changed.set(bodyId, shape);

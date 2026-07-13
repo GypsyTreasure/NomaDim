@@ -91,7 +91,9 @@ function chamferOp(overrides: Partial<ChamferOp> = {}): ChamferOp {
     name: 'Chamfer1',
     suppressed: true,
     bodyId: body('b2'),
-    edges: [{ midpoint: [5, 5, 5], direction: [0, 1, 0], adjFaceKinds: ['plane', 'plane'], tolMm: 5 }],
+    edges: [
+      { midpoint: [5, 5, 5], direction: [0, 1, 0], adjFaceKinds: ['plane', 'plane'], tolMm: 5 },
+    ],
     distanceMm: 1.25,
     ...overrides,
   };
@@ -148,8 +150,20 @@ describe('timeline XML round-trip', () => {
     const data: TimelineData = {
       ops: [
         sketchOp('so1', 's1'),
-        extrudeOp({ direction: 'two-sides', distanceMm: 5, distance2Mm: 8, operation: 'Join', targetBodyId: body('b0') }),
-        revolveOp({ axis: { kind: 'origin', axis: 'Z' }, angleDeg: 360, operation: 'NewBody', targetBodyId: null, suppressed: false }),
+        extrudeOp({
+          direction: 'two-sides',
+          distanceMm: 5,
+          distance2Mm: 8,
+          operation: 'Join',
+          targetBodyId: body('b0'),
+        }),
+        revolveOp({
+          axis: { kind: 'origin', axis: 'Z' },
+          angleDeg: 360,
+          operation: 'NewBody',
+          targetBodyId: null,
+          suppressed: false,
+        }),
       ],
       rollbackIndex: 3,
     };

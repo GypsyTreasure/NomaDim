@@ -42,7 +42,9 @@ export function EdgePickControls({
           }}
           data-testid="edge-pick-toggle"
         >
-          {edgePicking ? t('dialog.edges.pick') : `${String(pickedCount)} ${t('dialog.edges.count')}`}
+          {edgePicking
+            ? t('dialog.edges.pick')
+            : `${String(pickedCount)} ${t('dialog.edges.count')}`}
         </button>
       </div>
     </>

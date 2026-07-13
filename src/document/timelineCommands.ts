@@ -41,9 +41,7 @@ function commitTimeline(
     state: nextState,
     transaction: {
       label,
-      patches: [
-        { kind: 'replaceTimeline', before: snapshot(state), after: snapshot(nextState) },
-      ],
+      patches: [{ kind: 'replaceTimeline', before: snapshot(state), after: snapshot(nextState) }],
     },
   };
 }
@@ -104,9 +102,7 @@ export function applyTimelineCommand(
     case 'RenameOp': {
       const index = findOpIndex(state, command.payload.opId);
       if (index < 0) return err(new ValidationError(`Unknown op "${command.payload.opId}"`));
-      const ops = state.ops.map((o, i) =>
-        i === index ? { ...o, name: command.payload.name } : o
-      );
+      const ops = state.ops.map((o, i) => (i === index ? { ...o, name: command.payload.name } : o));
       return ok(commitTimeline(state, 'Rename Operation', ops, state.rollbackIndex));
     }
     case 'SetRollback': {

@@ -39,14 +39,21 @@ function sketchAndExtrude(radius: number): {
   const sketchOpId = 'so1' as OpId;
   let doc = apply(emptyDocument(), {
     type: 'CreateSketch',
-    payload: { sketchId, opId: sketchOpId, name: 'Sketch1', plane: { kind: 'origin', plane: 'XY' } },
+    payload: {
+      sketchId,
+      opId: sketchOpId,
+      name: 'Sketch1',
+      plane: { kind: 'origin', plane: 'XY' },
+    },
   });
   doc = apply(doc, {
     type: 'AddSketchGeometry',
     payload: {
       sketchId,
       points: [{ id: 'c' as never, x: 0, y: 0 }],
-      entities: [{ type: 'circle', id: 'e1' as never, center: 'c' as never, r: radius, construction: false }],
+      entities: [
+        { type: 'circle', id: 'e1' as never, center: 'c' as never, r: radius, construction: false },
+      ],
     },
   });
 

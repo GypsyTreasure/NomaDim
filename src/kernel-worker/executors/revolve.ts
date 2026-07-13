@@ -15,7 +15,11 @@ import { KernelExecError, type ExecCtx } from './types';
 function makeAxis(ctx: ExecCtx, axis: WorldAxis, flip: boolean): gp_Ax1 {
   const s = flip ? -1 : 1;
   const p = new ctx.oc.gp_Pnt_3(axis.origin[0], axis.origin[1], axis.origin[2]);
-  const d = new ctx.oc.gp_Dir_4(axis.direction[0] * s, axis.direction[1] * s, axis.direction[2] * s);
+  const d = new ctx.oc.gp_Dir_4(
+    axis.direction[0] * s,
+    axis.direction[1] * s,
+    axis.direction[2] * s
+  );
   const ax1 = new ctx.oc.gp_Ax1_2(p, d);
   p.delete();
   d.delete();

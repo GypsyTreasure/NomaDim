@@ -80,7 +80,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       distance2Mm,
       operation,
       targetBodyId: needsTarget ? targetBodyId : null,
-      bodyId: prior?.bodyId ?? (createId<'BodyId'>(ids)),
+      bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
     };
     const result = commandBus.dispatch(
       prior ? { type: 'EditOp', payload: { op } } : { type: 'AddOp', payload: { op } }
@@ -89,12 +89,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   };
 
   return (
-    <DialogFrame
-      title={t('op.extrude')}
-      okDisabled={okDisabled}
-      onOk={submit}
-      onCancel={onClose}
-    >
+    <DialogFrame title={t('op.extrude')} okDisabled={okDisabled} onOk={submit} onCancel={onClose}>
       <SelectRow<SketchId>
         labelKey="dialog.sketch"
         value={sketchId ?? ('' as SketchId)}

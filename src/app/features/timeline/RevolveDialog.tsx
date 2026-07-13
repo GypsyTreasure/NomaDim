@@ -1,11 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  createId,
-  type BodyId,
-  type EntityId,
-  type ProfileId,
-  type SketchId,
-} from '../../../core';
+import { createId, type BodyId, type EntityId, type ProfileId, type SketchId } from '../../../core';
 import {
   findSketch,
   type BooleanOperation,
@@ -108,7 +102,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       angleDeg,
       operation,
       targetBodyId: needsTarget ? targetBodyId : null,
-      bodyId: prior?.bodyId ?? (createId<'BodyId'>(ids)),
+      bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
     };
     const result = commandBus.dispatch(
       prior ? { type: 'EditOp', payload: { op } } : { type: 'AddOp', payload: { op } }
@@ -117,12 +111,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   };
 
   return (
-    <DialogFrame
-      title={t('op.revolve')}
-      okDisabled={okDisabled}
-      onOk={submit}
-      onCancel={onClose}
-    >
+    <DialogFrame title={t('op.revolve')} okDisabled={okDisabled} onOk={submit} onCancel={onClose}>
       <SelectRow<SketchId>
         labelKey="dialog.sketch"
         value={sketchId ?? ('' as SketchId)}

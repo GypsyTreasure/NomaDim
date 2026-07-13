@@ -63,12 +63,7 @@ function volumeOf(shape: TopoDS_Shape): number {
 }
 
 /** Extrudes a rectangle into a box, stored under `bodyId`. */
-function makeBox(
-  bodies: BodyStateMap,
-  bodyId: string,
-  size: number,
-  height: number
-): void {
+function makeBox(bodies: BodyStateMap, bodyId: string, size: number, height: number): void {
   const profile = rectProfile(`p-${bodyId}`, 0, 0, size, size);
   const op: ExtrudeOp = {
     type: 'Extrude',

@@ -21,11 +21,27 @@ export interface OpFeature {
 }
 
 const sketchFeature: OpFeature = { type: 'Sketch', labelKey: 'op.sketch', dialog: null };
-const extrudeFeature: OpFeature = { type: 'Extrude', labelKey: 'op.extrude', dialog: ExtrudeDialog };
-const revolveFeature: OpFeature = { type: 'Revolve', labelKey: 'op.revolve', dialog: RevolveDialog };
+const extrudeFeature: OpFeature = {
+  type: 'Extrude',
+  labelKey: 'op.extrude',
+  dialog: ExtrudeDialog,
+};
+const revolveFeature: OpFeature = {
+  type: 'Revolve',
+  labelKey: 'op.revolve',
+  dialog: RevolveDialog,
+};
 const filletFeature: OpFeature = { type: 'Fillet', labelKey: 'op.fillet', dialog: FilletDialog };
-const chamferFeature: OpFeature = { type: 'Chamfer', labelKey: 'op.chamfer', dialog: ChamferDialog };
-const combineFeature: OpFeature = { type: 'Combine', labelKey: 'op.combine', dialog: CombineDialog };
+const chamferFeature: OpFeature = {
+  type: 'Chamfer',
+  labelKey: 'op.chamfer',
+  dialog: ChamferDialog,
+};
+const combineFeature: OpFeature = {
+  type: 'Combine',
+  labelKey: 'op.combine',
+  dialog: CombineDialog,
+};
 
 export const OP_FEATURES: Record<OpType, OpFeature> = {
   Sketch: sketchFeature,

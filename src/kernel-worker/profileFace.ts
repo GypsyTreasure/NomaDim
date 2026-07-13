@@ -22,11 +22,7 @@ import type { PlanePlacement, PlanProfile } from '../kernel/protocol';
 type V3 = readonly [number, number, number];
 
 function crossV3(a: V3, b: V3): V3 {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 
 /** Plane normal = xAxis × yAxis (plan axes are unit + orthogonal by construction). */

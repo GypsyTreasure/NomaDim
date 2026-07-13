@@ -71,7 +71,13 @@ export function CombineDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         <legend>{t('dialog.tools')}</legend>
         {toolCandidates.map((id) => (
           <label key={id} className={styles.checkRow}>
-            <input type="checkbox" checked={tools.has(id)} onChange={() => { toggleTool(id); }} />
+            <input
+              type="checkbox"
+              checked={tools.has(id)}
+              onChange={() => {
+                toggleTool(id);
+              }}
+            />
             <span>{id}</span>
           </label>
         ))}
@@ -86,7 +92,9 @@ export function CombineDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         <input
           type="checkbox"
           checked={keepTools}
-          onChange={(e) => { setKeepTools(e.target.checked); }}
+          onChange={(e) => {
+            setKeepTools(e.target.checked);
+          }}
         />
         <span>{t('dialog.keepTools')}</span>
       </label>

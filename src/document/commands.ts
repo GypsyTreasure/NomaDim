@@ -135,10 +135,7 @@ export function applyCommand(
         state: opResult.value.state,
         transaction: {
           label: 'Create Sketch',
-          patches: [
-            ...withSketch.transaction.patches,
-            ...opResult.value.transaction.patches,
-          ],
+          patches: [...withSketch.transaction.patches, ...opResult.value.transaction.patches],
         },
       });
     }

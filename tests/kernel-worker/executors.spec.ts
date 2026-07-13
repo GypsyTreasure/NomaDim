@@ -228,13 +228,19 @@ describe('delta cache (ARCHITECTURE §9, R8)', () => {
 
     const p0 = rectProfile('c0', 0, 0, 10, 10);
     let before = snapshotRefs(bodies);
-    executeExtrude(ctxFor(bodies, [p0]), extrude({ profileIds: [p0.id], distanceMm: 1, bodyId: bid('A') }));
+    executeExtrude(
+      ctxFor(bodies, [p0]),
+      extrude({ profileIds: [p0.id], distanceMm: 1, bodyId: bid('A') })
+    );
     cache.record(0, diffDelta(before, bodies), { opId: 'o0' as never, status: 'ok' });
     const firstA = bodies.get(bid('A'));
 
     const p1 = rectProfile('c1', 0, 0, 10, 10);
     before = snapshotRefs(bodies);
-    executeExtrude(ctxFor(bodies, [p1]), extrude({ profileIds: [p1.id], distanceMm: 2, bodyId: bid('A') }));
+    executeExtrude(
+      ctxFor(bodies, [p1]),
+      extrude({ profileIds: [p1.id], distanceMm: 2, bodyId: bid('A') })
+    );
     cache.record(1, diffDelta(before, bodies), { opId: 'o1' as never, status: 'ok' });
 
     // restoreTo(1) yields the state after op0 only (the smaller box).

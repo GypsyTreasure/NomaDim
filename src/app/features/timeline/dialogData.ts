@@ -86,7 +86,5 @@ export function targetOptions(
   liveBodyIds: readonly BodyId[],
   excludeBodyId?: BodyId
 ): readonly SelectOption<BodyId>[] {
-  return liveBodyIds
-    .filter((id) => id !== excludeBodyId)
-    .map((id) => ({ value: id, label: id }));
+  return liveBodyIds.filter((id) => id !== excludeBodyId).map((id) => ({ value: id, label: id }));
 }

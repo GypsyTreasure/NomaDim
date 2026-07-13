@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Vec2 } from '../core';
-import { edgeFingerprintKey, type BodyEdges, type EdgeFingerprint, type MeshTransfer } from '../kernel';
+import {
+  edgeFingerprintKey,
+  type BodyEdges,
+  type EdgeFingerprint,
+  type MeshTransfer,
+} from '../kernel';
 import {
   createBodyMesh,
   createGrid,

@@ -186,7 +186,11 @@ export function resolveEdges(
   const candidates: { index: number; geom: EdgeGeometry; kinds: string[] }[] = [];
   for (let i = 1; i <= count; i += 1) {
     const edge = oc.TopoDS.Edge_1(map.FindKey(i));
-    candidates.push({ index: i, geom: edgeGeometry(oc, edge), kinds: adjacentFaceKinds(oc, map, i) });
+    candidates.push({
+      index: i,
+      geom: edgeGeometry(oc, edge),
+      kinds: adjacentFaceKinds(oc, map, i),
+    });
     edge.delete();
   }
 

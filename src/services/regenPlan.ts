@@ -46,11 +46,7 @@ type Vec3 = readonly [number, number, number];
 /** Maps a 2D sketch coordinate into world space through the plane placement. */
 function to3d(placement: PlanePlacement, x: number, y: number): Vec3 {
   const { origin: o, xAxis: ax, yAxis: ay } = placement;
-  return [
-    o[0] + ax[0] * x + ay[0] * y,
-    o[1] + ax[1] * x + ay[1] * y,
-    o[2] + ax[2] * x + ay[2] * y,
-  ];
+  return [o[0] + ax[0] * x + ay[0] * y, o[1] + ax[1] * x + ay[1] * y, o[2] + ax[2] * x + ay[2] * y];
 }
 
 // --- Op-specific input resolution (per-OpType registry, R4) ----------------

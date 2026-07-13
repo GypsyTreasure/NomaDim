@@ -1,11 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { OpId } from '../../../core';
-import {
-  dependentOps,
-  opDefinition,
-  type OpType,
-  type TimelineOp,
-} from '../../../document';
+import { dependentOps, opDefinition, type OpType, type TimelineOp } from '../../../document';
 import type { OpStatusReport } from '../../../kernel';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';

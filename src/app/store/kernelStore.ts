@@ -59,11 +59,7 @@ export function startRegen(): void {
   if (started) return;
   started = true;
   client = new KernelClient();
-  scheduler = new RegenScheduler(
-    client,
-    commandBus,
-    () => useDocumentStore.getState().document
-  );
+  scheduler = new RegenScheduler(client, commandBus, () => useDocumentStore.getState().document);
   scheduler.onRegen((outcome) => {
     useKernelStore.getState().__applyOutcome(outcome);
   });

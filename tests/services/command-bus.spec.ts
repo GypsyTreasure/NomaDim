@@ -23,7 +23,12 @@ function makeHost(): DocumentHost & { current: DocumentState } {
 
 const createSketch: Command = {
   type: 'CreateSketch',
-  payload: { sketchId: skId, opId: skOpId, name: 'Sketch1', plane: { kind: 'origin', plane: 'XY' } },
+  payload: {
+    sketchId: skId,
+    opId: skOpId,
+    name: 'Sketch1',
+    plane: { kind: 'origin', plane: 'XY' },
+  },
 };
 
 const addLine: Command = {

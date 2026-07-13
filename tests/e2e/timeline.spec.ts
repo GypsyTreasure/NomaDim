@@ -36,7 +36,12 @@ test('sketch → extrude → edit sketch entity regenerates the solid', async ({
   // Re-enter the sketch from its timeline chip and edit its entities: add a
   // second, larger concentric circle. The solid regenerates live and stays
   // valid (the extruded inner profile survives the edit).
-  await page.getByTestId('timeline-chip').filter({ hasText: 'Sketch1' }).getByRole('button').first().click();
+  await page
+    .getByTestId('timeline-chip')
+    .filter({ hasText: 'Sketch1' })
+    .getByRole('button')
+    .first()
+    .click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await expect(page.getByTestId('hud-field-diameter')).toBeVisible();
@@ -46,7 +51,8 @@ test('sketch → extrude → edit sketch entity regenerates the solid', async ({
 
   // Regen after the sketch-entity edit still yields a valid body, no error.
   await expect(page.getByTestId('body-count')).toHaveText('1', { timeout: 30_000 });
-  await expect(
-    page.getByTestId('timeline-chip').filter({ hasText: 'Extrude1' })
-  ).toHaveAttribute('data-status', 'ok');
+  await expect(page.getByTestId('timeline-chip').filter({ hasText: 'Extrude1' })).toHaveAttribute(
+    'data-status',
+    'ok'
+  );
 });

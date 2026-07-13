@@ -38,7 +38,8 @@ function booleanShape(
 export function executeCombine(ctx: ExecCtx, op: CombineOp): void {
   const { bodies } = ctx;
   const target = bodies.get(op.targetBodyId);
-  if (!target) throw new KernelExecError('TARGET_MISSING', `Combine target ${op.targetBodyId} missing`);
+  if (!target)
+    throw new KernelExecError('TARGET_MISSING', `Combine target ${op.targetBodyId} missing`);
 
   const toolShapes: TopoDS_Shape[] = [];
   for (const id of op.toolBodyIds) {

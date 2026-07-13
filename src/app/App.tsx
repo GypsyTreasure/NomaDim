@@ -1,16 +1,20 @@
 import { useEffect, useMemo } from 'react';
+import type { BodyId } from '../core';
 import { edgeFingerprintKey } from '../kernel';
-import { Viewport, type EdgePickProps } from '../viewport';
+import { defaultBodyMeta } from '../document';
+import { Viewport, type BodyStyle, type EdgePickProps } from '../viewport';
 import { NumericHud } from './features/sketcher/NumericHud';
 import { PropertiesPanel } from './features/sketcher/PropertiesPanel';
 import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
+import { BrowserTree } from './features/browser/BrowserTree';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
 import { useTimeline } from './features/timeline/useTimeline';
 import { t } from './i18n/t';
 import { startRegen, useKernelStore } from './store/kernelStore';
+import { useDocumentStore } from './store/documentStore';
 import { useSessionStore } from './store/sessionStore';
 import styles from './App.module.css';
 import sketcherStyles from './features/sketcher/Sketcher.module.css';
@@ -27,6 +31,10 @@ export function App(): React.JSX.Element {
   const edgePickBodyId = useSessionStore((s) => s.edgePickBodyId);
   const pickedEdges = useSessionStore((s) => s.pickedEdges);
   const toggleEdge = useSessionStore((s) => s.toggleEdge);
+  const bodyMeta = useDocumentStore((s) => s.document.bodyMeta);
+  const selectedBodyId = useSessionStore((s) => s.selectedBodyId);
+  const planeVisibility = useSessionStore((s) => s.planeVisibility);
+  const setSelectedBody = useSessionStore((s) => s.setSelectedBody);
 
   // Boot the worker + RegenScheduler once, on first mount (§4).
   useEffect(() => {
@@ -45,6 +53,17 @@ export function App(): React.JSX.Element {
     };
   }, [edgePicking, edgePickBodyId, bodyEdges, pickedEdges, toggleEdge]);
 
+  // Per-body colour/visibility/selection for the viewport (F8). Depends on
+  // metadata + selection only, so sketch edits don't rebuild body meshes.
+  const bodyStyles = useMemo<ReadonlyMap<BodyId, BodyStyle>>(() => {
+    const map = new Map<BodyId, BodyStyle>();
+    for (const id of liveBodyIds) {
+      const meta = bodyMeta.find((m) => m.id === id) ?? defaultBodyMeta(id);
+      map.set(id, { color: meta.color, visible: meta.visible, selected: id === selectedBodyId });
+    }
+    return map;
+  }, [bodyMeta, liveBodyIds, selectedBodyId]);
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
@@ -56,6 +75,9 @@ export function App(): React.JSX.Element {
           bodies={bodies}
           sketchMode={sketcher.viewportSketchMode}
           edgePick={edgePick}
+          bodyStyles={bodyStyles}
+          planeVisibility={planeVisibility}
+          onSelectBody={setSelectedBody}
         />
         {sketcher.activeSketch ? (
           <>
@@ -65,7 +87,11 @@ export function App(): React.JSX.Element {
           </>
         ) : (
           <>
-            <div className={sketcherStyles.toolbar}>
+            <BrowserTree />
+            <div
+              className={sketcherStyles.toolbar}
+              style={{ left: 'auto', right: 'var(--grid-unit)' }}
+            >
               <button type="button" className={sketcherStyles.button} onClick={sketcher.newSketch}>
                 {t('sketch.newSketch')}
               </button>

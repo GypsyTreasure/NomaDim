@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { Vec2 } from '../core';
+import type { BodyId, Vec2 } from '../core';
 import {
   edgeFingerprintKey,
   type BodyEdges,
@@ -41,6 +41,13 @@ export interface EdgePickProps {
   readonly onPick: (fingerprint: EdgeFingerprint) => void;
 }
 
+/** Per-body render style from the browser tree (F8). */
+export interface BodyStyle {
+  readonly color: string;
+  readonly visible: boolean;
+  readonly selected: boolean;
+}
+
 export interface ViewportProps {
   /** Label text for the zoom-to-fit button (translated by the caller — §3 viewport-scope). */
   zoomToFitLabel: string;
@@ -49,6 +56,12 @@ export interface ViewportProps {
   sketchMode: SketchModeProps | null;
   /** Non-null while picking edges for a finishing op (F4). */
   edgePick?: EdgePickProps | null;
+  /** Per-body colour/visibility/selection (F8); absent id → default style. */
+  bodyStyles?: ReadonlyMap<BodyId, BodyStyle>;
+  /** Origin plane visibility (F8). */
+  planeVisibility?: Readonly<Record<OriginPlaneId, boolean>>;
+  /** A body was clicked in the viewport (null = empty space) — tree sync (F8). */
+  onSelectBody?: (bodyId: BodyId | null) => void;
 }
 
 const EDGE_COLOR = 0x0d1b2a; // navy
@@ -67,24 +80,32 @@ export function Viewport({
   bodies,
   sketchMode,
   edgePick = null,
+  bodyStyles,
+  planeVisibility,
+  onSelectBody,
 }: ViewportProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const fitRequestRef = useRef<(() => void) | null>(null);
   const bodyGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
+  const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   // Live props for the rAF loop (avoids rebuilding the loop on each render);
   // written post-commit in an effect, never during render.
   const sketchModeRef = useRef<SketchModeProps | null>(null);
   const edgePickRef = useRef<EdgePickProps | null>(null);
+  const onSelectBodyRef = useRef<((bodyId: BodyId | null) => void) | undefined>(undefined);
   useEffect(() => {
     sketchModeRef.current = sketchMode;
   }, [sketchMode]);
   useEffect(() => {
     edgePickRef.current = edgePick;
   }, [edgePick]);
+  useEffect(() => {
+    onSelectBodyRef.current = onSelectBody;
+  }, [onSelectBody]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -112,6 +133,7 @@ export function Viewport({
 
     const grid = createGrid();
     const originPlanes = createOriginPlanes();
+    originPlanesRef.current = originPlanes;
     const lighting = createLighting();
     const bodyGroup = new THREE.Group();
     bodyGroup.name = 'Bodies';
@@ -249,6 +271,21 @@ export function Viewport({
       };
     };
 
+    // Raycast a body mesh → its BodyId (from the `Body:<id>` name).
+    const raycastBody = (event: PointerEvent): BodyId | null => {
+      const group = bodyGroupRef.current;
+      if (!group) return null;
+      raycaster.setFromCamera(ndcOf(event), camera);
+      const hits = raycaster.intersectObjects(group.children, false);
+      const name = hits[0]?.object.name ?? '';
+      return name.startsWith('Body:') ? (name.slice('Body:'.length) as BodyId) : null;
+    };
+
+    // Distinguish a body-select click from an orbit drag (F8 tree sync).
+    let downX = 0;
+    let downY = 0;
+    let idleDown = false;
+
     const onPointerMove = (event: PointerEvent): void => {
       if (edgePickRef.current) {
         highlightHover(raycastEdge(event));
@@ -266,11 +303,25 @@ export function Viewport({
         if (fp) pick.onPick(fp);
         return;
       }
-      const hit = pointerToPlane(event);
-      if (hit) sketchModeRef.current?.onClickPoint(hit.point, hit.pxPerMm);
+      if (sketchModeRef.current) {
+        const hit = pointerToPlane(event);
+        if (hit) sketchModeRef.current.onClickPoint(hit.point, hit.pxPerMm);
+        return;
+      }
+      // Idle: arm a possible body-select, resolved on pointerup if not dragged.
+      downX = event.clientX;
+      downY = event.clientY;
+      idleDown = true;
+    };
+    const onPointerUp = (event: PointerEvent): void => {
+      if (!idleDown) return;
+      idleDown = false;
+      if (Math.hypot(event.clientX - downX, event.clientY - downY) > 4) return; // a drag
+      onSelectBodyRef.current?.(raycastBody(event));
     };
     overlayCanvas.addEventListener('pointermove', onPointerMove);
     overlayCanvas.addEventListener('pointerdown', onPointerDown);
+    overlayCanvas.addEventListener('pointerup', onPointerUp);
 
     let animationFrame = 0;
     const animate = (): void => {
@@ -298,12 +349,14 @@ export function Viewport({
       resizeObserver.disconnect();
       overlayCanvas.removeEventListener('pointermove', onPointerMove);
       overlayCanvas.removeEventListener('pointerdown', onPointerDown);
+      overlayCanvas.removeEventListener('pointerup', onPointerUp);
       controls.dispose();
       renderer.dispose();
       host.removeChild(renderer.domElement);
       disposeSceneObjects(scene);
       bodyGroupRef.current = null;
       edgeGroupRef.current = null;
+      originPlanesRef.current = null;
       cameraRef.current = null;
       controlsRef.current = null;
     };
@@ -315,9 +368,20 @@ export function Viewport({
     disposeSceneObjects(bodyGroup);
     bodyGroup.clear();
     for (const mesh of bodies) {
-      bodyGroup.add(createBodyMesh(mesh));
+      const style = bodyStyles?.get(mesh.bodyId);
+      if (style && !style.visible) continue; // F8 hidden body
+      bodyGroup.add(createBodyMesh(mesh, style?.color, style?.selected ?? false));
     }
-  }, [bodies]);
+  }, [bodies, bodyStyles]);
+
+  // Apply origin plane visibility (F8 Origin section).
+  useEffect(() => {
+    const planes = originPlanesRef.current;
+    if (!planes || !planeVisibility) return;
+    planes.XY.visible = planeVisibility.XY;
+    planes.XZ.visible = planeVisibility.XZ;
+    planes.YZ.visible = planeVisibility.YZ;
+  }, [planeVisibility]);
 
   // Rebuild the pickable edge lines when edge-pick state changes (F4).
   useEffect(() => {

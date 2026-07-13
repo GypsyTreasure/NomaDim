@@ -21,6 +21,10 @@ interface SessionStore {
   readonly edgePickBodyId: BodyId | null;
   /** Edges picked for the active finishing op (source of truth while open). */
   readonly pickedEdges: readonly EdgeFingerprint[];
+  /** Selected body (tree ⇄ viewport sync, F8); also the copy/paste source. */
+  readonly selectedBodyId: BodyId | null;
+  /** Origin plane visibility (F8 Origin section). */
+  readonly planeVisibility: Readonly<Record<'XY' | 'XZ' | 'YZ', boolean>>;
 
   readonly enterSketch: (sketchId: SketchId) => void;
   readonly exitSketch: () => void;
@@ -32,6 +36,8 @@ interface SessionStore {
   readonly setPickedEdges: (edges: readonly EdgeFingerprint[]) => void;
   readonly toggleEdge: (edge: EdgeFingerprint) => void;
   readonly resetEdgePick: () => void;
+  readonly setSelectedBody: (bodyId: BodyId | null) => void;
+  readonly togglePlane: (plane: 'XY' | 'XZ' | 'YZ') => void;
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -42,6 +48,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
   edgePicking: false,
   edgePickBodyId: null,
   pickedEdges: [],
+  selectedBodyId: null,
+  planeVisibility: { XY: true, XZ: true, YZ: true },
 
   enterSketch: (sketchId) => {
     set({ activeSketchId: sketchId, activeTool: 'line', selectedEntityIds: [] });
@@ -80,5 +88,13 @@ export const useSessionStore = create<SessionStore>((set) => ({
   },
   resetEdgePick: () => {
     set({ edgePicking: false, edgePickBodyId: null, pickedEdges: [] });
+  },
+  setSelectedBody: (bodyId) => {
+    set({ selectedBodyId: bodyId });
+  },
+  togglePlane: (plane) => {
+    set((state) => ({
+      planeVisibility: { ...state.planeVisibility, [plane]: !state.planeVisibility[plane] },
+    }));
   },
 }));

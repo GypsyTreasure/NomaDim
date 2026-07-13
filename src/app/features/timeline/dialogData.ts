@@ -10,6 +10,7 @@ import {
 import { detectProfiles, type SketchProfile } from '../../../sketch';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
+import { acquireEdges, releaseEdges } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
 import type { SelectOption } from './dialogShared';
 
@@ -26,8 +27,10 @@ export function useEdgePickLifecycle(
     const session = useSessionStore.getState();
     session.setPickedEdges(initialEdges);
     session.setEdgePickBodyId(initialBodyId);
+    acquireEdges(); // fetch pickable edges on demand (F4)
     return () => {
       useSessionStore.getState().resetEdgePick();
+      releaseEdges();
     };
     // Mount/unmount only — seeds are captured once when the dialog opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps

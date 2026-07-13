@@ -26,7 +26,6 @@ export interface RegenResult {
   readonly generation: number;
   readonly statuses: readonly OpStatusReport[];
   readonly meshes: MeshTransfer[];
-  readonly bodyEdges: BodyEdges[];
   readonly liveBodyIds: readonly BodyId[];
 }
 
@@ -83,11 +82,19 @@ export class KernelClient {
         generation: response.generation,
         statuses: response.statuses,
         meshes: response.meshes,
-        bodyEdges: response.bodyEdges,
         liveBodyIds: response.liveBodyIds,
       };
     }
     throw new InternalError('Unexpected response to "regen" request');
+  }
+
+  /** On-demand pickable edges for the given bodies (F4/F10) — kept off regen. */
+  async bodyEdges(bodyIds: BodyId[]): Promise<BodyEdges[]> {
+    const response = await this.send({ id: this.nextId(), kind: 'bodyEdges', bodyIds });
+    if (response.kind === 'bodyEdges') {
+      return response.bodyEdges;
+    }
+    throw new InternalError('Unexpected response to "bodyEdges" request');
   }
 
   async tessellate(bodyIds: BodyId[], quality: MeshQuality): Promise<MeshTransfer[]> {

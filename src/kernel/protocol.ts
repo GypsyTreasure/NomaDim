@@ -105,6 +105,7 @@ export interface OpStatusReport {
 export type KernelRequest =
   | { id: ReqId; kind: 'init' }
   | { id: ReqId; kind: 'regen'; generation: number; fromIndex: number; plan: RegenPlan }
+  | { id: ReqId; kind: 'bodyEdges'; bodyIds: BodyId[] }
   | { id: ReqId; kind: 'tessellate'; bodyIds: BodyId[]; quality: MeshQuality }
   | {
       id: ReqId;
@@ -134,8 +135,7 @@ export type KernelResponse =
       statuses: readonly OpStatusReport[];
       /** Viewport-quality meshes of every live body (R5 Transferables). */
       meshes: MeshTransfer[];
-      /** Per-body pickable edge polylines + fingerprints (F4). */
-      bodyEdges: BodyEdges[];
       liveBodyIds: readonly BodyId[];
     }
+  | { id: ReqId; kind: 'bodyEdges'; bodyEdges: BodyEdges[] }
   | { id: ReqId; kind: 'error'; error: KernelErrorPayload };

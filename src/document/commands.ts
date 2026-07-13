@@ -259,9 +259,14 @@ export function applyCommand(
         color: command.payload.color,
       });
     case 'SetBodyVisible':
-      return setBodyMeta(state, command.payload.visible ? 'Show Body' : 'Hide Body', command.payload.bodyId, {
-        visible: command.payload.visible,
-      });
+      return setBodyMeta(
+        state,
+        command.payload.visible ? 'Show Body' : 'Hide Body',
+        command.payload.bodyId,
+        {
+          visible: command.payload.visible,
+        }
+      );
     default: {
       const exhaustive: never = command;
       return exhaustive;

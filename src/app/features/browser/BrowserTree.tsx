@@ -1,10 +1,5 @@
 import type { BodyId } from '../../../core';
-import {
-  dependentOps,
-  getBodyMeta,
-  opDefinition,
-  type TimelineOp,
-} from '../../../document';
+import { dependentOps, getBodyMeta, opDefinition, type TimelineOp } from '../../../document';
 import { t } from '../../i18n/t';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
@@ -12,10 +7,7 @@ import { useSessionStore } from '../../store/sessionStore';
 import styles from './Browser.module.css';
 
 /** The op that produces a given body (its creating feature, F8 delete target). */
-function producingOp(
-  ops: readonly TimelineOp[],
-  bodyId: BodyId
-): TimelineOp | undefined {
+function producingOp(ops: readonly TimelineOp[], bodyId: BodyId): TimelineOp | undefined {
   return ops.find((op) => opDefinition(op).dependencies(op).producesBodies.includes(bodyId));
 }
 

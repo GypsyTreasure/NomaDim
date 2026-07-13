@@ -142,7 +142,11 @@ export function Viewport({
     camera.position.copy(CAMERA_INITIAL_POSITION);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // MSAA is disabled: on a GPU 100 lit bodies render at 60 fps either way,
+    // while in software rasterization MSAA multiplies fragment cost and drops
+    // a 100-body session below 30 fps (M5 acceptance). Edge smoothing returns
+    // as cheap post-process FXAA in the M7 styling pass.
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setPixelRatio(window.devicePixelRatio);
     host.appendChild(renderer.domElement);
     host.appendChild(overlayCanvas); // keep overlay above the WebGL canvas

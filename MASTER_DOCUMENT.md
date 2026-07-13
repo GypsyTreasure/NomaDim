@@ -149,6 +149,9 @@ Export **`.nomadim.xml`** / import via picker + drag-drop. Contains: schema vers
     <fillet index="2" id="op3" name="Fillet1" suppressed="false" body="b1" radius="2">
       <edge mx="10" my="0" mz="5" dx="1" dy="0" dz="0" kinds="cylinder,plane" tol="5"/>
     </fillet>
+    <!-- CopyBody (F9): reproduces the source AS OF this position, +XYZ offset. -->
+    <copyBody index="3" id="op4" name="Copy1" suppressed="false" source="b1"
+        body="b2" tx="50" ty="0" tz="0"/>
   </timeline>
   <bodies>
     <body id="b1" name="Base" color="#1A6B5A" visible="true"/>

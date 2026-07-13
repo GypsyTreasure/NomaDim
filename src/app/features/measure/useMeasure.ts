@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MeasurePick, MeasureProps } from '../../../viewport';
-import { useKernelStore } from '../../store/kernelStore';
+import { acquireEdges, releaseEdges, useKernelStore } from '../../store/kernelStore';
 
 /**
  * Measure mode (MASTER_DOCUMENT F10): pick two points → distance + ΔX/ΔY/ΔZ;
@@ -65,15 +65,17 @@ export function useMeasure(): MeasureApi {
     setResult(a && b ? distanceResult(a, b) : null);
   }, []);
 
-  // Esc exits measure mode (F10).
+  // Esc exits; fetch pickable edges on demand only while measuring (F10).
   useEffect(() => {
     if (!active) return;
+    acquireEdges();
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') exit();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
+      releaseEdges();
     };
   }, [active, exit]);
 

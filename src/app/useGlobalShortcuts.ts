@@ -17,10 +17,7 @@ export function useGlobalShortcuts(sketchActive: boolean): void {
   useEffect(() => {
     if (sketchActive) return;
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
       const ctrl = event.ctrlKey || event.metaKey;

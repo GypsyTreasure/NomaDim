@@ -9,13 +9,7 @@ import type { BodyId, EntityId, OpId, ProfileId, SketchId } from '../../core';
  */
 
 export type OpType =
-  | 'Sketch'
-  | 'Extrude'
-  | 'Revolve'
-  | 'Fillet'
-  | 'Chamfer'
-  | 'Combine'
-  | 'CopyBody';
+  'Sketch' | 'Extrude' | 'Revolve' | 'Fillet' | 'Chamfer' | 'Combine' | 'CopyBody';
 
 interface OpBase {
   readonly id: OpId;
@@ -127,13 +121,7 @@ export interface CopyBodyOp extends OpBase {
 }
 
 export type TimelineOp =
-  | SketchOp
-  | ExtrudeOp
-  | RevolveOp
-  | FilletOp
-  | ChamferOp
-  | CombineOp
-  | CopyBodyOp;
+  SketchOp | ExtrudeOp | RevolveOp | FilletOp | ChamferOp | CombineOp | CopyBodyOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

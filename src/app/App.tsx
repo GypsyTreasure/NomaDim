@@ -8,6 +8,8 @@ import { PropertiesPanel } from './features/sketcher/PropertiesPanel';
 import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
 import { BrowserTree } from './features/browser/BrowserTree';
+import { MeasureHud } from './features/measure/MeasureHud';
+import { useMeasure } from './features/measure/useMeasure';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -23,6 +25,7 @@ import sketcherStyles from './features/sketcher/Sketcher.module.css';
 export function App(): React.JSX.Element {
   const sketcher = useSketcher();
   const timeline = useTimeline();
+  const measure = useMeasure();
   const bodies = useKernelStore((s) => s.bodies);
   const bodyEdges = useKernelStore((s) => s.bodyEdges);
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
@@ -78,6 +81,7 @@ export function App(): React.JSX.Element {
           bodies={bodies}
           sketchMode={sketcher.viewportSketchMode}
           edgePick={edgePick}
+          measure={measure.measureProps}
           bodyStyles={bodyStyles}
           planeVisibility={planeVisibility}
           onSelectBody={setSelectedBody}
@@ -98,6 +102,17 @@ export function App(): React.JSX.Element {
               <button type="button" className={sketcherStyles.button} onClick={sketcher.newSketch}>
                 {t('sketch.newSketch')}
               </button>
+              <button
+                type="button"
+                className={
+                  measure.active
+                    ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
+                    : (sketcherStyles.button ?? '')
+                }
+                onClick={measure.toggle}
+              >
+                {t('measure.toggle')}
+              </button>
               <ExportStlButton />
               <span className={sketcherStyles.button} data-testid="body-count">
                 {liveBodyIds.length}
@@ -115,6 +130,7 @@ export function App(): React.JSX.Element {
                 {t('sketch.summary.open')} {sketcher.lastFinish.open}
               </div>
             )}
+            {measure.active && <MeasureHud result={measure.result} />}
             <TimelineBar timeline={timeline} />
             <OpDialogHost timeline={timeline} />
           </>

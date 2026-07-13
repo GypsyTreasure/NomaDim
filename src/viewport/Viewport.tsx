@@ -17,6 +17,7 @@ import {
   zoomToFit,
 } from './scene';
 import { planeMapping, pixelsPerMm, worldToPlane, type OriginPlaneId } from './planeMapping';
+import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
@@ -41,6 +42,18 @@ export interface EdgePickProps {
   readonly onPick: (fingerprint: EdgeFingerprint) => void;
 }
 
+/** A measured pick (F10): a world point, plus a radius if a circular edge. */
+export interface MeasurePick {
+  readonly world: readonly [number, number, number];
+  readonly circleRadius: number | null;
+}
+
+/** Active while Measure mode is on (F10). */
+export interface MeasureProps {
+  readonly bodyEdges: readonly BodyEdges[];
+  readonly onPick: (pick: MeasurePick) => void;
+}
+
 /** Per-body render style from the browser tree (F8). */
 export interface BodyStyle {
   readonly color: string;
@@ -56,6 +69,8 @@ export interface ViewportProps {
   sketchMode: SketchModeProps | null;
   /** Non-null while picking edges for a finishing op (F4). */
   edgePick?: EdgePickProps | null;
+  /** Non-null while Measure mode is on (F10). */
+  measure?: MeasureProps | null;
   /** Per-body colour/visibility/selection (F8); absent id → default style. */
   bodyStyles?: ReadonlyMap<BodyId, BodyStyle>;
   /** Origin plane visibility (F8). */
@@ -80,6 +95,7 @@ export function Viewport({
   bodies,
   sketchMode,
   edgePick = null,
+  measure = null,
   bodyStyles,
   planeVisibility,
   onSelectBody,
@@ -96,6 +112,8 @@ export function Viewport({
   // written post-commit in an effect, never during render.
   const sketchModeRef = useRef<SketchModeProps | null>(null);
   const edgePickRef = useRef<EdgePickProps | null>(null);
+  const measureRef = useRef<MeasureProps | null>(null);
+  const measureCandidatesRef = useRef<MeasureCandidate[]>([]);
   const onSelectBodyRef = useRef<((bodyId: BodyId | null) => void) | undefined>(undefined);
   useEffect(() => {
     sketchModeRef.current = sketchMode;
@@ -103,6 +121,10 @@ export function Viewport({
   useEffect(() => {
     edgePickRef.current = edgePick;
   }, [edgePick]);
+  useEffect(() => {
+    measureRef.current = measure;
+    measureCandidatesRef.current = measure ? buildMeasureCandidates(measure.bodyEdges) : [];
+  }, [measure]);
   useEffect(() => {
     onSelectBodyRef.current = onSelectBody;
   }, [onSelectBody]);
@@ -186,8 +208,10 @@ export function Viewport({
 
     const updateSketchCamera = (): void => {
       const mode = sketchModeRef.current;
-      // Orbit while free; lock rotation during sketch editing AND edge picking.
-      controls.enableRotate = mode === null && edgePickRef.current === null;
+      // Orbit while free; lock rotation during sketch editing, edge picking,
+      // and measuring so a click resolves to a pick, not an orbit.
+      controls.enableRotate =
+        mode === null && edgePickRef.current === null && measureRef.current === null;
       if (!mode) {
         animatedPlane = null;
         cameraTarget = null;
@@ -281,6 +305,33 @@ export function Viewport({
       return name.startsWith('Body:') ? (name.slice('Body:'.length) as BodyId) : null;
     };
 
+    // Measure pick (F10): nearest vertex/midpoint snap, else body surface.
+    const MEASURE_SNAP_PX = 14;
+    const measurePick = (event: PointerEvent): MeasurePick | null => {
+      const rect = overlayCanvas.getBoundingClientRect();
+      const px = event.clientX - rect.left;
+      const py = event.clientY - rect.top;
+      const v = new THREE.Vector3();
+      let best: MeasureCandidate | null = null;
+      let bestDist = MEASURE_SNAP_PX;
+      for (const cand of measureCandidatesRef.current) {
+        v.set(cand.world[0], cand.world[1], cand.world[2]).project(camera);
+        if (v.z > 1) continue; // behind the camera
+        const sx = ((v.x + 1) / 2) * rect.width;
+        const sy = ((1 - v.y) / 2) * rect.height;
+        const d = Math.hypot(sx - px, sy - py);
+        if (d < bestDist) {
+          bestDist = d;
+          best = cand;
+        }
+      }
+      if (best) return { world: best.world, circleRadius: best.circleRadius };
+      raycaster.setFromCamera(ndcOf(event), camera);
+      const hits = raycaster.intersectObjects(bodyGroupRef.current?.children ?? [], false);
+      const hit = hits[0]?.point;
+      return hit ? { world: [hit.x, hit.y, hit.z], circleRadius: null } : null;
+    };
+
     // Distinguish a body-select click from an orbit drag (F8 tree sync).
     let downX = 0;
     let downY = 0;
@@ -301,6 +352,12 @@ export function Viewport({
         const line = raycastEdge(event);
         const fp = line?.userData.fingerprint as EdgeFingerprint | undefined;
         if (fp) pick.onPick(fp);
+        return;
+      }
+      const meas = measureRef.current;
+      if (meas) {
+        const measured = measurePick(event);
+        if (measured) meas.onPick(measured);
         return;
       }
       if (sketchModeRef.current) {

@@ -1,0 +1,17 @@
+.hud {
+  position: absolute;
+  top: calc(var(--grid-unit) * 6);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hint {
+  opacity: 0.75;
+}

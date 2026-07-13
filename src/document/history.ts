@@ -19,9 +19,23 @@ export interface SketchPatch {
   readonly after: Sketch | null;
 }
 
+/** Whole-timeline replacement — ops are small; correctness beats granularity. */
+export interface TimelinePatch {
+  readonly kind: 'replaceTimeline';
+  readonly before: TimelineSnapshot;
+  readonly after: TimelineSnapshot;
+}
+
+export interface TimelineSnapshot {
+  readonly ops: DocumentState['ops'];
+  readonly rollbackIndex: number;
+}
+
+export type DocumentPatch = SketchPatch | TimelinePatch;
+
 export interface Transaction {
   readonly label: string;
-  readonly patches: readonly SketchPatch[];
+  readonly patches: readonly DocumentPatch[];
 }
 
 export interface HistoryState {
@@ -40,16 +54,30 @@ export function pushTransaction(history: HistoryState, transaction: Transaction)
 
 function applyPatches(
   state: DocumentState,
-  patches: readonly SketchPatch[],
+  patches: readonly DocumentPatch[],
   direction: 'forward' | 'inverse'
 ): DocumentState {
-  let sketches = state.sketches;
+  let next = state;
   for (const patch of patches) {
-    const target = direction === 'forward' ? patch.after : patch.before;
-    const without = sketches.filter((s) => s.id !== patch.sketchId);
-    sketches = target ? [...without, target] : without;
+    switch (patch.kind) {
+      case 'replaceSketch': {
+        const target = direction === 'forward' ? patch.after : patch.before;
+        const without = next.sketches.filter((s) => s.id !== patch.sketchId);
+        next = { ...next, sketches: target ? [...without, target] : without };
+        break;
+      }
+      case 'replaceTimeline': {
+        const target = direction === 'forward' ? patch.after : patch.before;
+        next = { ...next, ops: target.ops, rollbackIndex: target.rollbackIndex };
+        break;
+      }
+      default: {
+        const exhaustive: never = patch;
+        return exhaustive;
+      }
+    }
   }
-  return { ...state, sketches };
+  return next;
 }
 
 export function applyTransaction(state: DocumentState, transaction: Transaction): DocumentState {

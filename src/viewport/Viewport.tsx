@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Vec2 } from '../core';
-import type { MeshTransfer } from '../kernel';
+import {
+  edgeFingerprintKey,
+  type BodyEdges,
+  type EdgeFingerprint,
+  type MeshTransfer,
+} from '../kernel';
 import {
   createBodyMesh,
   createGrid,
@@ -29,13 +34,27 @@ export interface SketchModeProps {
   readonly onClickPoint: (point: Vec2, pxPerMm: number) => void;
 }
 
+/** Active while a Fillet/Chamfer dialog is picking edges (F4). */
+export interface EdgePickProps {
+  readonly bodyEdges: readonly BodyEdges[];
+  readonly pickedKeys: ReadonlySet<string>;
+  readonly onPick: (fingerprint: EdgeFingerprint) => void;
+}
+
 export interface ViewportProps {
   /** Label text for the zoom-to-fit button (translated by the caller — §3 viewport-scope). */
   zoomToFitLabel: string;
   bodies: MeshTransfer[];
   /** Non-null while a sketch is being edited; camera animates normal-to-plane. */
   sketchMode: SketchModeProps | null;
+  /** Non-null while picking edges for a finishing op (F4). */
+  edgePick?: EdgePickProps | null;
 }
+
+const EDGE_COLOR = 0x0d1b2a; // navy
+const EDGE_PICKED_COLOR = 0x1a6b5a; // teal
+const EDGE_HOVER_COLOR = 0x2fa78d; // bright teal
+const EDGE_PICK_THRESHOLD_MM = 2;
 
 /**
  * Owns the Three.js scene, camera/controls, picking, and the 2D sketch
@@ -43,19 +62,29 @@ export interface ViewportProps {
  * sketch interactions surface as plane-space callbacks the app layer
  * interprets.
  */
-export function Viewport({ zoomToFitLabel, bodies, sketchMode }: ViewportProps): React.JSX.Element {
+export function Viewport({
+  zoomToFitLabel,
+  bodies,
+  sketchMode,
+  edgePick = null,
+}: ViewportProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const fitRequestRef = useRef<(() => void) | null>(null);
   const bodyGroupRef = useRef<THREE.Group | null>(null);
+  const edgeGroupRef = useRef<THREE.Group | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   // Live props for the rAF loop (avoids rebuilding the loop on each render);
   // written post-commit in an effect, never during render.
   const sketchModeRef = useRef<SketchModeProps | null>(null);
+  const edgePickRef = useRef<EdgePickProps | null>(null);
   useEffect(() => {
     sketchModeRef.current = sketchMode;
   }, [sketchMode]);
+  useEffect(() => {
+    edgePickRef.current = edgePick;
+  }, [edgePick]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -87,7 +116,19 @@ export function Viewport({ zoomToFitLabel, bodies, sketchMode }: ViewportProps):
     const bodyGroup = new THREE.Group();
     bodyGroup.name = 'Bodies';
     bodyGroupRef.current = bodyGroup;
-    scene.add(grid, originPlanes.XY, originPlanes.XZ, originPlanes.YZ, lighting, bodyGroup);
+    const edgeGroup = new THREE.Group();
+    edgeGroup.name = 'Edges';
+    edgeGroup.visible = false;
+    edgeGroupRef.current = edgeGroup;
+    scene.add(
+      grid,
+      originPlanes.XY,
+      originPlanes.XZ,
+      originPlanes.YZ,
+      lighting,
+      bodyGroup,
+      edgeGroup
+    );
 
     let width = 0;
     let height = 0;
@@ -123,7 +164,8 @@ export function Viewport({ zoomToFitLabel, bodies, sketchMode }: ViewportProps):
 
     const updateSketchCamera = (): void => {
       const mode = sketchModeRef.current;
-      controls.enableRotate = mode === null;
+      // Orbit while free; lock rotation during sketch editing AND edge picking.
+      controls.enableRotate = mode === null && edgePickRef.current === null;
       if (!mode) {
         animatedPlane = null;
         cameraTarget = null;
@@ -151,8 +193,43 @@ export function Viewport({ zoomToFitLabel, bodies, sketchMode }: ViewportProps):
       }
     };
 
-    // --- Pointer → sketch plane -------------------------------------------
+    // --- Edge picking (F4) -------------------------------------------------
     const raycaster = new THREE.Raycaster();
+    raycaster.params.Line = { threshold: EDGE_PICK_THRESHOLD_MM };
+
+    const ndcOf = (event: PointerEvent): THREE.Vector2 => {
+      const rect = overlayCanvas.getBoundingClientRect();
+      return new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+      );
+    };
+
+    const raycastEdge = (event: PointerEvent): THREE.Line | null => {
+      const group = edgeGroupRef.current;
+      if (!group?.visible) return null;
+      raycaster.setFromCamera(ndcOf(event), camera);
+      const hits = raycaster.intersectObjects(group.children, false);
+      const line = hits[0]?.object;
+      return line instanceof THREE.Line ? line : null;
+    };
+
+    const highlightHover = (hovered: THREE.Line | null): void => {
+      const group = edgeGroupRef.current;
+      const picked = edgePickRef.current?.pickedKeys;
+      if (!group) return;
+      for (const child of group.children) {
+        if (!(child instanceof THREE.Line)) continue;
+        const key = typeof child.userData.key === 'string' ? child.userData.key : '';
+        const material = child.material as THREE.LineBasicMaterial;
+        const isPicked = picked?.has(key) ?? false;
+        material.color.setHex(
+          child === hovered ? EDGE_HOVER_COLOR : isPicked ? EDGE_PICKED_COLOR : EDGE_COLOR
+        );
+      }
+    };
+
+    // --- Pointer → sketch plane -------------------------------------------
     const pointerToPlane = (event: PointerEvent): { point: Vec2; pxPerMm: number } | null => {
       const mode = sketchModeRef.current;
       if (!mode || width === 0 || height === 0) return null;
@@ -173,11 +250,22 @@ export function Viewport({ zoomToFitLabel, bodies, sketchMode }: ViewportProps):
     };
 
     const onPointerMove = (event: PointerEvent): void => {
+      if (edgePickRef.current) {
+        highlightHover(raycastEdge(event));
+        return;
+      }
       const hit = pointerToPlane(event);
       if (hit) sketchModeRef.current?.onCursor(hit.point, hit.pxPerMm);
     };
     const onPointerDown = (event: PointerEvent): void => {
       if (event.button !== 0) return;
+      const pick = edgePickRef.current;
+      if (pick) {
+        const line = raycastEdge(event);
+        const fp = line?.userData.fingerprint as EdgeFingerprint | undefined;
+        if (fp) pick.onPick(fp);
+        return;
+      }
       const hit = pointerToPlane(event);
       if (hit) sketchModeRef.current?.onClickPoint(hit.point, hit.pxPerMm);
     };
@@ -215,6 +303,7 @@ export function Viewport({ zoomToFitLabel, bodies, sketchMode }: ViewportProps):
       host.removeChild(renderer.domElement);
       disposeSceneObjects(scene);
       bodyGroupRef.current = null;
+      edgeGroupRef.current = null;
       cameraRef.current = null;
       controlsRef.current = null;
     };
@@ -229,6 +318,29 @@ export function Viewport({ zoomToFitLabel, bodies, sketchMode }: ViewportProps):
       bodyGroup.add(createBodyMesh(mesh));
     }
   }, [bodies]);
+
+  // Rebuild the pickable edge lines when edge-pick state changes (F4).
+  useEffect(() => {
+    const group = edgeGroupRef.current;
+    if (!group) return;
+    disposeSceneObjects(group);
+    group.clear();
+    group.visible = edgePick !== null;
+    if (!edgePick) return;
+    for (const body of edgePick.bodyEdges) {
+      for (const edge of body.edges) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(edge.polyline, 3));
+        const key = edgeFingerprintKey(edge.fingerprint);
+        const material = new THREE.LineBasicMaterial({
+          color: edgePick.pickedKeys.has(key) ? EDGE_PICKED_COLOR : EDGE_COLOR,
+        });
+        const line = new THREE.Line(geometry, material);
+        line.userData = { key, fingerprint: edge.fingerprint };
+        group.add(line);
+      }
+    }
+  }, [edgePick]);
 
   return (
     <div className={styles.container}>

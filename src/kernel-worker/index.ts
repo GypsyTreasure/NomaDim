@@ -1,22 +1,31 @@
 import type { OpenCascadeInstance, TopoDS_Shape } from 'opencascade.js';
 import type { BodyId } from '../core';
-import { createId } from '../core';
-import type { KernelRequest, KernelResponse, MeshTransfer } from '../kernel/protocol';
+import { VIEWPORT_ANGULAR_DEFLECTION_DEG, VIEWPORT_LINEAR_DEFLECTION_MM } from '../core';
+import { OP_DEFINITIONS } from '../document';
+import type {
+  BodyEdges,
+  KernelRequest,
+  KernelResponse,
+  MeshTransfer,
+  OpStatusReport,
+  RegenPlan,
+  ReqId,
+} from '../kernel/protocol';
 import { loadOcct } from './occt';
-import { createHardcodedBox, disposeShape } from './box';
 import { tessellateShape } from './tessellate';
+import { tessellateBodyEdges } from './edgeFingerprint';
 import { exportShapeToStl } from './stl';
 import { getLiveShapeCount } from './handleCounter';
+import { ShapeCache, diffDelta, emptyDelta, snapshotRefs } from './bodyState';
+import { OP_EXECUTORS } from './executors/registry';
+import { KernelExecError, type BodyStateMap } from './executors/types';
 
 /**
- * Worker entry point (ARCHITECTURE §3, §6). The ONLY layer permitted to
- * import opencascade.js. `new Worker(new URL('./index.ts', import.meta.url))`
- * is the sole thing `kernel/` is allowed to reach into here
- * (kernel-worker-entry-only rule).
- *
- * M1: a single hardcoded box stands in for the `BodyStateMap` that arrives
- * with real ops in M3 — this file proves the message-protocol/WASM/mesh
- * transfer/STL-export/live-handle-count pipeline end-to-end first.
+ * Worker entry point (ARCHITECTURE §3, §6, §9). The ONLY layer permitted to
+ * import opencascade.js; `kernel/` reaches in solely to instantiate the
+ * Worker from this file. Holds the BodyStateMap + per-op delta cache and
+ * runs the regeneration loop with suppression/skip semantics, generation
+ * cancellation (R6), and Transferable mesh responses (R5).
  */
 
 interface WorkerScope {
@@ -25,39 +34,177 @@ interface WorkerScope {
 }
 declare const self: WorkerScope;
 
-const bodies = new Map<BodyId, TopoDS_Shape>();
 let occtInstance: OpenCascadeInstance | null = null;
-
-function requireOcct(): OpenCascadeInstance {
-  if (!occtInstance) {
-    throw new Error('OCCT not initialized — send an "init" request first');
-  }
-  return occtInstance;
-}
+let bodies: BodyStateMap = new Map();
+const cache = new ShapeCache();
+/** Highest generation seen — bumped synchronously in onmessage (R6). */
+let latestGeneration = 0;
 
 function respond(response: KernelResponse, transfer?: Transferable[]): void {
   self.postMessage(response, transfer ?? []);
+}
+
+async function ensureOcct(): Promise<OpenCascadeInstance> {
+  occtInstance ??= await loadOcct();
+  return occtInstance;
+}
+
+/** Macrotask yield: lets queued messages (newer regens) land between ops. */
+function yieldToMessages(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+function tessellateLiveBodies(oc: OpenCascadeInstance): MeshTransfer[] {
+  const meshes: MeshTransfer[] = [];
+  for (const [bodyId, shape] of bodies) {
+    meshes.push(
+      tessellateShape(oc, bodyId, shape, {
+        linearDeflectionMm: VIEWPORT_LINEAR_DEFLECTION_MM,
+        angularDeflectionDeg: VIEWPORT_ANGULAR_DEFLECTION_DEG,
+      })
+    );
+  }
+  return meshes;
+}
+
+function tessellateLiveBodyEdges(oc: OpenCascadeInstance): BodyEdges[] {
+  const bodyEdges: BodyEdges[] = [];
+  for (const [bodyId, shape] of bodies) {
+    bodyEdges.push({ bodyId, edges: tessellateBodyEdges(oc, shape) });
+  }
+  return bodyEdges;
+}
+
+async function handleRegen(
+  id: ReqId,
+  generation: number,
+  fromIndex: number,
+  plan: RegenPlan
+): Promise<void> {
+  const oc = await ensureOcct();
+
+  // An aborted prior regen may have left fewer valid deltas than the
+  // scheduler assumes — clamp to the cache's contiguous prefix (R6 note in
+  // bodyState.ts), then free stale deltas and restore state after k-1 (§9).
+  const start = Math.min(fromIndex, cache.length);
+  cache.freeFrom(start);
+  bodies = cache.restoreTo(start);
+
+  let failed = false;
+
+  for (let i = start; i < plan.ops.length; i += 1) {
+    if (generation < latestGeneration) {
+      respond({ id, kind: 'error', error: { code: 'STALE_GENERATION', message: 'superseded' } });
+      return;
+    }
+    const planOp = plan.ops[i];
+    if (!planOp) continue;
+    const op = planOp.op;
+
+    if (failed) {
+      cache.record(i, emptyDelta(), { opId: op.id, status: 'skipped' });
+      continue;
+    }
+    if (op.suppressed) {
+      // Body-producing op: its bodyId simply never enters the map.
+      // Body-modifying op: target keeps prior state. Both = empty delta (§9).
+      cache.record(i, emptyDelta(), { opId: op.id, status: 'suppressed' });
+      continue;
+    }
+    const deps = OP_DEFINITIONS[op.type].dependencies(op);
+    if (planOp.inputsSuppressed || deps.consumesBodies.some((b) => !bodies.has(b))) {
+      cache.record(i, emptyDelta(), { opId: op.id, status: 'skipped' });
+      continue;
+    }
+
+    const before = snapshotRefs(bodies);
+    try {
+      OP_EXECUTORS[op.type](
+        {
+          oc,
+          bodies,
+          profiles: new Map(planOp.profiles.map((p) => [p.id, p])),
+        },
+        planOp
+      );
+      cache.record(i, diffDelta(before, bodies), { opId: op.id, status: 'ok' });
+    } catch (error) {
+      // Failed op: map keeps last good states; downstream ops → skipped (§9).
+      bodies = cache.restoreTo(i);
+      cache.record(i, emptyDelta(), {
+        opId: op.id,
+        status: 'error',
+        code: error instanceof KernelExecError ? error.code : 'KERNEL_ERROR',
+        message: error instanceof Error ? error.message : String(error),
+      });
+      failed = true;
+    }
+
+    respond({ id, kind: 'progress', opIndex: i });
+    await yieldToMessages();
+  }
+
+  if (generation < latestGeneration) {
+    respond({ id, kind: 'error', error: { code: 'STALE_GENERATION', message: 'superseded' } });
+    return;
+  }
+
+  // Full status array from the cache — survives aborted generations.
+  const statuses: OpStatusReport[] = [];
+  for (let i = 0; i < plan.ops.length; i += 1) {
+    const status = cache.statusAt(i);
+    if (status) statuses.push(status);
+  }
+
+  const meshes = tessellateLiveBodies(oc);
+  const bodyEdges = tessellateLiveBodyEdges(oc);
+  const transfer = [
+    ...meshes.flatMap((m) => [m.positions.buffer, m.normals.buffer, m.indices.buffer]),
+    ...bodyEdges.flatMap((b) => b.edges.map((e) => e.polyline.buffer)),
+  ];
+  respond(
+    {
+      id,
+      kind: 'regenDone',
+      generation,
+      statuses,
+      meshes,
+      bodyEdges,
+      liveBodyIds: [...bodies.keys()],
+    },
+    transfer
+  );
+}
+
+function collectShapes(bodyIds: readonly BodyId[]): TopoDS_Shape[] {
+  const shapes: TopoDS_Shape[] = [];
+  for (const bodyId of bodyIds) {
+    const shape = bodies.get(bodyId);
+    if (shape) shapes.push(shape);
+  }
+  return shapes;
 }
 
 async function handleRequest(request: KernelRequest): Promise<void> {
   try {
     switch (request.kind) {
       case 'init': {
-        occtInstance = await loadOcct();
-        const existingIds = new Set<string>(bodies.keys());
-        const bodyId = createId<'BodyId'>(existingIds);
-        bodies.set(bodyId, createHardcodedBox(occtInstance));
-        respond({ id: request.id, kind: 'ok', result: { of: 'init', bodyIds: [bodyId] } });
+        await ensureOcct();
+        respond({ id: request.id, kind: 'ok', result: { of: 'init' } });
+        return;
+      }
+      case 'regen': {
+        await handleRegen(request.id, request.generation, request.fromIndex, request.plan);
         return;
       }
       case 'tessellate': {
-        const oc = requireOcct();
+        const oc = await ensureOcct();
         const meshes: MeshTransfer[] = [];
         for (const bodyId of request.bodyIds) {
           const shape = bodies.get(bodyId);
-          if (shape) {
-            meshes.push(tessellateShape(oc, bodyId, shape, request.quality));
-          }
+          if (shape) meshes.push(tessellateShape(oc, bodyId, shape, request.quality));
         }
         const transfer = meshes.flatMap((m) => [
           m.positions.buffer,
@@ -68,22 +215,17 @@ async function handleRequest(request: KernelRequest): Promise<void> {
         return;
       }
       case 'exportStl': {
-        const oc = requireOcct();
-        const bodyId = request.bodyIds.find((id) => bodies.has(id));
-        const shape = bodyId ? bodies.get(bodyId) : undefined;
-        if (!shape) {
+        const oc = await ensureOcct();
+        const shapes = collectShapes(request.bodyIds);
+        if (shapes.length === 0) {
           respond({
             id: request.id,
             kind: 'error',
-            error: { code: 'NO_BODY', message: 'No matching body to export' },
+            error: { code: 'NO_BODY', message: 'No bodies to export' },
           });
           return;
         }
-        const stl = exportShapeToStl(oc, shape, {
-          format: request.format,
-          linearDeflectionMm: request.linearDeflectionMm,
-          angularDeflectionDeg: request.angularDeflectionDeg,
-        });
+        const stl = exportBodiesToStl(oc, shapes, request);
         respond(
           {
             id: request.id,
@@ -95,13 +237,8 @@ async function handleRequest(request: KernelRequest): Promise<void> {
         return;
       }
       case 'dispose': {
-        for (const bodyId of request.bodyIds) {
-          const shape = bodies.get(bodyId);
-          if (shape) {
-            disposeShape(shape);
-            bodies.delete(bodyId);
-          }
-        }
+        // Live-map removal only — cached delta shapes stay owned by the cache.
+        for (const bodyId of request.bodyIds) bodies.delete(bodyId);
         respond({ id: request.id, kind: 'ok', result: { of: 'dispose' } });
         return;
       }
@@ -126,6 +263,36 @@ async function handleRequest(request: KernelRequest): Promise<void> {
   }
 }
 
+function exportBodiesToStl(
+  oc: OpenCascadeInstance,
+  shapes: readonly TopoDS_Shape[],
+  request: Extract<KernelRequest, { kind: 'exportStl' }>
+): ArrayBuffer {
+  const options = {
+    format: request.format,
+    linearDeflectionMm: request.linearDeflectionMm,
+    angularDeflectionDeg: request.angularDeflectionDeg,
+  };
+  const first = shapes[0];
+  if (shapes.length === 1 && first) {
+    return exportShapeToStl(oc, first, options);
+  }
+  const compound = new oc.TopoDS_Compound();
+  const builder = new oc.BRep_Builder();
+  builder.MakeCompound(compound);
+  for (const shape of shapes) builder.Add(compound, shape);
+  const stl = exportShapeToStl(oc, compound, options);
+  builder.delete();
+  compound.delete();
+  return stl;
+}
+
+// Serialize handlers; regen generation is bumped synchronously on arrival (R6).
+let pending: Promise<void> = Promise.resolve();
 self.onmessage = (event) => {
-  void handleRequest(event.data);
+  const request = event.data;
+  if (request.kind === 'regen') {
+    latestGeneration = Math.max(latestGeneration, request.generation);
+  }
+  pending = pending.then(() => handleRequest(request));
 };

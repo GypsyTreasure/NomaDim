@@ -1,5 +1,14 @@
 import { createId, KernelError, InternalError, type BodyId } from '../core';
-import type { KernelRequest, KernelResponse, MeshQuality, MeshTransfer, ReqId } from './protocol';
+import type {
+  BodyEdges,
+  KernelRequest,
+  KernelResponse,
+  MeshQuality,
+  MeshTransfer,
+  OpStatusReport,
+  RegenPlan,
+  ReqId,
+} from './protocol';
 
 export interface StlExportRequest {
   bodyIds: BodyId[];
@@ -13,15 +22,29 @@ export interface StlExportResult {
   fileName: string;
 }
 
+export interface RegenResult {
+  readonly generation: number;
+  readonly statuses: readonly OpStatusReport[];
+  readonly meshes: MeshTransfer[];
+  readonly bodyEdges: BodyEdges[];
+  readonly liveBodyIds: readonly BodyId[];
+}
+
 interface PendingRequest {
   resolve: (response: KernelResponse) => void;
   reject: (error: Error) => void;
+  onProgress?: (opIndex: number) => void;
+}
+
+/** Regens superseded by a newer generation settle with this marker (benign). */
+export class StaleRegenError extends Error {
+  override readonly name = 'StaleRegenError';
 }
 
 /**
  * Main-thread kernel client (ARCHITECTURE §3, §6): worker lifecycle,
- * request/response correlation over `kernel/protocol.ts`. The only file
- * this layer reaches into inside `kernel-worker/` is its entry point
+ * request/response correlation, progress fan-out. The only file this layer
+ * reaches into inside `kernel-worker/` is its entry point
  * (kernel-worker-entry-only rule).
  */
 export class KernelClient {
@@ -38,12 +61,33 @@ export class KernelClient {
     };
   }
 
-  async init(): Promise<BodyId[]> {
+  async init(): Promise<void> {
     const response = await this.send({ id: this.nextId(), kind: 'init' });
-    if (response.kind === 'ok' && response.result.of === 'init') {
-      return response.result.bodyIds;
-    }
+    if (response.kind === 'ok' && response.result.of === 'init') return;
     throw new InternalError('Unexpected response to "init" request');
+  }
+
+  /** Runs a regen; progress ticks surface per executed op (R6-aware). */
+  async regen(
+    generation: number,
+    fromIndex: number,
+    plan: RegenPlan,
+    onProgress?: (opIndex: number) => void
+  ): Promise<RegenResult> {
+    const response = await this.send(
+      { id: this.nextId(), kind: 'regen', generation, fromIndex, plan },
+      onProgress
+    );
+    if (response.kind === 'regenDone') {
+      return {
+        generation: response.generation,
+        statuses: response.statuses,
+        meshes: response.meshes,
+        bodyEdges: response.bodyEdges,
+        liveBodyIds: response.liveBodyIds,
+      };
+    }
+    throw new InternalError('Unexpected response to "regen" request');
   }
 
   async tessellate(bodyIds: BodyId[], quality: MeshQuality): Promise<MeshTransfer[]> {
@@ -93,9 +137,12 @@ export class KernelClient {
     return id;
   }
 
-  private send(request: KernelRequest): Promise<KernelResponse> {
+  private send(
+    request: KernelRequest,
+    onProgress?: (opIndex: number) => void
+  ): Promise<KernelResponse> {
     return new Promise((resolve, reject) => {
-      this.pending.set(request.id, { resolve, reject });
+      this.pending.set(request.id, { resolve, reject, onProgress });
       this.worker.postMessage(request);
     });
   }
@@ -103,12 +150,20 @@ export class KernelClient {
   private handleMessage(response: KernelResponse): void {
     const pending = this.pending.get(response.id);
     if (!pending) return;
+
+    if (response.kind === 'progress') {
+      pending.onProgress?.(response.opIndex);
+      return; // request still in flight
+    }
+
     this.pending.delete(response.id);
     this.inFlightIds.delete(response.id);
 
     if (response.kind === 'error') {
       pending.reject(
-        new KernelError(response.error.message, response.error.code, response.error.opId)
+        response.error.code === 'STALE_GENERATION'
+          ? new StaleRegenError(response.error.message)
+          : new KernelError(response.error.message, response.error.code, response.error.opId)
       );
     } else {
       pending.resolve(response);

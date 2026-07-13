@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { EntityId, PointId, SketchId } from '../../src/core/ids';
+import type { EntityId, OpId, PointId, SketchId } from '../../src/core/ids';
 import { emptyDocument, findSketch, type Command, type DocumentState } from '../../src/document';
 import { CommandBus, type DocumentHost } from '../../src/services';
 
 const skId = 'sk1' as SketchId;
+const skOpId = 'op1' as OpId;
 const pid = (id: string): PointId => id as PointId;
 const eid = (id: string): EntityId => id as EntityId;
 
@@ -22,7 +23,12 @@ function makeHost(): DocumentHost & { current: DocumentState } {
 
 const createSketch: Command = {
   type: 'CreateSketch',
-  payload: { sketchId: skId, name: 'Sketch1', plane: { kind: 'origin', plane: 'XY' } },
+  payload: {
+    sketchId: skId,
+    opId: skOpId,
+    name: 'Sketch1',
+    plane: { kind: 'origin', plane: 'XY' },
+  },
 };
 
 const addLine: Command = {

@@ -22,6 +22,7 @@ import { MeasureHud } from './features/measure/MeasureHud';
 import { useMeasure } from './features/measure/useMeasure';
 import { DocumentIO } from './features/document-io/DocumentIO';
 import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
+import { OnboardingHint } from './features/onboarding/OnboardingHint';
 import { loadDocumentText } from './features/document-io/documentIO';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
@@ -171,6 +172,7 @@ export function App(): React.JSX.Element {
           </>
         ) : (
           <>
+            {!sketcher.choosingPlane && !sketcher.pickingFace && <OnboardingHint />}
             <BrowserTree />
             {sketcher.choosingPlane && (
               <PlanePicker

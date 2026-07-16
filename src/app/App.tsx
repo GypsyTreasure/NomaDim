@@ -45,6 +45,7 @@ export function App(): React.JSX.Element {
   const sketchMeta = useDocumentStore((s) => s.document.sketchMeta);
   const selectedBodyId = useSessionStore((s) => s.selectedBodyId);
   const planeVisibility = useSessionStore((s) => s.planeVisibility);
+  const profileHighlight = useSessionStore((s) => s.profileHighlight);
   const setSelectedBody = useSessionStore((s) => s.setSelectedBody);
 
   useGlobalShortcuts(sketcher.activeSketch !== null);
@@ -114,6 +115,7 @@ export function App(): React.JSX.Element {
           bodyStyles={bodyStyles}
           planeVisibility={planeVisibility}
           sketchPreviews={sketchPreviews}
+          opHighlight={profileHighlight}
           onSelectBody={setSelectedBody}
         />
         {sketcher.activeSketch ? (

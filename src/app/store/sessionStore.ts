@@ -1,6 +1,17 @@
 import { create } from 'zustand';
-import type { BodyId, EntityId, SketchId } from '../../core';
+import type { BodyId, EntityId, SketchId, Vec2 } from '../../core';
 import type { EdgeFingerprint } from '../../document';
+
+/**
+ * Transient highlight of the geometry a 3D-op dialog is about to act on
+ * (F3 preview): the selected profile loops (and a revolve axis) drawn bright
+ * in the viewport. Sketch-local polylines + the plane; the viewport maps them.
+ */
+export interface ProfileHighlight {
+  readonly plane: 'XY' | 'XZ' | 'YZ';
+  readonly loops: readonly (readonly Vec2[])[];
+  readonly axis: readonly Vec2[] | null;
+}
 import { edgeFingerprintKey } from '../../kernel';
 import type { SketchToolId } from '../../sketch';
 
@@ -25,6 +36,8 @@ interface SessionStore {
   readonly selectedBodyId: BodyId | null;
   /** Origin plane visibility (F8 Origin section). */
   readonly planeVisibility: Readonly<Record<'XY' | 'XZ' | 'YZ', boolean>>;
+  /** Geometry an open Extrude/Revolve dialog will act on, highlighted (F3). */
+  readonly profileHighlight: ProfileHighlight | null;
 
   readonly enterSketch: (sketchId: SketchId) => void;
   readonly exitSketch: () => void;
@@ -38,6 +51,7 @@ interface SessionStore {
   readonly resetEdgePick: () => void;
   readonly setSelectedBody: (bodyId: BodyId | null) => void;
   readonly togglePlane: (plane: 'XY' | 'XZ' | 'YZ') => void;
+  readonly setProfileHighlight: (highlight: ProfileHighlight | null) => void;
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -50,6 +64,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   pickedEdges: [],
   selectedBodyId: null,
   planeVisibility: { XY: true, XZ: true, YZ: true },
+  profileHighlight: null,
 
   enterSketch: (sketchId) => {
     set({ activeSketchId: sketchId, activeTool: 'line', selectedEntityIds: [] });
@@ -96,5 +111,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
     set((state) => ({
       planeVisibility: { ...state.planeVisibility, [plane]: !state.planeVisibility[plane] },
     }));
+  },
+  setProfileHighlight: (highlight) => {
+    set({ profileHighlight: highlight });
   },
 }));

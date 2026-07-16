@@ -1,13 +1,16 @@
 import { useEffect, useMemo } from 'react';
-import type { BodyId, SketchId } from '../../../core';
+import type { BodyId, EntityId, ProfileId, SketchId, Vec2 } from '../../../core';
 import {
   findSketch,
   opDefinition,
+  pointMap,
   type BooleanOperation,
   type DocumentState,
   type EdgeFingerprint,
+  type Sketch,
 } from '../../../document';
 import { detectProfiles, type SketchProfile } from '../../../sketch';
+import type { ProfileHighlight } from '../../store/sessionStore';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
 import { acquireEdges, releaseEdges } from '../../store/kernelStore';
@@ -35,6 +38,61 @@ export function useEdgePickLifecycle(
     // Mount/unmount only — seeds are captured once when the dialog opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+}
+
+/**
+ * Highlights the geometry a 3D-op dialog will act on (F3): the selected
+ * profile loops (outer + holes) and, for Revolve, the axis line — drawn bright
+ * in the viewport while the dialog is open, cleared on close. Sketch-local
+ * polylines flow through the session store; the viewport maps them to 3D.
+ */
+export function computeProfileHighlight(
+  sketch: Sketch | null,
+  selected: ReadonlySet<ProfileId>,
+  profiles: readonly SketchProfile[],
+  axisEntityId: EntityId | null
+): ProfileHighlight | null {
+  // Face-plane sketches (not shipped yet) have no origin-plane placement here.
+  if (sketch?.plane.kind !== 'origin') return null;
+  const loops: Vec2[][] = [];
+  for (const profile of profiles) {
+    if (!selected.has(profile.id)) continue;
+    loops.push([...profile.outer.polygon]);
+    for (const inner of profile.inner) loops.push([...inner.polygon]);
+  }
+  let axis: readonly Vec2[] | null = null;
+  if (axisEntityId) {
+    const entity = sketch.entities.find((e) => e.id === axisEntityId);
+    if (entity?.type === 'line') {
+      const pts = pointMap(sketch);
+      const a = pts.get(entity.start);
+      const b = pts.get(entity.end);
+      if (a && b)
+        axis = [
+          { x: a.x, y: a.y },
+          { x: b.x, y: b.y },
+        ];
+    }
+  }
+  return { plane: sketch.plane.plane, loops, axis };
+}
+
+export function useProfileHighlight(
+  sketchId: SketchId | null,
+  selected: ReadonlySet<ProfileId>,
+  profiles: readonly SketchProfile[],
+  axisEntityId: EntityId | null = null
+): void {
+  const document = useDocumentStore((s) => s.document);
+  useEffect(() => {
+    const sketch = (sketchId ? findSketch(document, sketchId) : null) ?? null;
+    useSessionStore
+      .getState()
+      .setProfileHighlight(computeProfileHighlight(sketch, selected, profiles, axisEntityId));
+    return () => {
+      useSessionStore.getState().setProfileHighlight(null);
+    };
+  }, [document, sketchId, selected, profiles, axisEntityId]);
 }
 
 /** Resolves the selectable profiles of a sketch (area-labelled, R7a ids). */

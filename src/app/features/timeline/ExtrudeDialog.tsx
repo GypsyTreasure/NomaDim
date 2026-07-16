@@ -17,6 +17,7 @@ import {
   operationOptions,
   sketchOptions,
   targetOptions,
+  useProfileHighlight,
   useSketchProfiles,
 } from './dialogData';
 import { t } from '../../i18n/t';
@@ -46,6 +47,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
 
   const profiles = useSketchProfiles(sketchId);
+  useProfileHighlight(sketchId, selected, profiles);
 
   const toggle = (id: ProfileId): void => {
     setSelected((prev) => {

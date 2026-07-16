@@ -7,6 +7,7 @@ export {
   type MeasurePick,
   type BodyStyle,
   type SketchPreview,
+  type OpHighlight,
 } from './Viewport';
 export type { SketchOverlayState } from './sketchOverlay';
 export type { OriginPlaneId } from './planeMapping';

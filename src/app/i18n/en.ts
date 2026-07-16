@@ -2,6 +2,13 @@
 export const en = {
   'app.title': 'NomaDim',
   'viewport.zoomToFit': 'Zoom to Fit',
+  'view.home': 'Home',
+  'view.front': 'Front',
+  'view.back': 'Back',
+  'view.left': 'Left',
+  'view.right': 'Right',
+  'view.top': 'Top',
+  'view.bottom': 'Bottom',
   'viewport.origin.xy': 'XY Plane',
   'viewport.origin.xz': 'XZ Plane',
   'viewport.origin.yz': 'YZ Plane',

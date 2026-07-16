@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { viewOrientation, VIEW_IDS, type ViewId } from './viewOrientation';
 import type { BodyId, Vec2 } from '../core';
 import {
   edgeFingerprintKey,
@@ -102,6 +103,8 @@ export interface OpHighlight {
 export interface ViewportProps {
   /** Label text for the zoom-to-fit button (translated by the caller — §3 viewport-scope). */
   zoomToFitLabel: string;
+  /** Translated labels for the standard view buttons (F11); absent → no view bar. */
+  viewLabels?: Partial<Record<ViewId, string>>;
   bodies: MeshTransfer[];
   /** Non-null while a sketch is being edited; camera animates normal-to-plane. */
   sketchMode: SketchModeProps | null;
@@ -138,6 +141,7 @@ const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads 
  */
 export function Viewport({
   zoomToFitLabel,
+  viewLabels,
   bodies,
   sketchMode,
   edgePick = null,
@@ -152,6 +156,7 @@ export function Viewport({
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const fitRequestRef = useRef<(() => void) | null>(null);
+  const viewRequestRef = useRef<((id: ViewId) => void) | null>(null);
   const bodyGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
@@ -197,10 +202,12 @@ export function Viewport({
     camera.position.copy(CAMERA_INITIAL_POSITION);
     cameraRef.current = camera;
 
-    // MSAA is disabled: on a GPU 100 lit bodies render at 60 fps either way,
-    // while in software rasterization MSAA multiplies fragment cost and drops
-    // a 100-body session below 30 fps (M5 acceptance). Edge smoothing returns
-    // as cheap post-process FXAA in the M7 styling pass.
+    // Anti-aliasing stays off (ADR-0015/ADR-0027): the M5 acceptance guard
+    // measures fps in software rasterization, where MSAA multiplies fragment
+    // cost and full-screen FXAA is even worse — both drop a 100-body session
+    // to single-digit fps. On a real GPU neither matters, but the guard can't
+    // tell the two apart, so edge smoothing is deferred to a GPU/body-count-
+    // gated quality toggle rather than shipped globally.
     const renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setPixelRatio(window.devicePixelRatio);
     host.appendChild(renderer.domElement);
@@ -261,6 +268,20 @@ export function Viewport({
     fitRequestRef.current = () => {
       const box = new THREE.Box3().setFromObject(scene);
       zoomToFit({ camera, controlsTarget: controls.target, box });
+      controls.update();
+    };
+
+    // Snap the camera to a standard CAD view (F11): keep the current distance
+    // to the target, place it along the view direction, set the up vector.
+    viewRequestRef.current = (id: ViewId) => {
+      if (sketchModeRef.current) return; // camera is plane-locked while sketching
+      const o = viewOrientation(id);
+      const distance = Math.max(camera.position.distanceTo(controls.target), 1);
+      camera.up.set(o.up[0], o.up[1], o.up[2]);
+      camera.position
+        .copy(controls.target)
+        .addScaledVector(new THREE.Vector3(o.dir[0], o.dir[1], o.dir[2]), distance);
+      camera.lookAt(controls.target);
       controls.update();
     };
 
@@ -626,6 +647,22 @@ export function Viewport({
         <button type="button" className={styles.button} onClick={() => fitRequestRef.current?.()}>
           {zoomToFitLabel}
         </button>
+        {viewLabels &&
+          VIEW_IDS.map((id) => {
+            const label = viewLabels[id];
+            if (label === undefined) return null;
+            return (
+              <button
+                key={id}
+                type="button"
+                className={styles.button}
+                data-testid={`view-${id}`}
+                onClick={() => viewRequestRef.current?.(id)}
+              >
+                {label}
+              </button>
+            );
+          })}
       </div>
     </div>
   );

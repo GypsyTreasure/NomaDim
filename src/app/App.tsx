@@ -12,6 +12,8 @@ import { useSketcher } from './features/sketcher/useSketcher';
 import { BrowserTree } from './features/browser/BrowserTree';
 import { MeasureHud } from './features/measure/MeasureHud';
 import { useMeasure } from './features/measure/useMeasure';
+import { DocumentIO } from './features/document-io/DocumentIO';
+import { loadDocumentText } from './features/document-io/documentIO';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -105,7 +107,21 @@ export function App(): React.JSX.Element {
       <header className={styles.header}>
         <h1 className={styles.title}>{t('app.title')}</h1>
       </header>
-      <main className={styles.viewportArea}>
+      <main
+        className={styles.viewportArea}
+        onDragOver={(e) => {
+          e.preventDefault();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const file = e.dataTransfer.files[0];
+          if (!file) return;
+          void file.text().then((text) => {
+            const error = loadDocumentText(text);
+            if (error !== null) window.alert(`${t('io.loadError')} ${error}`);
+          });
+        }}
+      >
         <Viewport
           zoomToFitLabel={t('viewport.zoomToFit')}
           bodies={bodies}
@@ -165,6 +181,7 @@ export function App(): React.JSX.Element {
               >
                 {t('measure.toggle')}
               </button>
+              <DocumentIO />
               <ExportStlButton />
               <span className={sketcherStyles.button} data-testid="body-count">
                 {liveBodyIds.length}

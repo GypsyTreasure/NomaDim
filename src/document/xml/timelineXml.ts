@@ -3,7 +3,7 @@ import { err, ok, ImportError, type Result } from '../../core';
 import { OP_DEFINITIONS } from '../ops/registry';
 import type { TimelineOp } from '../ops/types';
 import { writeXml, type XmlElement } from './xmlWriter';
-import { asRaw, asRawArray, numAttr } from './xmlRaw';
+import { asRaw, asRawArray, numAttr, type Raw } from './xmlRaw';
 
 /**
  * Timeline codec (ARCHITECTURE §7/§11, R10): serialize/parse the ordered op
@@ -24,37 +24,22 @@ function withIndex(element: XmlElement, index: number): XmlElement {
   return { ...element, attrs: { index, ...(element.attrs ?? {}) } };
 }
 
-export function timelineToXml(data: TimelineData): string {
+/** The `<timeline>` element tree — reused by the document codec (M6). */
+export function timelineElement(data: TimelineData): XmlElement {
   const children = data.ops.map((op, i) => withIndex(OP_DEFINITIONS[op.type].toXml(op), i));
-  return writeXml({
-    tag: 'timeline',
-    attrs: { rollback: data.rollbackIndex },
-    children,
-  });
+  return { tag: 'timeline', attrs: { rollback: data.rollbackIndex }, children };
+}
+
+export function timelineToXml(data: TimelineData): string {
+  return writeXml(timelineElement(data));
 }
 
 function fail(detail: string): Result<never, ImportError> {
   return err(new ImportError('Invalid timeline XML', undefined, detail));
 }
 
-export function timelineFromXml(xml: string): Result<TimelineData, ImportError> {
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    parseAttributeValue: false,
-    parseTagValue: false,
-  });
-
-  let parsed: unknown;
-  try {
-    parsed = parser.parse(xml);
-  } catch (cause) {
-    return fail(cause instanceof Error ? cause.message : 'unparseable XML');
-  }
-
-  const root = asRaw(asRaw(parsed)?.timeline);
-  if (!root) return fail('missing <timeline> root');
-
+/** Parses one already-extracted `<timeline>` Raw object — reused by the document codec (M6). */
+export function timelineFromRaw(root: Raw): Result<TimelineData, ImportError> {
   const rollback = numAttr(root, 'rollback');
   if (rollback === null || !Number.isInteger(rollback) || rollback < 0) {
     return fail('<timeline> missing valid rollback');
@@ -77,4 +62,22 @@ export function timelineFromXml(xml: string): Result<TimelineData, ImportError> 
 
   if (rollback > ops.length) return fail('rollback index beyond op count');
   return ok({ ops, rollbackIndex: rollback });
+}
+
+export function timelineFromXml(xml: string): Result<TimelineData, ImportError> {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    parseAttributeValue: false,
+    parseTagValue: false,
+  });
+  let parsed: unknown;
+  try {
+    parsed = parser.parse(xml);
+  } catch (cause) {
+    return fail(cause instanceof Error ? cause.message : 'unparseable XML');
+  }
+  const root = asRaw(asRaw(parsed)?.timeline);
+  if (!root) return fail('missing <timeline> root');
+  return timelineFromRaw(root);
 }

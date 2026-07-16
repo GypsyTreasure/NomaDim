@@ -13,6 +13,7 @@ export * from './bodies/access';
 export { validateSketch } from './sketch/validate';
 export { sketchToXml, sketchFromXml } from './xml/sketchXml';
 export { timelineToXml, timelineFromXml, type TimelineData } from './xml/timelineXml';
+export { documentToXml, documentFromXml, SCHEMA_VERSION } from './xml/documentXml';
 export * from './model';
 export * from './history';
 export * from './commands';

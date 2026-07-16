@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { viewOrientation, VIEW_IDS, type ViewId } from './viewOrientation';
+import { CameraRig, type ProjectionMode, type RigCamera } from './cameraRig';
 import type { BodyId, Vec2 } from '../core';
 import {
   edgeFingerprintKey,
@@ -15,7 +16,6 @@ import {
   createLighting,
   createOriginPlanes,
   disposeSceneObjects,
-  zoomToFit,
 } from './scene';
 import {
   mappingFromBasis,
@@ -31,7 +31,6 @@ import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
 const BACKGROUND_COLOR = 0xfaf7f0; // var(--color-canvas-bg), Three.js needs a numeric literal here.
-const CAMERA_FOV_DEG = 50;
 const CAMERA_INITIAL_POSITION = new THREE.Vector3(280, -280, 220); // Z-up isometric-ish
 const SKETCH_CAMERA_LERP = 0.18;
 
@@ -105,6 +104,8 @@ export interface ViewportProps {
   zoomToFitLabel: string;
   /** Translated labels for the standard view buttons (F11); absent → no view bar. */
   viewLabels?: Partial<Record<ViewId, string>>;
+  /** Translated labels for the projection toggle (F11); absent → no toggle. */
+  projectionLabels?: Readonly<Record<ProjectionMode, string>>;
   bodies: MeshTransfer[];
   /** Non-null while a sketch is being edited; camera animates normal-to-plane. */
   sketchMode: SketchModeProps | null;
@@ -142,6 +143,7 @@ const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads 
 export function Viewport({
   zoomToFitLabel,
   viewLabels,
+  projectionLabels,
   bodies,
   sketchMode,
   edgePick = null,
@@ -157,12 +159,14 @@ export function Viewport({
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const fitRequestRef = useRef<(() => void) | null>(null);
   const viewRequestRef = useRef<((id: ViewId) => void) | null>(null);
+  const projectionRequestRef = useRef<(() => void) | null>(null);
+  const [projectionMode, setProjectionMode] = useState<ProjectionMode>('perspective');
   const bodyGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
   const highlightGroupRef = useRef<THREE.Group | null>(null);
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cameraRef = useRef<RigCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   // Live props for the rAF loop (avoids rebuilding the loop on each render);
   // written post-commit in an effect, never during render.
@@ -197,9 +201,14 @@ export function Viewport({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(BACKGROUND_COLOR);
 
-    const camera = new THREE.PerspectiveCamera(CAMERA_FOV_DEG, 1, 0.1, 10000);
-    camera.up.set(0, 0, 1);
-    camera.position.copy(CAMERA_INITIAL_POSITION);
+    // The rig owns projection: `camera` is reassigned (not a fresh const) when
+    // it toggles perspective↔ortho so every closure below sees the live camera.
+    const rig = new CameraRig(
+      CAMERA_INITIAL_POSITION,
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0, 0)
+    );
+    let camera = rig.camera;
     cameraRef.current = camera;
 
     // Anti-aliasing stays off (ADR-0015/ADR-0027): the M5 acceptance guard
@@ -255,8 +264,7 @@ export function Viewport({
       width = host.clientWidth;
       height = host.clientHeight;
       if (width === 0 || height === 0) return;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      rig.setAspect(width / height);
       renderer.setSize(width, height);
       const dpr = window.devicePixelRatio;
       overlayCanvas.width = Math.round(width * dpr);
@@ -267,7 +275,17 @@ export function Viewport({
 
     fitRequestRef.current = () => {
       const box = new THREE.Box3().setFromObject(scene);
-      zoomToFit({ camera, controlsTarget: controls.target, box });
+      rig.frameBox(box, controls.target);
+      controls.update();
+    };
+
+    // Toggle perspective↔orthographic (F11): rebind controls + render loop to
+    // the new camera and surface the mode so the button label follows.
+    projectionRequestRef.current = () => {
+      camera = rig.toggle(controls.target);
+      controls.object = camera;
+      cameraRef.current = camera;
+      setProjectionMode(rig.mode);
       controls.update();
     };
 
@@ -663,6 +681,16 @@ export function Viewport({
               </button>
             );
           })}
+        {projectionLabels && (
+          <button
+            type="button"
+            className={styles.button}
+            data-testid="projection-toggle"
+            onClick={() => projectionRequestRef.current?.()}
+          >
+            {projectionLabels[projectionMode]}
+          </button>
+        )}
       </div>
     </div>
   );

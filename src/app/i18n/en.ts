@@ -9,6 +9,8 @@ export const en = {
   'view.right': 'Right',
   'view.top': 'Top',
   'view.bottom': 'Bottom',
+  'view.projection.perspective': 'Perspective',
+  'view.projection.orthographic': 'Orthographic',
   'viewport.origin.xy': 'XY Plane',
   'viewport.origin.xz': 'XZ Plane',
   'viewport.origin.yz': 'YZ Plane',

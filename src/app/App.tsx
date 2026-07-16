@@ -8,6 +8,7 @@ import {
   VIEW_IDS,
   type BodyStyle,
   type EdgePickProps,
+  type ProjectionMode,
   type SketchPreview,
   type ViewId,
 } from '../viewport';
@@ -105,6 +106,15 @@ export function App(): React.JSX.Element {
     return labels;
   }, []);
 
+  // Translated labels for the perspective/orthographic toggle (F11).
+  const projectionLabels = useMemo<Record<ProjectionMode, string>>(
+    () => ({
+      perspective: t('view.projection.perspective'),
+      orthographic: t('view.projection.orthographic'),
+    }),
+    []
+  );
+
   // Per-body colour/visibility/selection for the viewport (F8). Depends on
   // metadata + selection only, so sketch edits don't rebuild body meshes.
   const bodyStyles = useMemo<ReadonlyMap<BodyId, BodyStyle>>(() => {
@@ -139,6 +149,7 @@ export function App(): React.JSX.Element {
         <Viewport
           zoomToFitLabel={t('viewport.zoomToFit')}
           viewLabels={viewLabels}
+          projectionLabels={projectionLabels}
           bodies={bodies}
           sketchMode={sketcher.viewportSketchMode}
           edgePick={edgePick}

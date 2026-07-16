@@ -21,6 +21,7 @@ import { BrowserTree } from './features/browser/BrowserTree';
 import { MeasureHud } from './features/measure/MeasureHud';
 import { useMeasure } from './features/measure/useMeasure';
 import { DocumentIO } from './features/document-io/DocumentIO';
+import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
 import { loadDocumentText } from './features/document-io/documentIO';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
@@ -57,6 +58,7 @@ export function App(): React.JSX.Element {
   const planeVisibility = useSessionStore((s) => s.planeVisibility);
   const profileHighlight = useSessionStore((s) => s.profileHighlight);
   const setSelectedBody = useSessionStore((s) => s.setSelectedBody);
+  const setHelpOpen = useSessionStore((s) => s.setHelpOpen);
 
   useGlobalShortcuts(sketcher.activeSketch !== null);
 
@@ -209,6 +211,16 @@ export function App(): React.JSX.Element {
               </button>
               <DocumentIO />
               <ExportStlButton />
+              <button
+                type="button"
+                className={sketcherStyles.button}
+                data-testid="shortcuts-open"
+                onClick={() => {
+                  setHelpOpen(true);
+                }}
+              >
+                {t('help.open')}
+              </button>
               <span className={sketcherStyles.button} data-testid="body-count">
                 {liveBodyIds.length}
               </span>
@@ -230,6 +242,7 @@ export function App(): React.JSX.Element {
             <OpDialogHost timeline={timeline} />
           </>
         )}
+        <KeyboardShortcuts />
       </main>
     </div>
   );

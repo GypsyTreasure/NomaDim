@@ -80,6 +80,7 @@ export const en = {
   'sketch.finish': 'Finish Sketch',
   'sketch.tool.select': 'Select',
   'sketch.tool.line': 'Line',
+  'sketch.tool.axis': 'Axis',
   'sketch.tool.rectangle-2p': 'Rectangle (2-Point)',
   'sketch.tool.rectangle-center': 'Rectangle (Center)',
   'sketch.tool.circle-center-diameter': 'Circle (Center-Diameter)',

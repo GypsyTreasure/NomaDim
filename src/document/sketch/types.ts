@@ -28,6 +28,14 @@ export interface LineEntity extends EntityBase {
   readonly type: 'line';
   readonly start: PointId;
   readonly end: PointId;
+  /**
+   * Centerline flag (F3): an axis line drawn with the Axis tool, offered as a
+   * revolve axis and rendered as a centerline. Axis lines are always
+   * construction (reference geometry), so they never join a profile loop.
+   * Optional/absent = a normal line (the overwhelming majority); treat absent
+   * as false everywhere.
+   */
+  readonly axis?: boolean;
 }
 
 /** Full circle: center pool point + explicit radius (mm). */

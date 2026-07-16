@@ -140,6 +140,26 @@ describe('macro tools expand to primitives on commit (F2)', () => {
   });
 });
 
+describe('axis tool (F3 centerline)', () => {
+  it('commits a line flagged axis + construction (never joins a profile)', () => {
+    const step = toolEnter(initialToolState('axis'), [50, 90, null], vec2(0, 0));
+    const { sketch } = commitStep(blank(), step);
+    const line = sketch.entities[0];
+    expect(line?.type).toBe('line');
+    if (line?.type === 'line') {
+      expect(line.axis).toBe(true);
+      // An axis is reference geometry — always construction.
+      expect(line.construction).toBe(true);
+    }
+  });
+
+  it('shares the line tool fields and chaining', () => {
+    expect(isChained(initialToolState('axis'))).toBe(false);
+    const step = toolEnter(initialToolState('axis'), [10, 0, null], vec2(0, 0));
+    expect(isChained(step.state)).toBe(true);
+  });
+});
+
 describe('GeometryPlan point merging', () => {
   it('reuses existing pool points by exact coordinates', () => {
     let sketch = blank();

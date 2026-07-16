@@ -65,7 +65,9 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 
 **Entering a sketch:** pick origin plane (XY/XZ/YZ) or a planar face of a body; camera animates normal-to-plane; adaptive grid shown. Face-based sketches use a plane snapshot + face fingerprint re-resolved at regen (ARCHITECTURE §8); if the face disappears after an upstream edit, the sketch op errors and the user re-picks the plane.
 
-**Entities:** Line, Rectangle (2-Point, Center), Circle (Center-Diameter), Arc (3-Point, Center-Point), Point, Polygon (n-sided). Construction-geometry toggle (X hotkey) per entity. Rectangle/Polygon decompose to line segments on commit (Fusion-like). Splines: out of scope v1.
+**Entities:** Line, Axis (centerline), Rectangle (2-Point, Center), Circle (Center-Diameter), Arc (3-Point, Center-Point), Point, Polygon (n-sided). Construction-geometry toggle (X hotkey) per entity. Rectangle/Polygon decompose to line segments on commit (Fusion-like). Splines: out of scope v1.
+
+**Axis tool (F3 revolve support):** draws a centerline — a line flagged as an axis, always construction, so it never joins a profile loop. Axis lines render as a teal dash-dot centerline and appear first in the Revolve dialog's axis list, named "Axis 1", "Axis 2", … (plain lines are still selectable, named "Line 1", "Line 2", …).
 
 **Creation with numeric input (Shapr3D-style):**
 - Starting a tool shows floating input fields next to cursor (Line: length + angle — **angle is absolute to the sketch +X axis**; chained segments additionally expose a relative-to-previous-segment angle field in the Tab cycle; Circle: diameter; Rectangle: width + height; Arc per variant; Polygon: sides + inscribed diameter).
@@ -89,7 +91,7 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 
 ### F3 — 3D operations (Fusion names)
 - **Extrude** (E): 1..n profiles → distance (one side / symmetric / two sides), operation **New Body / Join / Cut / Intersect**. Taper: out of scope.
-- **Revolve**: profiles + axis — a line **of the same sketch** (typically construction) or an origin axis; cross-sketch axis references are not allowed (dependency containment) + angle (default 360°), same operation options.
+- **Revolve**: profiles + axis — an **axis/centerline or any line of the same sketch** (drawn with the Axis tool, listed first and named "Axis N") or an always-available origin axis (X/Y/Z); cross-sketch axis references are not allowed (dependency containment) + angle (default 360°), same operation options.
 - Live ghost preview + direction arrows before confirm.
 
 ### F4 — Finishing

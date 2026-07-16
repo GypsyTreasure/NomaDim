@@ -6,6 +6,7 @@ import styles from './Sketcher.module.css';
 
 const TOOLS: readonly SketchToolId[] = [
   'line',
+  'axis',
   'rectangle-2p',
   'rectangle-center',
   'circle-center-diameter',
@@ -17,6 +18,7 @@ const TOOLS: readonly SketchToolId[] = [
 
 const TOOL_LABEL_KEYS = {
   line: 'sketch.tool.line',
+  axis: 'sketch.tool.axis',
   'rectangle-2p': 'sketch.tool.rectangle-2p',
   'rectangle-center': 'sketch.tool.rectangle-center',
   'circle-center-diameter': 'sketch.tool.circle-center-diameter',

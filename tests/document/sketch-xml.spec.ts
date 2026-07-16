@@ -92,6 +92,35 @@ describe('sketch XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(original);
   });
 
+  it('round-trips an axis (centerline) line, serializing axis="true"', () => {
+    const original: Sketch = {
+      id: 'skA' as SketchId,
+      name: 'WithAxis',
+      plane: { kind: 'origin', plane: 'XY' },
+      points: [
+        { id: pid('a'), x: 0, y: -20 },
+        { id: pid('b'), x: 0, y: 20 },
+      ],
+      entities: [
+        {
+          type: 'line',
+          id: eid('ax1'),
+          start: pid('a'),
+          end: pid('b'),
+          construction: true,
+          axis: true,
+        },
+      ],
+      constraints: [],
+      dimensions: [],
+    };
+    const xml = sketchToXml(original);
+    expect(xml).toContain('axis="true"');
+    const parsed = sketchFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(original);
+  });
+
   it('rejects malformed XML with ImportError', () => {
     for (const bad of [
       '<notASketch/>',

@@ -49,7 +49,7 @@ export class GeometryPlan {
     return id;
   }
 
-  addLine(start: PointSpec, end: PointSpec, construction: boolean): PointId {
+  addLine(start: PointSpec, end: PointSpec, construction: boolean, axis = false): PointId {
     const startId = this.resolvePoint(start);
     const endId = this.resolvePoint(end);
     this.entities.push({
@@ -58,6 +58,7 @@ export class GeometryPlan {
       start: startId,
       end: endId,
       construction,
+      axis,
     });
     return endId;
   }

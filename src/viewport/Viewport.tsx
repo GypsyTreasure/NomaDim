@@ -63,6 +63,11 @@ export interface MeasureProps {
   readonly onPick: (pick: MeasurePick) => void;
 }
 
+/** Active while choosing a body face to sketch on (F2 sketch-on-face). */
+export interface FacePickProps {
+  readonly onPick: (bodyId: BodyId, point: readonly [number, number, number]) => void;
+}
+
 /** Per-body render style from the browser tree (F8). */
 export interface BodyStyle {
   readonly color: string;
@@ -114,6 +119,8 @@ export interface ViewportProps {
   opHighlight?: OpHighlight | null;
   /** A body was clicked in the viewport (null = empty space) — tree sync (F8). */
   onSelectBody?: (bodyId: BodyId | null) => void;
+  /** Non-null while picking a body face to sketch on (F2). */
+  facePick?: FacePickProps | null;
 }
 
 const EDGE_COLOR = 0x0d1b2a; // navy
@@ -140,6 +147,7 @@ export function Viewport({
   sketchPreviews,
   opHighlight,
   onSelectBody,
+  facePick = null,
 }: ViewportProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -158,6 +166,7 @@ export function Viewport({
   const measureRef = useRef<MeasureProps | null>(null);
   const measureCandidatesRef = useRef<MeasureCandidate[]>([]);
   const onSelectBodyRef = useRef<((bodyId: BodyId | null) => void) | undefined>(undefined);
+  const facePickRef = useRef<FacePickProps | null>(null);
   useEffect(() => {
     sketchModeRef.current = sketchMode;
   }, [sketchMode]);
@@ -171,6 +180,9 @@ export function Viewport({
   useEffect(() => {
     onSelectBodyRef.current = onSelectBody;
   }, [onSelectBody]);
+  useEffect(() => {
+    facePickRef.current = facePick;
+  }, [facePick]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -365,6 +377,22 @@ export function Viewport({
       return name.startsWith('Body:') ? (name.slice('Body:'.length) as BodyId) : null;
     };
 
+    // Raycast a body mesh → its BodyId AND the world hit point (face picking).
+    const raycastBodyHit = (
+      event: PointerEvent
+    ): { bodyId: BodyId; point: [number, number, number] } | null => {
+      const group = bodyGroupRef.current;
+      if (!group) return null;
+      raycaster.setFromCamera(ndcOf(event), camera);
+      const hit = raycaster.intersectObjects(group.children, false)[0];
+      const name = hit?.object.name ?? '';
+      if (!hit || !name.startsWith('Body:')) return null;
+      return {
+        bodyId: name.slice('Body:'.length) as BodyId,
+        point: [hit.point.x, hit.point.y, hit.point.z],
+      };
+    };
+
     // Measure pick (F10): nearest vertex/midpoint snap, else body surface.
     const MEASURE_SNAP_PX = 14;
     const measurePick = (event: PointerEvent): MeasurePick | null => {
@@ -434,6 +462,12 @@ export function Viewport({
       if (!idleDown) return;
       idleDown = false;
       if (Math.hypot(event.clientX - downX, event.clientY - downY) > 4) return; // a drag
+      const face = facePickRef.current;
+      if (face) {
+        const hit = raycastBodyHit(event);
+        if (hit) face.onPick(hit.bodyId, hit.point);
+        return;
+      }
       onSelectBodyRef.current?.(raycastBody(event));
     };
     overlayCanvas.addEventListener('pointermove', onPointerMove);

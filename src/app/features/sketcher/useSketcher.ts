@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createId, vec2, DEG_TO_RAD, type EntityId, type Vec2 } from '../../../core';
-import { findSketch, type Sketch } from '../../../document';
+import { createId, vec2, DEG_TO_RAD, type BodyId, type EntityId, type Vec2 } from '../../../core';
+import { findSketch, type Sketch, type SketchPlaneRef } from '../../../document';
 import {
   detectProfiles,
   distanceToCurve,
@@ -16,7 +16,9 @@ import {
 } from '../../../sketch';
 import { originPlaneBasis, type SketchModeProps, type SketchPlaneBasis } from '../../../viewport';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
+import { resolveSketchFace } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
+import { t } from '../../i18n/t';
 import { GeometryPlan } from './geometryPlan';
 import {
   initialToolState,
@@ -74,11 +76,18 @@ export interface SketcherApi {
   readonly lastFinish: FinishSummary | null;
   /** True after "New Sketch" until a plane is chosen (F2). */
   readonly choosingPlane: boolean;
+  /** True while picking a body face to sketch on (F2). */
+  readonly pickingFace: boolean;
+  /** Hint shown when a face pick misses a planar face. */
+  readonly faceError: string | null;
   readonly setTool: (tool: SketchToolId | null) => void;
   readonly toggleConstruction: () => void;
   readonly newSketch: () => void;
   readonly choosePlane: (plane: SketchPlaneChoice) => void;
   readonly cancelPlaneChoice: () => void;
+  readonly beginFacePick: () => void;
+  readonly cancelFacePick: () => void;
+  readonly pickFace: (bodyId: BodyId, point: readonly [number, number, number]) => void;
   readonly finishSketch: () => void;
 }
 
@@ -115,6 +124,8 @@ export function useSketcher(): SketcherApi {
   const [ctrlHeld, setCtrlHeld] = useState(false);
   const [lastFinish, setLastFinish] = useState<FinishSummary | null>(null);
   const [choosingPlane, setChoosingPlane] = useState(false);
+  const [pickingFace, setPickingFace] = useState(false);
+  const [faceError, setFaceError] = useState<string | null>(null);
 
   const evaluated = useMemo(() => (sketch ? evaluateSketch(sketch) : []), [sketch]);
 
@@ -303,7 +314,7 @@ export function useSketcher(): SketcherApi {
     setChoosingPlane(false);
   }, []);
 
-  const choosePlane = useCallback((plane: SketchPlaneChoice) => {
+  const createSketch = useCallback((plane: SketchPlaneRef) => {
     const doc = useDocumentStore.getState().document;
     const existing = new Set<string>([
       ...doc.sketches.map((s) => s.id),
@@ -314,21 +325,57 @@ export function useSketcher(): SketcherApi {
     const opId = createId<'OpId'>(existing);
     const result = commandBus.dispatch({
       type: 'CreateSketch',
-      payload: {
-        sketchId,
-        opId,
-        name: `Sketch${String(doc.sketches.length + 1)}`,
-        plane: { kind: 'origin', plane },
-      },
+      payload: { sketchId, opId, name: `Sketch${String(doc.sketches.length + 1)}`, plane },
     });
     if (result.ok) {
       useSessionStore.getState().enterSketch(sketchId);
       setChoosingPlane(false);
+      setPickingFace(false);
+      setFaceError(null);
       setLastFinish(null);
       setToolState(initialToolState('line'));
       setInputState(initialInputState(fieldsForTool('line', false)));
     }
   }, []);
+
+  const choosePlane = useCallback(
+    (plane: SketchPlaneChoice) => {
+      createSketch({ kind: 'origin', plane });
+    },
+    [createSketch]
+  );
+
+  // Sketch-on-face: PlanePicker → face-pick mode → click a body face → the
+  // worker resolves the planar face → a face-plane sketch (F2). A non-planar
+  // pick shows a hint and stays in pick mode.
+  const beginFacePick = useCallback(() => {
+    setChoosingPlane(false);
+    setPickingFace(true);
+    setFaceError(null);
+  }, []);
+
+  const cancelFacePick = useCallback(() => {
+    setPickingFace(false);
+    setFaceError(null);
+  }, []);
+
+  const pickFace = useCallback(
+    (bodyId: BodyId, point: readonly [number, number, number]) => {
+      void resolveSketchFace(bodyId, point).then((face) => {
+        if (!face) {
+          setFaceError(t('sketch.facePickHint'));
+          return;
+        }
+        const fingerprint = `face:${face.fingerprint.centroid.join(',')}:${face.fingerprint.normal.join(',')}:${String(face.fingerprint.areaMm2)}`;
+        createSketch({
+          kind: 'face',
+          fingerprint,
+          planeSnapshot: { origin: face.origin, xAxis: face.xAxis, yAxis: face.yAxis },
+        });
+      });
+    },
+    [createSketch]
+  );
 
   const finishSketch = useCallback(() => {
     const current = liveSketch();
@@ -369,11 +416,16 @@ export function useSketcher(): SketcherApi {
     inputState,
     lastFinish,
     choosingPlane,
+    pickingFace,
+    faceError,
     setTool,
     toggleConstruction,
     newSketch,
     choosePlane,
     cancelPlaneChoice,
+    beginFacePick,
+    cancelFacePick,
+    pickFace,
     finishSketch,
   };
 }

@@ -9,6 +9,7 @@ import styles from './Sketcher.module.css';
  */
 export interface PlanePickerProps {
   readonly onChoose: (plane: SketchPlaneChoice) => void;
+  readonly onPickFace: () => void;
   readonly onCancel: () => void;
 }
 
@@ -18,7 +19,11 @@ const PLANES = [
   { id: 'YZ', labelKey: 'viewport.origin.yz' },
 ] as const;
 
-export function PlanePicker({ onChoose, onCancel }: PlanePickerProps): React.JSX.Element {
+export function PlanePicker({
+  onChoose,
+  onPickFace,
+  onCancel,
+}: PlanePickerProps): React.JSX.Element {
   return (
     <div className={styles.planePicker} data-testid="plane-picker">
       <span className={styles.planePickerPrompt}>{t('sketch.choosePlane')}</span>
@@ -36,6 +41,14 @@ export function PlanePicker({ onChoose, onCancel }: PlanePickerProps): React.JSX
             {t(plane.labelKey)}
           </button>
         ))}
+        <button
+          type="button"
+          className={styles.button}
+          data-testid="plane-choice-face"
+          onClick={onPickFace}
+        >
+          {t('sketch.pickFace')}
+        </button>
         <button type="button" className={styles.button} onClick={onCancel}>
           {t('dialog.cancel')}
         </button>

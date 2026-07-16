@@ -8,6 +8,7 @@ export {
   type BodyStyle,
   type SketchPreview,
   type OpHighlight,
+  type FacePickProps,
 } from './Viewport';
 export type { SketchOverlayState } from './sketchOverlay';
 export {

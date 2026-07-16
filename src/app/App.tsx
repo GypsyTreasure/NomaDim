@@ -117,6 +117,7 @@ export function App(): React.JSX.Element {
           sketchPreviews={sketchPreviews}
           opHighlight={profileHighlight}
           onSelectBody={setSelectedBody}
+          facePick={sketcher.pickingFace ? { onPick: sketcher.pickFace } : null}
         />
         {sketcher.activeSketch ? (
           <>
@@ -128,7 +129,23 @@ export function App(): React.JSX.Element {
           <>
             <BrowserTree />
             {sketcher.choosingPlane && (
-              <PlanePicker onChoose={sketcher.choosePlane} onCancel={sketcher.cancelPlaneChoice} />
+              <PlanePicker
+                onChoose={sketcher.choosePlane}
+                onPickFace={sketcher.beginFacePick}
+                onCancel={sketcher.cancelPlaneChoice}
+              />
+            )}
+            {sketcher.pickingFace && (
+              <div className={sketcherStyles.summary} data-testid="face-pick-hint">
+                {sketcher.faceError ?? t('sketch.facePickHint')}{' '}
+                <button
+                  type="button"
+                  className={sketcherStyles.button}
+                  onClick={sketcher.cancelFacePick}
+                >
+                  {t('dialog.cancel')}
+                </button>
+              </div>
             )}
             <div
               className={sketcherStyles.toolbar}

@@ -7,7 +7,12 @@ import {
   type Guide,
   type SnapCandidate,
 } from '../sketch';
-import { planeMapping, planeToScreen, pixelsPerMm, type OriginPlaneId } from './planeMapping';
+import {
+  mappingFromBasis,
+  planeToScreen,
+  pixelsPerMm,
+  type SketchPlaneBasis,
+} from './planeMapping';
 
 /**
  * Sketch canvas overlay rendering (ARCHITECTURE §3: viewport/ draws, the
@@ -34,7 +39,7 @@ export interface SketchOverlayState {
   readonly entities: readonly EvaluatedEntity[];
   /** Pool point positions (sketch-local mm). */
   readonly points: readonly Vec2[];
-  readonly plane: OriginPlaneId;
+  readonly basis: SketchPlaneBasis;
   readonly previewCurves: readonly Curve[];
   readonly snap: SnapCandidate | null;
   readonly guides: readonly Guide[];
@@ -62,7 +67,7 @@ export function drawSketchOverlay(
   state: SketchOverlayState
 ): void {
   ctx.clearRect(0, 0, width, height);
-  const mapping = planeMapping(state.plane);
+  const mapping = mappingFromBasis(state.basis);
   const pxPerMm = pixelsPerMm(mapping, camera, width, height);
   const chordTolMm = pxPerMm > 0 ? 0.5 / pxPerMm : 0.1;
   const toScreen = (p: Vec2): Vec2 => planeToScreen(mapping, p, camera, width, height);

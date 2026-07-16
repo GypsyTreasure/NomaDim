@@ -17,11 +17,13 @@ import {
   zoomToFit,
 } from './scene';
 import {
+  mappingFromBasis,
   planeMapping,
   planeToWorld,
   pixelsPerMm,
   worldToPlane,
   type OriginPlaneId,
+  type SketchPlaneBasis,
 } from './planeMapping';
 import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
@@ -33,7 +35,8 @@ const CAMERA_INITIAL_POSITION = new THREE.Vector3(280, -280, 220); // Z-up isome
 const SKETCH_CAMERA_LERP = 0.18;
 
 export interface SketchModeProps {
-  readonly plane: OriginPlaneId;
+  /** World-space basis of the sketch plane (origin plane or body face). */
+  readonly basis: SketchPlaneBasis;
   readonly overlay: SketchOverlayState;
   /** Cursor moved over the sketch plane (sketch-local mm + current px/mm scale, R11). */
   readonly onCursor: (point: Vec2, pxPerMm: number) => void;
@@ -256,8 +259,9 @@ export function Viewport({
     resizeObserver.observe(host);
 
     // --- Sketch-mode camera animation state -------------------------------
-    let animatedPlane: OriginPlaneId | null = null;
-    let cameraTarget: { position: THREE.Vector3; up: THREE.Vector3 } | null = null;
+    let animatedPlaneKey: string | null = null;
+    let cameraTarget: { position: THREE.Vector3; up: THREE.Vector3; look: THREE.Vector3 } | null =
+      null;
 
     const updateSketchCamera = (): void => {
       const mode = sketchModeRef.current;
@@ -266,19 +270,22 @@ export function Viewport({
       controls.enableRotate =
         mode === null && edgePickRef.current === null && measureRef.current === null;
       if (!mode) {
-        animatedPlane = null;
+        animatedPlaneKey = null;
         cameraTarget = null;
         return;
       }
-      if (mode.plane !== animatedPlane) {
-        animatedPlane = mode.plane;
-        const mapping = planeMapping(mode.plane);
+      if (mode.basis.key !== animatedPlaneKey) {
+        animatedPlaneKey = mode.basis.key;
+        const mapping = mappingFromBasis(mode.basis);
         const distance = Math.max(camera.position.length(), 120);
+        // Look at the plane origin (0,0,0 for origin planes, the face for a
+        // body-face sketch) from along the plane normal.
         cameraTarget = {
-          position: mapping.normal.clone().multiplyScalar(distance),
+          position: mapping.origin.clone().addScaledVector(mapping.normal, distance),
           up: mapping.vAxis.clone(),
+          look: mapping.origin.clone(),
         };
-        controls.target.set(0, 0, 0);
+        controls.target.copy(mapping.origin);
       }
       if (cameraTarget) {
         camera.position.lerp(cameraTarget.position, SKETCH_CAMERA_LERP);
@@ -288,7 +295,7 @@ export function Viewport({
           camera.up.copy(cameraTarget.up);
           cameraTarget = null;
         }
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(controls.target);
       }
     };
 
@@ -338,8 +345,8 @@ export function Viewport({
         -((event.clientY - rect.top) / rect.height) * 2 + 1
       );
       raycaster.setFromCamera(ndc, camera);
-      const mapping = planeMapping(mode.plane);
-      const plane = new THREE.Plane(mapping.normal, 0);
+      const mapping = mappingFromBasis(mode.basis);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(mapping.normal, mapping.origin);
       const hit = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
       if (!hit) return null;
       return {

@@ -14,7 +14,7 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
-import type { SketchModeProps } from '../../../viewport';
+import { originPlaneBasis, type SketchModeProps, type SketchPlaneBasis } from '../../../viewport';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { GeometryPlan } from './geometryPlan';
@@ -35,6 +35,26 @@ const ANGULAR_TOLERANCE_RAD = 2 * DEG_TO_RAD;
 const GRID_SPACING_MM = 1;
 
 const snapEngine = new SnapEngine();
+
+/** World-space basis of a sketch's plane (origin plane, or a body-face snapshot). */
+function sketchPlaneBasis(sketch: Sketch): SketchPlaneBasis {
+  if (sketch.plane.kind === 'origin') return originPlaneBasis(sketch.plane.plane);
+  const s = sketch.plane.planeSnapshot;
+  const [ax, ay, az] = s.xAxis;
+  const [bx, by, bz] = s.yAxis;
+  const normal: readonly [number, number, number] = [
+    ay * bz - az * by,
+    az * bx - ax * bz,
+    ax * by - ay * bx,
+  ];
+  return {
+    key: `face:${sketch.plane.fingerprint}`,
+    origin: s.origin,
+    uAxis: s.xAxis,
+    vAxis: s.yAxis,
+    normal,
+  };
+}
 
 export interface FinishSummary {
   readonly profiles: number;
@@ -322,23 +342,24 @@ export function useSketcher(): SketcherApi {
     useSessionStore.getState().exitSketch();
   }, [liveSketch]);
 
-  const plane = sketch?.plane.kind === 'origin' ? sketch.plane.plane : 'XY';
-  const viewportSketchMode: SketchModeProps | null = sketch
-    ? {
-        plane,
-        overlay: {
-          entities: evaluated,
-          points: sketch.points.map((p) => vec2(p.x, p.y)),
-          plane,
-          previewCurves: activeTool ? toolPreview(toolState, effectiveCursor, typedValues) : [],
-          snap: snapResult.snap,
-          guides: snapResult.guides,
-          selectedEntityIds: new Set(selectedEntityIds),
-        },
-        onCursor,
-        onClickPoint,
-      }
-    : null;
+  const basis = sketch ? sketchPlaneBasis(sketch) : null;
+  const viewportSketchMode: SketchModeProps | null =
+    sketch && basis
+      ? {
+          basis,
+          overlay: {
+            entities: evaluated,
+            points: sketch.points.map((p) => vec2(p.x, p.y)),
+            basis,
+            previewCurves: activeTool ? toolPreview(toolState, effectiveCursor, typedValues) : [],
+            snap: snapResult.snap,
+            guides: snapResult.guides,
+            selectedEntityIds: new Set(selectedEntityIds),
+          },
+          onCursor,
+          onClickPoint,
+        }
+      : null;
 
   return {
     activeSketch: sketch,

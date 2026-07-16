@@ -77,6 +77,8 @@ export const en = {
   'dialog.cancel': 'Cancel',
   'sketch.newSketch': 'New Sketch',
   'sketch.choosePlane': 'Choose a plane to sketch on',
+  'sketch.pickFace': 'Pick a face',
+  'sketch.facePickHint': 'Click a flat body face to sketch on (Esc to cancel)',
   'sketch.finish': 'Finish Sketch',
   'sketch.tool.select': 'Select',
   'sketch.tool.line': 'Line',

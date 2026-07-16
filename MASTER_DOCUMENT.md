@@ -110,7 +110,7 @@ Target body + tool bodies → **Join / Cut / Intersect**, "Keep Tools" option.
 Dialog: body scope (selected/visible/all), binary/ASCII, **linear deflection** (mm, default 0.1), **angular deflection** (deg, default 15), presets Low/Medium/High, triangle-count preview before download. OCCT `BRepMesh_IncrementalMesh` + STL writer. Units: mm.
 
 ### F7 — XML save/load
-Export **`.nomadim.xml`** / import via picker + drag-drop. Contains: schema version, units, sketches (**point pool + entities referencing point ids** — shared endpoints serialize as one point, preserving topology; face-based sketches include fingerprint + plane snapshot; empty `constraints`/`dimensions` arrays per C6), full timeline (ops, params, suppressed flags, rollback position), body metadata, optional camera. Load = validate → deserialize → full regen. Versioning & migrations per ARCHITECTURE §11.
+Export **`.nomadim.xml`** (Save button → download) / import via picker + drag-drop (Open button or drop a file on the viewport). Contains: schema version, units, sketches (**point pool + entities referencing point ids** — shared endpoints serialize as one point, preserving topology; axis/centerline flags; face-based sketches include fingerprint + plane snapshot; empty `constraints`/`dimensions` arrays per C6), full timeline (ops, params, suppressed flags, rollback position), body metadata, per-sketch visibility metadata, optional camera. Load = validate → replace document → full regen. Versioning per ARCHITECTURE §11 / ADR-0007: a **newer** schema minor is rejected (no silent forward data loss); older versions migrate. Implemented as the enclosing `<nomadim>` codec composing the per-element sketch/timeline codecs.
 
 ```xml
 <nomadim version="1.1" units="mm">

@@ -6,8 +6,28 @@ precisely, extrude/revolve, finish with fillets/chamfers, export STL — running
 entirely client-side (WASM + WebGL2, no backend, no account) as a static site
 on GitHub Pages.
 
-**Status:** M0 — project scaffold. See `MASTER_DOCUMENT.md` §8 for the full
-milestone roadmap.
+**Status:** Live at **https://gypsytreasure.github.io/NomaDim/**. Sketching
+(all entities + snapping + numeric input), Extrude/Revolve/Fillet/Chamfer/
+Combine, copy/paste, measure, the browser tree, sketching on base planes and
+body faces, and `.nomadim.xml` save/load are all in. See `MASTER_DOCUMENT.md`
+§8 for the milestone roadmap.
+
+## Using NomaDim
+
+- **Sketch:** _New Sketch_ → pick a base plane (XY/XZ/YZ) or _Pick a face_ and
+  click a flat body face. Draw with Line / Axis / Rectangle / Circle / Arc /
+  Point / Polygon — type exact values as you go (Tab between fields, Enter to
+  commit). The origin (0,0) and endpoints/mid/center/intersection snap, with
+  horizontal/vertical/parallel/perpendicular/tangent inference. _Finish Sketch_.
+- **Model:** _Extrude_ or _Revolve_ a profile (the selection highlights in 3D);
+  _Fillet_ / _Chamfer_ picked edges; _Combine_ bodies (Join/Cut/Intersect).
+- **Organize:** the left **browser tree** lists sketches and bodies — toggle
+  visibility, recolour, rename, delete. Bodies are named _Body 1_, _Body 2_, …
+- **Measure** distances/radii; **copy/paste** bodies (Ctrl+C / Ctrl+V);
+  **undo/redo** (Ctrl+Z / Ctrl+Y).
+- **Save / Open:** _Save_ downloads a `.nomadim.xml` file; _Open_ (or drag a
+  file onto the viewport) reloads it — the whole timeline replays. **Export
+  STL** for printing.
 
 ## Documentation
 
@@ -23,7 +43,7 @@ Structural and product decisions are logged in [`DECISIONS.md`](./DECISIONS.md).
 
 TypeScript (strict) · React 18 · Vite · Zustand · Three.js · OpenCascade.js
 (WASM, single-threaded, Web Worker) · fast-xml-parser · Vitest · Playwright ·
-dependency-cruiser · ESLint + Prettier + stylelint. Node 20 LTS, npm.
+dependency-cruiser · ESLint + Prettier + stylelint. Node 22 LTS, npm.
 
 ## Commands
 

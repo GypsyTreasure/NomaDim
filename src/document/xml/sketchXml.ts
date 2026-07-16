@@ -72,7 +72,8 @@ function entityToXml(entity: SketchEntity): XmlElement {
   }
 }
 
-export function sketchToXml(sketch: Sketch): string {
+/** The `<sketch>` element tree — reused by the document codec (M6). */
+export function sketchElement(sketch: Sketch): XmlElement {
   const children: XmlElement[] = [];
 
   if (sketch.plane.kind === 'face') {
@@ -109,7 +110,7 @@ export function sketchToXml(sketch: Sketch): string {
   children.push({ tag: 'constraints' });
   children.push({ tag: 'dimensions' });
 
-  return writeXml({
+  return {
     tag: 'sketch',
     attrs: {
       id: sketch.id,
@@ -117,7 +118,11 @@ export function sketchToXml(sketch: Sketch): string {
       name: sketch.name,
     },
     children,
-  });
+  };
+}
+
+export function sketchToXml(sketch: Sketch): string {
+  return writeXml(sketchElement(sketch));
 }
 
 // ---------------------------------------------------------------------------
@@ -230,24 +235,8 @@ function parseEntities(entitiesRaw: Raw): Result<SketchEntity[], ImportError> {
   return ok(entities);
 }
 
-export function sketchFromXml(xml: string): Result<Sketch, ImportError> {
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    parseAttributeValue: false,
-    parseTagValue: false,
-  });
-
-  let parsed: unknown;
-  try {
-    parsed = parser.parse(xml);
-  } catch (cause) {
-    return fail(cause instanceof Error ? cause.message : 'unparseable XML');
-  }
-
-  const root = asRaw(asRaw(parsed)?.sketch);
-  if (!root) return fail('missing <sketch> root');
-
+/** Parses one already-extracted `<sketch>` Raw object — reused by the document codec (M6). */
+export function sketchFromRaw(root: Raw): Result<Sketch, ImportError> {
   const id = strAttr(root, 'id');
   const name = strAttr(root, 'name');
   const planeAttr = strAttr(root, 'plane');
@@ -292,4 +281,22 @@ export function sketchFromXml(xml: string): Result<Sketch, ImportError> {
     return err(new ImportError('Invalid sketch XML', undefined, valid.error.message));
   }
   return ok(sketch);
+}
+
+export function sketchFromXml(xml: string): Result<Sketch, ImportError> {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    parseAttributeValue: false,
+    parseTagValue: false,
+  });
+  let parsed: unknown;
+  try {
+    parsed = parser.parse(xml);
+  } catch (cause) {
+    return fail(cause instanceof Error ? cause.message : 'unparseable XML');
+  }
+  const root = asRaw(asRaw(parsed)?.sketch);
+  if (!root) return fail('missing <sketch> root');
+  return sketchFromRaw(root);
 }

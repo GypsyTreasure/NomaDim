@@ -64,6 +64,17 @@ export class CommandBus {
     return this.history.redoStack.length > 0;
   }
 
+  /**
+   * Replaces the whole document (M6 Load): clears undo/redo history and
+   * commits the new state through the same notification path, so the
+   * RegenScheduler rebuilds from the first differing op (0 for a fresh load).
+   * Not a Command — loading is a document replacement, not an undoable edit.
+   */
+  loadDocument(state: DocumentState): void {
+    this.history = emptyHistory;
+    this.commit(state);
+  }
+
   /** Change notifications — M3's dirty tracking/RegenScheduler subscribes here. */
   onChange(listener: ChangeListener): () => void {
     this.listeners.add(listener);

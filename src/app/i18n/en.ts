@@ -76,6 +76,7 @@ export const en = {
   'dialog.ok': 'OK',
   'dialog.cancel': 'Cancel',
   'sketch.newSketch': 'New Sketch',
+  'sketch.choosePlane': 'Choose a plane to sketch on',
   'sketch.finish': 'Finish Sketch',
   'sketch.tool.select': 'Select',
   'sketch.tool.line': 'Line',

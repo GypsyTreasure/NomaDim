@@ -12,6 +12,7 @@ import { expect, test } from '@playwright/test';
 test('sketch → extrude → edit sketch entity regenerates the solid', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // A single Ø20 circle at the origin — one profile.

@@ -22,6 +22,7 @@ import {
   operationOptions,
   sketchOptions,
   targetOptions,
+  useProfileHighlight,
   useSketchProfiles,
 } from './dialogData';
 import { t } from '../../i18n/t';
@@ -62,6 +63,13 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
 
   const profiles = useSketchProfiles(sketchId);
+  const parsedAxis = parseAxis(axis);
+  useProfileHighlight(
+    sketchId,
+    selected,
+    profiles,
+    parsedAxis.kind === 'entity' ? parsedAxis.entityId : null
+  );
 
   // Axis (centerline) lines are offered first and named "Axis N"; plain lines
   // remain valid revolve axes but sit after the origin axes.

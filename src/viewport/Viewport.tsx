@@ -79,6 +79,18 @@ export interface SketchPreview {
   readonly polylines: readonly (readonly Vec2[])[];
 }
 
+/**
+ * Geometry a 3D-op dialog will act on, highlighted bright over everything
+ * (F3): the selected profile loops (closed) and an optional revolve axis, in
+ * sketch-local mm on the given plane. Drawn depth-test-free so it reads even
+ * through a solid body.
+ */
+export interface OpHighlight {
+  readonly plane: OriginPlaneId;
+  readonly loops: readonly (readonly Vec2[])[];
+  readonly axis: readonly Vec2[] | null;
+}
+
 export interface ViewportProps {
   /** Label text for the zoom-to-fit button (translated by the caller — §3 viewport-scope). */
   zoomToFitLabel: string;
@@ -95,6 +107,8 @@ export interface ViewportProps {
   planeVisibility?: Readonly<Record<OriginPlaneId, boolean>>;
   /** Committed sketches shown as 3D reference geometry (visible + not being edited). */
   sketchPreviews?: readonly SketchPreview[];
+  /** Geometry an open Extrude/Revolve dialog will act on, highlighted (F3). */
+  opHighlight?: OpHighlight | null;
   /** A body was clicked in the viewport (null = empty space) — tree sync (F8). */
   onSelectBody?: (bodyId: BodyId | null) => void;
 }
@@ -104,6 +118,7 @@ const EDGE_PICKED_COLOR = 0x1a6b5a; // teal
 const EDGE_HOVER_COLOR = 0x2fa78d; // bright teal
 const EDGE_PICK_THRESHOLD_MM = 2;
 const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (tokens brand teal)
+const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
 
 /**
  * Owns the Three.js scene, camera/controls, picking, and the 2D sketch
@@ -120,6 +135,7 @@ export function Viewport({
   bodyStyles,
   planeVisibility,
   sketchPreviews,
+  opHighlight,
   onSelectBody,
 }: ViewportProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -128,6 +144,7 @@ export function Viewport({
   const bodyGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
+  const highlightGroupRef = useRef<THREE.Group | null>(null);
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -194,6 +211,10 @@ export function Viewport({
     const sketchGroup = new THREE.Group();
     sketchGroup.name = 'SketchPreviews';
     sketchGroupRef.current = sketchGroup;
+    const highlightGroup = new THREE.Group();
+    highlightGroup.name = 'OpHighlight';
+    highlightGroup.renderOrder = 999; // drawn last, over bodies (depth-test off)
+    highlightGroupRef.current = highlightGroup;
     scene.add(
       grid,
       originPlanes.XY,
@@ -202,7 +223,8 @@ export function Viewport({
       lighting,
       bodyGroup,
       edgeGroup,
-      sketchGroup
+      sketchGroup,
+      highlightGroup
     );
 
     let width = 0;
@@ -445,6 +467,7 @@ export function Viewport({
       bodyGroupRef.current = null;
       edgeGroupRef.current = null;
       sketchGroupRef.current = null;
+      highlightGroupRef.current = null;
       originPlanesRef.current = null;
       cameraRef.current = null;
       controlsRef.current = null;
@@ -519,6 +542,39 @@ export function Viewport({
       }
     }
   }, [sketchPreviews]);
+
+  // Rebuild the op-selection highlight (F3): selected profile loops + axis,
+  // drawn amber over everything while an Extrude/Revolve dialog is open.
+  useEffect(() => {
+    const group = highlightGroupRef.current;
+    if (!group) return;
+    disposeSceneObjects(group);
+    group.clear();
+    if (!opHighlight) return;
+    const mapping = planeMapping(opHighlight.plane);
+    const addPolyline = (polyline: readonly Vec2[], close: boolean): void => {
+      if (polyline.length < 2) return;
+      const pts = close ? [...polyline, polyline[0]] : [...polyline];
+      const positions = new Float32Array(pts.length * 3);
+      pts.forEach((p, i) => {
+        const world = planeToWorld(mapping, p ?? { x: 0, y: 0 });
+        positions[i * 3] = world.x;
+        positions[i * 3 + 1] = world.y;
+        positions[i * 3 + 2] = world.z;
+      });
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.LineBasicMaterial({
+        color: OP_HIGHLIGHT_COLOR,
+        depthTest: false, // read even through a solid body
+      });
+      const line = new THREE.Line(geometry, material);
+      line.renderOrder = 999;
+      group.add(line);
+    };
+    for (const loop of opHighlight.loops) addPolyline(loop, true);
+    if (opHighlight.axis) addPolyline(opHighlight.axis, false);
+  }, [opHighlight]);
 
   return (
     <div className={styles.container}>

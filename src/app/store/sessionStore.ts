@@ -38,6 +38,8 @@ interface SessionStore {
   readonly planeVisibility: Readonly<Record<'XY' | 'XZ' | 'YZ', boolean>>;
   /** Geometry an open Extrude/Revolve dialog will act on, highlighted (F3). */
   readonly profileHighlight: ProfileHighlight | null;
+  /** Keyboard-shortcuts help overlay visibility (F11). */
+  readonly helpOpen: boolean;
 
   readonly enterSketch: (sketchId: SketchId) => void;
   readonly exitSketch: () => void;
@@ -52,6 +54,7 @@ interface SessionStore {
   readonly setSelectedBody: (bodyId: BodyId | null) => void;
   readonly togglePlane: (plane: 'XY' | 'XZ' | 'YZ') => void;
   readonly setProfileHighlight: (highlight: ProfileHighlight | null) => void;
+  readonly setHelpOpen: (open: boolean) => void;
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -65,6 +68,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   selectedBodyId: null,
   planeVisibility: { XY: true, XZ: true, YZ: true },
   profileHighlight: null,
+  helpOpen: false,
 
   enterSketch: (sketchId) => {
     set({ activeSketchId: sketchId, activeTool: 'line', selectedEntityIds: [] });
@@ -114,5 +118,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
   },
   setProfileHighlight: (highlight) => {
     set({ profileHighlight: highlight });
+  },
+  setHelpOpen: (open) => {
+    set({ helpOpen: open });
   },
 }));

@@ -9,6 +9,7 @@
   --color-teal: #1a6b5a;
   --color-teal-alpha-40: rgb(26 107 90 / 40%);
   --color-navy: #0d1b2a;
+  --color-navy-alpha-55: rgb(13 27 42 / 55%);
   --color-canvas: #faf7f0;
   --color-border: #c9c2b4;
   --color-error-red: #b3261e;
@@ -21,6 +22,7 @@
   --color-selection: var(--color-teal-alpha-40);
   --color-panel-bg: var(--color-navy);
   --color-panel-fg: var(--color-canvas);
+  --color-scrim: var(--color-navy-alpha-55);
   --color-canvas-bg: var(--color-canvas);
   --color-canvas-fg: var(--color-navy);
   --color-error: var(--color-error-red);

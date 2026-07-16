@@ -1,0 +1,107 @@
+.backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--grid-unit);
+  background-color: var(--color-scrim);
+  z-index: 10;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-unit);
+  width: 520px;
+  max-width: 100%;
+  max-height: 85%;
+  overflow-y: auto;
+  padding: calc(var(--grid-unit) * 1.5);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  font-size: 16px;
+}
+
+.close {
+  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-flat);
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.close:hover {
+  background-color: var(--color-primary);
+}
+
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: calc(var(--grid-unit) * 1.5);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--grid-unit) * 0.5);
+}
+
+.groupTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--grid-unit) * 0.5);
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--grid-unit);
+}
+
+.keys {
+  flex: 0 0 auto;
+  margin: 0;
+  min-width: 72px;
+}
+
+.kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background-color: var(--color-canvas-bg);
+  color: var(--color-canvas-fg);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.desc {
+  margin: 0;
+  font-size: 13px;
+}

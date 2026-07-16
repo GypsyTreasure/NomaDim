@@ -19,6 +19,7 @@ async function typeSegment(page: Page, length: string, angleDeg: string): Promis
 test('bracket drawn to exact dimensions via keyboard only', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // L-bracket outline, 60x40 with a 40x20 step, closing exactly at the origin.
@@ -40,6 +41,7 @@ test('plate with hole: hexagon plate + circular cutout = profile with inner loop
 }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // Polygon tool (G): 6 sides inscribed in Ø50, centered on the origin.

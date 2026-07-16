@@ -5,6 +5,7 @@ import { defaultBodyMeta } from '../document';
 import { evaluateSketch, sampleCurve } from '../sketch';
 import { Viewport, type BodyStyle, type EdgePickProps, type SketchPreview } from '../viewport';
 import { NumericHud } from './features/sketcher/NumericHud';
+import { PlanePicker } from './features/sketcher/PlanePicker';
 import { PropertiesPanel } from './features/sketcher/PropertiesPanel';
 import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
@@ -124,6 +125,9 @@ export function App(): React.JSX.Element {
         ) : (
           <>
             <BrowserTree />
+            {sketcher.choosingPlane && (
+              <PlanePicker onChoose={sketcher.choosePlane} onCancel={sketcher.cancelPlaneChoice} />
+            )}
             <div
               className={sketcherStyles.toolbar}
               style={{ left: 'auto', right: 'var(--grid-unit)' }}

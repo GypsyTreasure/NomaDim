@@ -42,6 +42,9 @@ export interface FinishSummary {
   readonly open: number;
 }
 
+/** Base plane a new sketch can be created on (F2 plane selection). */
+export type SketchPlaneChoice = 'XY' | 'XZ' | 'YZ';
+
 export interface SketcherApi {
   readonly activeSketch: Sketch | null;
   readonly viewportSketchMode: SketchModeProps | null;
@@ -49,9 +52,13 @@ export interface SketcherApi {
   readonly constructionMode: boolean;
   readonly inputState: NumericInputState;
   readonly lastFinish: FinishSummary | null;
+  /** True after "New Sketch" until a plane is chosen (F2). */
+  readonly choosingPlane: boolean;
   readonly setTool: (tool: SketchToolId | null) => void;
   readonly toggleConstruction: () => void;
   readonly newSketch: () => void;
+  readonly choosePlane: (plane: SketchPlaneChoice) => void;
+  readonly cancelPlaneChoice: () => void;
   readonly finishSketch: () => void;
 }
 
@@ -87,6 +94,7 @@ export function useSketcher(): SketcherApi {
   const [pxPerMm, setPxPerMm] = useState(1);
   const [ctrlHeld, setCtrlHeld] = useState(false);
   const [lastFinish, setLastFinish] = useState<FinishSummary | null>(null);
+  const [choosingPlane, setChoosingPlane] = useState(false);
 
   const evaluated = useMemo(() => (sketch ? evaluateSketch(sketch) : []), [sketch]);
 
@@ -265,7 +273,17 @@ export function useSketcher(): SketcherApi {
     setToolState((s) => setConstructionMode(s, !s.constructionMode));
   }, []);
 
+  // "New Sketch" first asks which plane to draw on (F2 plane selection);
+  // the sketch is created once a plane is chosen.
   const newSketch = useCallback(() => {
+    setChoosingPlane(true);
+  }, []);
+
+  const cancelPlaneChoice = useCallback(() => {
+    setChoosingPlane(false);
+  }, []);
+
+  const choosePlane = useCallback((plane: SketchPlaneChoice) => {
     const doc = useDocumentStore.getState().document;
     const existing = new Set<string>([
       ...doc.sketches.map((s) => s.id),
@@ -280,11 +298,12 @@ export function useSketcher(): SketcherApi {
         sketchId,
         opId,
         name: `Sketch${String(doc.sketches.length + 1)}`,
-        plane: { kind: 'origin', plane: 'XY' },
+        plane: { kind: 'origin', plane },
       },
     });
     if (result.ok) {
       useSessionStore.getState().enterSketch(sketchId);
+      setChoosingPlane(false);
       setLastFinish(null);
       setToolState(initialToolState('line'));
       setInputState(initialInputState(fieldsForTool('line', false)));
@@ -328,9 +347,12 @@ export function useSketcher(): SketcherApi {
     constructionMode: toolState.constructionMode,
     inputState,
     lastFinish,
+    choosingPlane,
     setTool,
     toggleConstruction,
     newSketch,
+    choosePlane,
+    cancelPlaneChoice,
     finishSketch,
   };
 }

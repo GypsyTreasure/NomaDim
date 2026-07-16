@@ -12,6 +12,7 @@ import { expect, test } from '@playwright/test';
 test('finishing: fillet dialog opens with edge picking once a body exists', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   await page.keyboard.press('c');

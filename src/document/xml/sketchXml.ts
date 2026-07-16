@@ -33,6 +33,9 @@ function entityToXml(entity: SketchEntity): XmlElement {
           start: entity.start,
           end: entity.end,
           construction: entity.construction,
+          // Omitted when false so non-axis lines (the vast majority) and
+          // existing fixtures stay byte-identical; absent parses as false.
+          ...(entity.axis ? { axis: true } : {}),
         },
       };
     case 'circle':
@@ -167,6 +170,7 @@ function parseEntities(entitiesRaw: Raw): Result<SketchEntity[], ImportError> {
       start: start as PointId,
       end: end as PointId,
       construction,
+      axis: boolAttr(raw, 'axis') ?? false,
     });
   }
   for (const raw of asRawArray(entitiesRaw.circle)) {

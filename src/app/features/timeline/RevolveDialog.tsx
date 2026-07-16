@@ -63,12 +63,27 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
 
   const profiles = useSketchProfiles(sketchId);
 
+  // Axis (centerline) lines are offered first and named "Axis N"; plain lines
+  // remain valid revolve axes but sit after the origin axes.
   const axisOptions = useMemo<readonly SelectOption<string>[]>(() => {
     const sketch = sketchId ? findSketch(document, sketchId) : null;
-    const lines = (sketch?.entities ?? [])
-      .filter((e) => e.type === 'line')
-      .map((e) => ({ value: `entity:${e.id}`, label: `Line ${e.id.slice(0, 6)}` }));
-    return [...ORIGIN_AXES, ...lines];
+    const axisOpts: SelectOption<string>[] = [];
+    const lineOpts: SelectOption<string>[] = [];
+    for (const e of sketch?.entities ?? []) {
+      if (e.type !== 'line') continue;
+      if (e.axis) {
+        axisOpts.push({
+          value: `entity:${e.id}`,
+          label: `${t('sketch.tool.axis')} ${String(axisOpts.length + 1)}`,
+        });
+      } else {
+        lineOpts.push({
+          value: `entity:${e.id}`,
+          label: `${t('sketch.tool.line')} ${String(lineOpts.length + 1)}`,
+        });
+      }
+    }
+    return [...axisOpts, ...ORIGIN_AXES, ...lineOpts];
   }, [document, sketchId]);
 
   const toggle = (id: ProfileId): void => {

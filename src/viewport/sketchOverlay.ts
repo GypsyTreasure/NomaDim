@@ -22,6 +22,7 @@ import { planeMapping, planeToScreen, pixelsPerMm, type OriginPlaneId } from './
 
 const COLOR_ENTITY = '#0d1b2a'; // navy
 const COLOR_CONSTRUCTION = '#8a94a0';
+const COLOR_AXIS = '#1a6b5a'; // teal — centerline (axis) lines
 const COLOR_SELECTED = '#1a6b5a'; // teal
 const COLOR_PREVIEW = '#1a6b5a';
 const COLOR_GUIDE = '#4fae63';
@@ -67,16 +68,19 @@ export function drawSketchOverlay(
   const toScreen = (p: Vec2): Vec2 => planeToScreen(mapping, p, camera, width, height);
   const project = (curve: Curve): Vec2[] => sampleCurve(curve, chordTolMm).map(toScreen);
 
-  // Committed entities.
+  // Committed entities. Axis (centerline) lines get a distinct dash-dot in
+  // teal so they read as reference axes, not drawn geometry.
   for (const entity of state.entities) {
     const selected = state.selectedEntityIds.has(entity.entityId);
     ctx.lineWidth = selected ? 3 : 1.5;
     ctx.strokeStyle = selected
       ? COLOR_SELECTED
-      : entity.construction
-        ? COLOR_CONSTRUCTION
-        : COLOR_ENTITY;
-    ctx.setLineDash(entity.construction ? [6, 4] : []);
+      : entity.axis
+        ? COLOR_AXIS
+        : entity.construction
+          ? COLOR_CONSTRUCTION
+          : COLOR_ENTITY;
+    ctx.setLineDash(entity.axis ? [10, 3, 2, 3] : entity.construction ? [6, 4] : []);
     const screen = project(entity.curve);
     if (entity.curve.kind === 'circle') screen.push(screen[0] ?? { x: 0, y: 0 });
     strokePolyline(ctx, screen);

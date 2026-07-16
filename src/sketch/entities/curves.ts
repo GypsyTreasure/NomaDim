@@ -40,6 +40,8 @@ export type Curve = SegmentCurve | CircleCurve | ArcCurve;
 export interface EvaluatedEntity {
   readonly entityId: EntityId;
   readonly construction: boolean;
+  /** True for centerline (axis) lines — rendered distinctly by the overlay. */
+  readonly axis: boolean;
   readonly curve: Curve;
 }
 
@@ -55,7 +57,12 @@ export function evaluateSketch(sketch: Sketch): readonly EvaluatedEntity[] {
   for (const entity of sketch.entities) {
     const curve = evaluateEntity(entity, points);
     if (curve) {
-      out.push({ entityId: entity.id, construction: entity.construction, curve });
+      out.push({
+        entityId: entity.id,
+        construction: entity.construction,
+        axis: entity.type === 'line' && entity.axis === true,
+        curve,
+      });
     }
   }
   return out;

@@ -12,6 +12,7 @@ import type { FieldDef } from './machine';
 
 export type SketchToolId =
   | 'line'
+  | 'axis'
   | 'rectangle-2p'
   | 'rectangle-center'
   | 'circle-center-diameter'
@@ -35,6 +36,7 @@ export const LINE_FIELDS_CHAINED: readonly FieldDef[] = [
 export function fieldsForTool(tool: SketchToolId, chained = false): readonly FieldDef[] {
   switch (tool) {
     case 'line':
+    case 'axis':
       return chained ? LINE_FIELDS_CHAINED : LINE_FIELDS;
     case 'rectangle-2p':
     case 'rectangle-center':

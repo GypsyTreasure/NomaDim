@@ -50,9 +50,13 @@ export interface ToolStep {
 
 const noCommit = (state: ToolState): ToolStep => ({ state, commit: null });
 
+function isLineLike(tool: SketchToolId): boolean {
+  return tool === 'line' || tool === 'axis';
+}
+
 /** Line fields switch to the chained variant once a segment direction exists. */
 export function isChained(state: ToolState): boolean {
-  return state.tool === 'line' && state.prevDirection !== null;
+  return isLineLike(state.tool) && state.prevDirection !== null;
 }
 
 export function toolEscape(state: ToolState): ToolState {
@@ -64,7 +68,10 @@ export function setConstructionMode(state: ToolState, construction: boolean): To
 }
 
 function commitLine(state: ToolState, anchor: PointSpec, end: Vec2): ToolStep {
-  const construction = state.constructionMode;
+  // An axis is always construction (reference geometry) and flagged as a
+  // centerline so revolve can pick it and the overlay draws it distinctly.
+  const axis = state.tool === 'axis';
+  const construction = axis || state.constructionMode;
   return {
     state: {
       ...state,
@@ -72,7 +79,7 @@ function commitLine(state: ToolState, anchor: PointSpec, end: Vec2): ToolStep {
       prevDirection: directionBetween(anchor.p, end),
     },
     commit: (plan) => {
-      plan.addLine(anchor, { p: end }, construction);
+      plan.addLine(anchor, { p: end }, construction, axis);
     },
   };
 }
@@ -134,7 +141,8 @@ function arcCommit(
 /** Primary click on the sketch plane. */
 export function toolClick(state: ToolState, spec: PointSpec): ToolStep {
   switch (state.tool) {
-    case 'line': {
+    case 'line':
+    case 'axis': {
       if (!state.chainAnchor) {
         return noCommit({ ...state, chainAnchor: spec });
       }
@@ -217,7 +225,8 @@ export function toolEnter(
   cursor: Vec2
 ): ToolStep {
   switch (state.tool) {
-    case 'line': {
+    case 'line':
+    case 'axis': {
       // Keyboard-only start: the first chain anchor defaults to the origin (ADR-0012).
       const anchor = state.chainAnchor ?? { p: vec2(0, 0) };
       const end = lineEndFrom(
@@ -315,7 +324,8 @@ export function toolPreview(
   values: readonly (number | null)[]
 ): Curve[] {
   switch (state.tool) {
-    case 'line': {
+    case 'line':
+    case 'axis': {
       if (!state.chainAnchor) return [];
       const end =
         lineEndFrom(

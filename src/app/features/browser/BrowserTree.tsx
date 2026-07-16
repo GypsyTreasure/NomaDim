@@ -1,5 +1,6 @@
 import type { BodyId } from '../../../core';
 import {
+  bodyDisplayName,
   dependentOps,
   getBodyMeta,
   getSketchMeta,
@@ -107,6 +108,7 @@ export function BrowserTree(): React.JSX.Element {
         {liveBodyIds.length === 0 && <div className={styles.row}>{t('tree.empty')}</div>}
         {liveBodyIds.map((bodyId) => {
           const meta = getBodyMeta(document, bodyId);
+          const displayName = bodyDisplayName(document, bodyId);
           const selected = bodyId === selectedBodyId;
           return (
             <div
@@ -143,10 +145,10 @@ export function BrowserTree(): React.JSX.Element {
                   useSessionStore.getState().setSelectedBody(bodyId);
                 }}
                 onDoubleClick={() => {
-                  renameBody(bodyId, meta.name);
+                  renameBody(bodyId, displayName);
                 }}
               >
-                {meta.name}
+                {displayName}
               </button>
               <button
                 type="button"

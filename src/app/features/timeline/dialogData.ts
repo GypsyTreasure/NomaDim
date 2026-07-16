@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import type { BodyId, EntityId, ProfileId, SketchId, Vec2 } from '../../../core';
 import {
+  bodyDisplayName,
   findSketch,
   opDefinition,
   pointMap,
@@ -142,10 +143,14 @@ export function operationOptions(): readonly SelectOption<BooleanOperation>[] {
   }));
 }
 
-/** Bodies usable as a boolean target — excludes the op's own produced body. */
+/** Bodies usable as a boolean target — excludes the op's own produced body.
+ * Labels are the readable "Body N" names (request #5), never raw ids. */
 export function targetOptions(
+  document: DocumentState,
   liveBodyIds: readonly BodyId[],
   excludeBodyId?: BodyId
 ): readonly SelectOption<BodyId>[] {
-  return liveBodyIds.filter((id) => id !== excludeBodyId).map((id) => ({ value: id, label: id }));
+  return liveBodyIds
+    .filter((id) => id !== excludeBodyId)
+    .map((id) => ({ value: id, label: bodyDisplayName(document, id) }));
 }

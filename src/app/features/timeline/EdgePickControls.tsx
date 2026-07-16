@@ -1,5 +1,6 @@
 import type { BodyId } from '../../../core';
 import { t } from '../../i18n/t';
+import { useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { SelectRow } from './dialogShared';
@@ -19,6 +20,7 @@ export function EdgePickControls({
   bodyId: BodyId | null;
   onBodyChange: (id: BodyId) => void;
 }): React.JSX.Element {
+  const document = useDocumentStore((s) => s.document);
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const edgePicking = useSessionStore((s) => s.edgePicking);
   const setEdgePicking = useSessionStore((s) => s.setEdgePicking);
@@ -29,7 +31,7 @@ export function EdgePickControls({
       <SelectRow<BodyId>
         labelKey="dialog.body"
         value={bodyId ?? ('' as BodyId)}
-        options={targetOptions(liveBodyIds)}
+        options={targetOptions(document, liveBodyIds)}
         onChange={onBodyChange}
       />
       <div className={styles.field}>

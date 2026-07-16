@@ -46,7 +46,7 @@ export function CopyBodyDialog({ editing, onClose }: OpDialogProps): React.JSX.E
       <SelectRow<BodyId>
         labelKey="dialog.source"
         value={sourceBodyId ?? ('' as BodyId)}
-        options={targetOptions(liveBodyIds, prior?.bodyId)}
+        options={targetOptions(document, liveBodyIds, prior?.bodyId)}
         onChange={setSourceBodyId}
       />
       <NumberRow labelKey="dialog.translateX" value={tx} onChange={setTx} />

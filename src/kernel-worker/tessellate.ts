@@ -23,7 +23,7 @@ type TriangulationOf = (
   meshPurpose: number
 ) => Handle_Poly_Triangulation;
 
-function triangulationOf(
+export function triangulationOf(
   oc: OpenCascadeInstance,
   face: TopoDS_Face,
   location: TopLoc_Location

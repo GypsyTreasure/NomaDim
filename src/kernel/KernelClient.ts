@@ -1,6 +1,7 @@
 import { createId, KernelError, InternalError, type BodyId } from '../core';
 import type {
   BodyEdges,
+  FacePlaneResult,
   KernelRequest,
   KernelResponse,
   MeshQuality,
@@ -95,6 +96,18 @@ export class KernelClient {
       return response.bodyEdges;
     }
     throw new InternalError('Unexpected response to "bodyEdges" request');
+  }
+
+  /** Resolves the planar face under a picked world point → a sketch plane (F2 on-face). */
+  async resolveFace(
+    bodyId: BodyId,
+    point: readonly [number, number, number]
+  ): Promise<FacePlaneResult | null> {
+    const response = await this.send({ id: this.nextId(), kind: 'resolveFace', bodyId, point });
+    if (response.kind === 'faceResolved') {
+      return response.face;
+    }
+    throw new InternalError('Unexpected response to "resolveFace" request');
   }
 
   async tessellate(bodyIds: BodyId[], quality: MeshQuality): Promise<MeshTransfer[]> {

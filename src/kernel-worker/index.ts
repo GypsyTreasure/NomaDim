@@ -14,6 +14,7 @@ import type {
 import { loadOcct } from './occt';
 import { tessellateShape } from './tessellate';
 import { tessellateBodyEdges } from './edgeFingerprint';
+import { resolveSketchFace } from './faceResolve';
 import { exportShapeToStl } from './stl';
 import { getLiveShapeCount } from './handleCounter';
 import { ShapeCache, diffDelta, emptyDelta, snapshotRefs } from './bodyState';
@@ -201,6 +202,13 @@ async function handleRequest(request: KernelRequest): Promise<void> {
         const bodyEdges = edgesFor(oc, request.bodyIds);
         const transfer = bodyEdges.flatMap((b) => b.edges.map((e) => e.polyline.buffer));
         respond({ id: request.id, kind: 'bodyEdges', bodyEdges }, transfer);
+        return;
+      }
+      case 'resolveFace': {
+        const oc = await ensureOcct();
+        const shape = bodies.get(request.bodyId);
+        const face = shape ? resolveSketchFace(oc, shape, request.point) : null;
+        respond({ id: request.id, kind: 'faceResolved', face });
         return;
       }
       case 'tessellate': {

@@ -93,6 +93,27 @@ export interface BodyEdges {
   readonly edges: readonly EdgeTessellation[];
 }
 
+/**
+ * Geometric fingerprint of a planar body face (the face analogue of
+ * EdgeFingerprint): area-weighted centroid + outward normal + area. Stored on
+ * a FacePlaneRef sketch for future regen-time re-resolution (parametric
+ * follow-up); the plane snapshot placement is used for now.
+ */
+export interface FaceFingerprint {
+  readonly centroid: readonly [number, number, number];
+  readonly normal: readonly [number, number, number];
+  readonly areaMm2: number;
+}
+
+/** A planar face resolved at a picked world point → a sketch plane (F2 on-face). */
+export interface FacePlaneResult {
+  readonly origin: readonly [number, number, number];
+  readonly xAxis: readonly [number, number, number];
+  readonly yAxis: readonly [number, number, number];
+  readonly normal: readonly [number, number, number];
+  readonly fingerprint: FaceFingerprint;
+}
+
 export type OpRunStatus = 'ok' | 'suppressed' | 'skipped' | 'error';
 
 export interface OpStatusReport {
@@ -106,6 +127,7 @@ export type KernelRequest =
   | { id: ReqId; kind: 'init' }
   | { id: ReqId; kind: 'regen'; generation: number; fromIndex: number; plan: RegenPlan }
   | { id: ReqId; kind: 'bodyEdges'; bodyIds: BodyId[] }
+  | { id: ReqId; kind: 'resolveFace'; bodyId: BodyId; point: readonly [number, number, number] }
   | { id: ReqId; kind: 'tessellate'; bodyIds: BodyId[]; quality: MeshQuality }
   | {
       id: ReqId;
@@ -138,4 +160,5 @@ export type KernelResponse =
       liveBodyIds: readonly BodyId[];
     }
   | { id: ReqId; kind: 'bodyEdges'; bodyEdges: BodyEdges[] }
+  | { id: ReqId; kind: 'faceResolved'; face: FacePlaneResult | null }
   | { id: ReqId; kind: 'error'; error: KernelErrorPayload };

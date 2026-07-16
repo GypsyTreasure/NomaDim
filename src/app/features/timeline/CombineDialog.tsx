@@ -64,7 +64,7 @@ export function CombineDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       <SelectRow<BodyId>
         labelKey="dialog.target"
         value={targetBodyId ?? ('' as BodyId)}
-        options={targetOptions(liveBodyIds)}
+        options={targetOptions(document, liveBodyIds)}
         onChange={setTargetBodyId}
       />
       <fieldset className={styles.fieldset}>

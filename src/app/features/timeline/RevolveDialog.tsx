@@ -162,7 +162,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         <SelectRow<BodyId>
           labelKey="dialog.target"
           value={targetBodyId ?? ('' as BodyId)}
-          options={targetOptions(liveBodyIds, prior?.bodyId)}
+          options={targetOptions(document, liveBodyIds, prior?.bodyId)}
           onChange={setTargetBodyId}
         />
       )}

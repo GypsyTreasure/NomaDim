@@ -131,33 +131,5 @@ export function disposeSceneObjects(root: THREE.Object3D): void {
   });
 }
 
-export interface FitTarget {
-  camera: THREE.PerspectiveCamera;
-  controlsTarget: THREE.Vector3;
-  box: THREE.Box3;
-}
-
-/** Frames `box` in view by repositioning the camera along its current view direction. */
-export function zoomToFit({ camera, controlsTarget, box }: FitTarget): void {
-  if (box.isEmpty()) return;
-
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const fitHeightDistance = maxDim / (2 * Math.tan((Math.PI * camera.fov) / 360));
-  const fitWidthDistance = fitHeightDistance / camera.aspect;
-  const distance = 1.2 * Math.max(fitHeightDistance, fitWidthDistance);
-
-  const direction = camera.position.clone().sub(controlsTarget).normalize();
-  if (direction.lengthSq() === 0) {
-    direction.set(1, 1, 1).normalize();
-  }
-
-  camera.position.copy(center).addScaledVector(direction, distance);
-  camera.near = Math.max(distance / 100, 0.01);
-  camera.far = distance * 100;
-  camera.updateProjectionMatrix();
-
-  controlsTarget.copy(center);
-}
+// Camera framing (zoom-to-fit) lives in `cameraRig.ts`, which owns projection
+// state and frames both perspective and orthographic cameras.

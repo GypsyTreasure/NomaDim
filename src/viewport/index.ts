@@ -10,4 +10,11 @@ export {
   type OpHighlight,
 } from './Viewport';
 export type { SketchOverlayState } from './sketchOverlay';
-export type { OriginPlaneId } from './planeMapping';
+export {
+  originPlaneBasis,
+  planeMapping,
+  mappingFromBasis,
+  type OriginPlaneId,
+  type SketchPlaneBasis,
+  type PlaneMapping,
+} from './planeMapping';

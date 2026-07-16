@@ -21,7 +21,8 @@
 .overlay {
   position: absolute;
   top: var(--grid-unit);
-  right: var(--grid-unit);
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: var(--grid-unit);
 }

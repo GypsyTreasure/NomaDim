@@ -177,7 +177,7 @@ Ctrl+C / Ctrl+V on a body appends a `CopyBody` op referencing the source body. S
 Pick 2 points (vertex / edge-midpoint / face point snaps) → HUD: distance + ΔX/ΔY/ΔZ. Single circular edge → radius/diameter. `Esc` exits.
 
 ### F11 — Viewport
-Perspective/ortho toggle, home + 6-face view buttons, orbit scheme setting (Fusion middle-drag vs RMB), zoom-to-fit. Shading: solid + visible edges. 
+Home + 6-face view buttons (Front/Back/Left/Right/Top/Bottom, world Z-up) that snap the camera along the axis with the correct up vector; zoom-to-fit. Anti-aliasing stays off to hold the 100-body ≥30 fps floor: both MSAA and full-screen FXAA multiply fragment cost enough to break the budget under software rasterization (the environment the fps guard runs in), so edge smoothing is deferred to a future GPU/body-count-gated quality toggle rather than shipped globally (ADR-0015, ADR-0027). Perspective/ortho toggle and the orbit-scheme setting (Fusion middle-drag vs RMB) are follow-ups. Shading: solid (lit) bodies; always-on edge display deferred (edges are tessellated on demand for picking/measure to protect the 100-body budget). 
 
 ## 6. Performance budget
 - Regen of 30-op document < 2 s (mid-range laptop).

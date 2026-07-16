@@ -3,7 +3,14 @@ import type { BodyId } from '../core';
 import { edgeFingerprintKey } from '../kernel';
 import { defaultBodyMeta } from '../document';
 import { evaluateSketch, sampleCurve } from '../sketch';
-import { Viewport, type BodyStyle, type EdgePickProps, type SketchPreview } from '../viewport';
+import {
+  Viewport,
+  VIEW_IDS,
+  type BodyStyle,
+  type EdgePickProps,
+  type SketchPreview,
+  type ViewId,
+} from '../viewport';
 import { NumericHud } from './features/sketcher/NumericHud';
 import { PlanePicker } from './features/sketcher/PlanePicker';
 import { PropertiesPanel } from './features/sketcher/PropertiesPanel';
@@ -91,6 +98,13 @@ export function App(): React.JSX.Element {
     return previews;
   }, [sketches, sketchMeta, activeSketchId]);
 
+  // Translated labels for the standard view buttons (F11).
+  const viewLabels = useMemo<Partial<Record<ViewId, string>>>(() => {
+    const labels: Partial<Record<ViewId, string>> = {};
+    for (const id of VIEW_IDS) labels[id] = t(`view.${id}`);
+    return labels;
+  }, []);
+
   // Per-body colour/visibility/selection for the viewport (F8). Depends on
   // metadata + selection only, so sketch edits don't rebuild body meshes.
   const bodyStyles = useMemo<ReadonlyMap<BodyId, BodyStyle>>(() => {
@@ -124,6 +138,7 @@ export function App(): React.JSX.Element {
       >
         <Viewport
           zoomToFitLabel={t('viewport.zoomToFit')}
+          viewLabels={viewLabels}
           bodies={bodies}
           sketchMode={sketcher.viewportSketchMode}
           edgePick={edgePick}

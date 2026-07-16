@@ -11,6 +11,7 @@ export {
   type FacePickProps,
 } from './Viewport';
 export type { SketchOverlayState } from './sketchOverlay';
+export { VIEW_IDS, viewOrientation, type ViewId, type ViewOrientation } from './viewOrientation';
 export {
   originPlaneBasis,
   planeMapping,

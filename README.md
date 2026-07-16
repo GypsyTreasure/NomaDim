@@ -9,8 +9,9 @@ on GitHub Pages.
 **Status:** Live at **https://gypsytreasure.github.io/NomaDim/**. Sketching
 (all entities + snapping + numeric input), Extrude/Revolve/Fillet/Chamfer/
 Combine, copy/paste, measure, the browser tree, sketching on base planes and
-body faces, and `.nomadim.xml` save/load are all in. See `MASTER_DOCUMENT.md`
-§8 for the milestone roadmap.
+body faces, `.nomadim.xml` save/load, and the standard-view / projection /
+shortcuts viewport polish are all in. See `MASTER_DOCUMENT.md` §8 for the
+milestone roadmap.
 
 ## Using NomaDim
 
@@ -28,6 +29,25 @@ body faces, and `.nomadim.xml` save/load are all in. See `MASTER_DOCUMENT.md`
 - **Save / Open:** _Save_ downloads a `.nomadim.xml` file; _Open_ (or drag a
   file onto the viewport) reloads it — the whole timeline replays. **Export
   STL** for printing.
+- **Navigate:** the top-centre view bar snaps to _Home_ (isometric) or the six
+  standard faces (Front/Back/Left/Right/Top/Bottom), toggles between
+  _Perspective_ and _Orthographic_ projection, and _Zoom to Fit_ frames the
+  model. Orbit by dragging; scroll to zoom.
+- **Shortcuts:** press `?` (or the _Shortcuts_ button) any time for the full
+  keyboard reference. First-timers get a short getting-started hint on the
+  empty canvas.
+
+### Keyboard shortcuts
+
+| Context      | Keys                    | Action                                            |
+| ------------ | ----------------------- | ------------------------------------------------- |
+| General      | `Ctrl+Z` / `Ctrl+Y`     | Undo / Redo                                       |
+| General      | `Ctrl+C` / `Ctrl+V`     | Copy / paste the selected body                    |
+| General      | `?`                     | Show / hide the shortcuts overlay                 |
+| Sketch tools | `L` `R` `C` `A` `P` `G` | Line / Rectangle / Circle / Arc / Point / Polygon |
+| Sketch tools | `X`                     | Toggle construction geometry                      |
+| Sketch input | `Tab` / `Enter` / `Esc` | Next field / confirm value / cancel step          |
+| Sketch input | `Delete`                | Delete selected entities                          |
 
 ## Documentation
 

@@ -11,6 +11,7 @@ import type { EvaluatedEntity } from '../entities/curves';
  */
 
 export type SnapKind =
+  | 'origin'
   | 'endpoint'
   | 'midpoint'
   | 'center'
@@ -86,6 +87,9 @@ export interface GuideProvider {
  * it carries the entity/point sourceRef that committed topology needs.
  */
 export const SNAP_PRIORITY: Record<SnapKind, number> = {
+  // The sketch origin (0,0) is the primary dimensioning datum — it outranks
+  // every other snap so you can always base geometry on it.
+  origin: 110,
   endpoint: 100,
   intersection: 90,
   midpoint: 85,

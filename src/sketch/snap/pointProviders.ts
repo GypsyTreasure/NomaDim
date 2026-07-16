@@ -165,6 +165,19 @@ export const onEntityProvider: SnapProvider = {
   },
 };
 
+/**
+ * The sketch origin (0,0) — the base datum every dimension can reference
+ * (F2 "base point"). Always available, independent of drawn geometry; a
+ * committed point landing here merges by coordinates like any other snap.
+ */
+export const originProvider: SnapProvider = {
+  name: 'origin',
+  provide(ctx) {
+    const o = vec2(0, 0);
+    return within(ctx, o) ? [make(o, 'origin', { type: 'free' })] : [];
+  },
+};
+
 export const gridProvider: SnapProvider = {
   name: 'grid',
   provide(ctx) {
@@ -177,6 +190,7 @@ export const gridProvider: SnapProvider = {
 
 /** Canonical provider order (highest-value kinds first; ties resolved by priority anyway). */
 export const DEFAULT_POINT_PROVIDERS: readonly SnapProvider[] = [
+  originProvider,
   endpointProvider,
   intersectionProvider,
   midpointProvider,

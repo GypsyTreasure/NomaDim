@@ -94,6 +94,20 @@ export function drawSketchOverlay(
     ctx.fillRect(s.x - 2.5, s.y - 2.5, 5, 5);
   }
 
+  // Sketch origin (0,0) — the base dimensioning datum, always marked.
+  const origin = toScreen({ x: 0, y: 0 });
+  ctx.strokeStyle = COLOR_AXIS;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(origin.x - 7, origin.y);
+  ctx.lineTo(origin.x + 7, origin.y);
+  ctx.moveTo(origin.x, origin.y - 7);
+  ctx.lineTo(origin.x, origin.y + 7);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(origin.x, origin.y, 3.5, 0, 2 * Math.PI);
+  ctx.stroke();
+
   // Inference guides — dashed, extended far beyond the viewport.
   ctx.strokeStyle = COLOR_GUIDE;
   ctx.lineWidth = 1;
@@ -128,7 +142,13 @@ export function drawSketchOverlay(
     ctx.lineWidth = 2;
     ctx.beginPath();
     const kind = state.snap.kind;
-    if (kind === 'endpoint') {
+    if (kind === 'origin') {
+      ctx.rect(s.x - 6, s.y - 6, 12, 12);
+      ctx.moveTo(s.x - 6, s.y);
+      ctx.lineTo(s.x + 6, s.y);
+      ctx.moveTo(s.x, s.y - 6);
+      ctx.lineTo(s.x, s.y + 6);
+    } else if (kind === 'endpoint') {
       ctx.rect(s.x - 5, s.y - 5, 10, 10);
     } else if (kind === 'intersection') {
       ctx.moveTo(s.x - 5, s.y - 5);

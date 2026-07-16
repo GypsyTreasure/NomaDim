@@ -69,6 +69,8 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 
 **Axis tool (F3 revolve support):** draws a centerline — a line flagged as an axis, always construction, so it never joins a profile loop. Axis lines render as a teal dash-dot centerline and appear first in the Revolve dialog's axis list, named "Axis 1", "Axis 2", … (plain lines are still selectable, named "Line 1", "Line 2", …).
 
+**Origin datum:** the sketch origin (0,0) is always snappable and outranks every other snap (a teal crosshair marks it), so geometry and dimensions can be based on it even in an empty sketch — the solver-free base point for dimensioning.
+
 **Creation with numeric input (Shapr3D-style):**
 - Starting a tool shows floating input fields next to cursor (Line: length + angle — **angle is absolute to the sketch +X axis**; chained segments additionally expose a relative-to-previous-segment angle field in the Tab cycle; Circle: diameter; Rectangle: width + height; Arc per variant; Polygon: sides + inscribed diameter).
 - Typing focuses first field, `Tab` cycles fields, `Enter` commits with typed values overriding cursor position, `Esc` cancels. Chained tools (Line) continue from last endpoint until `Esc`/double-click.

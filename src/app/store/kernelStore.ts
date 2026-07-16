@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { BodyId, OpId } from '../../core';
-import { KernelClient, type BodyEdges, type MeshTransfer, type OpStatusReport } from '../../kernel';
+import {
+  KernelClient,
+  type BodyEdges,
+  type FacePlaneResult,
+  type MeshTransfer,
+  type OpStatusReport,
+} from '../../kernel';
 import { RegenScheduler, type RegenOutcome } from '../../services';
 import { commandBus, useDocumentStore } from './documentStore';
 
@@ -115,4 +121,17 @@ export function startRegen(): void {
 /** The live kernel client (STL export, stats) — null until `startRegen()`. */
 export function getKernelClient(): KernelClient | null {
   return client;
+}
+
+/**
+ * Resolves the planar body face under a picked world point → a sketch plane
+ * (F2 sketch-on-face). Returns null if the kernel isn't up or the pick isn't
+ * on a planar face.
+ */
+export async function resolveSketchFace(
+  bodyId: BodyId,
+  point: readonly [number, number, number]
+): Promise<FacePlaneResult | null> {
+  if (!client) return null;
+  return client.resolveFace(bodyId, point);
 }

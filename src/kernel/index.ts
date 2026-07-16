@@ -23,6 +23,8 @@ export type {
   WorldAxis,
   BodyEdges,
   EdgeTessellation,
+  FacePlaneResult,
+  FaceFingerprint,
 } from './protocol';
 export type { EdgeFingerprint } from '../document';
 export { edgeFingerprintKey } from './edgeKey';

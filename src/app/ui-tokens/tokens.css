@@ -11,6 +11,11 @@
   --color-navy: #0d1b2a;
   --color-navy-alpha-55: rgb(13 27 42 / 55%);
   --color-canvas: #faf7f0;
+  /* Light-grey viewport backdrop ramp (irregular gradient) — kept high-key so
+     navy bodies + teal sketch lines stay clearly visible. */
+  --color-grey-100: #f3f5f7;
+  --color-grey-200: #e9ecef;
+  --color-grey-300: #dce0e5;
   --color-border: #c9c2b4;
   --color-error-red: #b3261e;
   --color-grey-muted: #8a8578;
@@ -24,6 +29,7 @@
   --color-panel-fg: var(--color-canvas);
   --color-scrim: var(--color-navy-alpha-55);
   --color-canvas-bg: var(--color-canvas);
+  --color-viewport-bg: var(--color-grey-200);
   --color-canvas-fg: var(--color-navy);
   --color-error: var(--color-error-red);
   /* Timeline op status (F1 chip colours) */

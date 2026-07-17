@@ -30,7 +30,6 @@ import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
-const BACKGROUND_COLOR = 0xfaf7f0; // var(--color-canvas-bg), Three.js needs a numeric literal here.
 /** Keyboard shortcut per standard view, shown as a tooltip (master rule, ADR-0032). */
 const VIEW_KEY_HINT: Record<ViewId, string> = {
   home: '0',
@@ -210,7 +209,8 @@ export function Viewport({
     if (!host || !overlayCanvas) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(BACKGROUND_COLOR);
+    // No solid scene background: the renderer clears to transparent so the
+    // container's irregular light-grey CSS gradient shows through (#1).
 
     // The rig owns projection: `camera` is reassigned (not a fresh const) when
     // it toggles perspective↔ortho so every closure below sees the live camera.
@@ -228,7 +228,8 @@ export function Viewport({
     // to single-digit fps. On a real GPU neither matters, but the guard can't
     // tell the two apart, so edge smoothing is deferred to a GPU/body-count-
     // gated quality toggle rather than shipped globally.
-    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+    renderer.setClearColor(0x000000, 0); // transparent → CSS gradient backdrop shows
     renderer.setPixelRatio(window.devicePixelRatio);
     host.appendChild(renderer.domElement);
     host.appendChild(overlayCanvas); // keep overlay above the WebGL canvas

@@ -94,7 +94,7 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 ### F3 — 3D operations (Fusion names)
 While an Extrude/Revolve dialog is open, the geometry it will act on is highlighted amber in the viewport — the selected profile loops (outer + holes) and, for Revolve, the chosen axis line — drawn over the solid so the selection is always visible. Fillet/Chamfer highlight hovered and picked edges.
 
-- **Extrude** (E): 1..n profiles → distance (one side / symmetric / two sides), operation **New Body / Join / Cut / Intersect**. Taper: out of scope.
+- **Extrude** (E): 1..n profiles → distance (one side / symmetric / two sides) or **Through All** (self-sizing, passes entirely through the target — the standard way to cut clean through a body), operation **New Body / Join / Cut / Intersect**. Taper: out of scope.
 - **Revolve**: profiles + axis — an **axis/centerline or any line of the same sketch** (drawn with the Axis tool, listed first and named "Axis N") or an always-available origin axis (X/Y/Z); cross-sketch axis references are not allowed (dependency containment) + angle (default 360°), same operation options.
 - Live ghost preview + direction arrows before confirm.
 

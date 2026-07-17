@@ -26,6 +26,7 @@ const DIRECTION_OPTIONS: readonly SelectOption<ExtrudeDirection>[] = [
   { value: 'one-side', label: t('dialog.direction.one-side') },
   { value: 'symmetric', label: t('dialog.direction.symmetric') },
   { value: 'two-sides', label: t('dialog.direction.two-sides') },
+  { value: 'all', label: t('dialog.direction.all') },
 ];
 
 /** Extrude create/edit dialog (F3): profiles + distance + direction + boolean op. */
@@ -59,11 +60,11 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   };
 
   const needsTarget = operation !== 'NewBody';
+  const throughAll = direction === 'all';
   const okDisabled =
     sketchId === null ||
     selected.size === 0 ||
-    !Number.isFinite(distanceMm) ||
-    distanceMm === 0 ||
+    (!throughAll && (!Number.isFinite(distanceMm) || distanceMm === 0)) ||
     (direction === 'two-sides' && !(distance2Mm > 0)) ||
     (needsTarget && targetBodyId === null);
 
@@ -102,7 +103,9 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         }}
       />
       <ProfileChecklist profiles={profiles} selected={selected} onToggle={toggle} />
-      <NumberRow labelKey="dialog.distance" value={distanceMm} onChange={setDistanceMm} />
+      {!throughAll && (
+        <NumberRow labelKey="dialog.distance" value={distanceMm} onChange={setDistanceMm} />
+      )}
       <SelectRow<ExtrudeDirection>
         labelKey="dialog.direction"
         value={direction}

@@ -188,6 +188,37 @@ describe('boolean operations (all four)', () => {
   it('Intersect keeps only the overlap (1000)', () => {
     checkVolume('Intersect', 1000);
   });
+
+  it('Cut Through All removes the full column regardless of distance (3000)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    let before = snapshotRefs(bodies);
+    executeExtrude(
+      ctxFor(bodies, [profA]),
+      extrude({ profileIds: [profA.id], distanceMm: 10, bodyId: bid('A') })
+    );
+    cache.record(0, diffDelta(before, bodies), okStatus);
+
+    // Through-all cut: distance is ignored, the tool spans far past A both ways.
+    before = snapshotRefs(bodies);
+    executeExtrude(
+      ctxFor(bodies, [profB]),
+      extrude({
+        profileIds: [profB.id],
+        direction: 'all',
+        distanceMm: 0,
+        operation: 'Cut',
+        targetBodyId: bid('A'),
+        bodyId: bid('B'),
+      })
+    );
+    cache.record(1, diffDelta(before, bodies), okStatus);
+
+    const a = bodies.get(bid('A'));
+    expect(a).toBeDefined();
+    if (a) expect(volumeOf(a)).toBeCloseTo(3000, 2); // 4000 − 10*10*10 column
+    cache.freeFrom(0);
+  });
 });
 
 describe('revolve executor', () => {

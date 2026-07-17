@@ -1,4 +1,5 @@
 import type { BRepAlgoAPI_Fuse, TopoDS_Shape } from 'opencascade.js';
+import { THROUGH_ALL_HALF_MM } from '../../core';
 import type { ExtrudeOp } from '../../document';
 import type { PlanProfile } from '../../kernel/protocol';
 import { buildProfileFace, planeNormal } from '../profileFace';
@@ -12,18 +13,33 @@ import { KernelExecError, type ExecCtx } from './types';
  *   one-side:  face → +n·d           (negative d flips)
  *   symmetric: face shifted −n·d/2, prism n·d
  *   two-sides: face shifted −n·d2, prism n·(d+d2)
+ *   all:       face shifted −HALF,  prism 2·HALF (through all, both sides)
  */
+
+function extrudeRange(op: ExtrudeOp): readonly [shift: number, length: number] {
+  switch (op.direction) {
+    case 'one-side':
+      return [0, op.distanceMm];
+    case 'symmetric':
+      return [-op.distanceMm / 2, op.distanceMm];
+    case 'two-sides':
+      return [-op.distance2Mm, op.distanceMm + op.distance2Mm];
+    case 'all':
+      // Symmetric about the sketch plane, far past any body — a Cut/Intersect
+      // then clips it to the target, giving a clean "through all".
+      return [-THROUGH_ALL_HALF_MM, 2 * THROUGH_ALL_HALF_MM];
+    default: {
+      const exhaustive: never = op.direction;
+      return exhaustive;
+    }
+  }
+}
 
 function prismForProfile(ctx: ExecCtx, op: ExtrudeOp, profile: PlanProfile): TopoDS_Shape {
   const { oc } = ctx;
   const n = planeNormal(profile.plane);
 
-  const [shift, length] =
-    op.direction === 'one-side'
-      ? [0, op.distanceMm]
-      : op.direction === 'symmetric'
-        ? [-op.distanceMm / 2, op.distanceMm]
-        : [-op.distance2Mm, op.distanceMm + op.distance2Mm];
+  const [shift, length] = extrudeRange(op);
 
   let face: TopoDS_Shape = buildProfileFace(ctx.oc, profile);
   if (shift !== 0) {

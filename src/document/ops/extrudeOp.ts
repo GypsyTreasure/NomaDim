@@ -15,7 +15,7 @@ import type { BooleanOperation, ExtrudeDirection, ExtrudeOp } from './types';
 /** Extrude (MASTER_DOCUMENT F3): profiles → prism, all four operations. */
 
 const OPERATIONS: readonly BooleanOperation[] = ['NewBody', 'Join', 'Cut', 'Intersect'];
-const DIRECTIONS: readonly ExtrudeDirection[] = ['one-side', 'symmetric', 'two-sides'];
+const DIRECTIONS: readonly ExtrudeDirection[] = ['one-side', 'symmetric', 'two-sides', 'all'];
 
 function isOperation(value: string): value is BooleanOperation {
   return (OPERATIONS as readonly string[]).includes(value);
@@ -47,7 +47,8 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
     if (op.profileIds.length === 0) {
       return err(new ValidationError(`Extrude "${op.id}" selects no profiles`));
     }
-    if (!(op.distanceMm !== 0) || !Number.isFinite(op.distanceMm)) {
+    // 'all' (Through All) is self-sizing, so its distance fields are ignored.
+    if (op.direction !== 'all' && (!(op.distanceMm !== 0) || !Number.isFinite(op.distanceMm))) {
       return err(new ValidationError(`Extrude "${op.id}" has zero distance`));
     }
     if (op.direction === 'two-sides' && !(op.distance2Mm > 0)) {

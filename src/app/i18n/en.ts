@@ -122,6 +122,7 @@ export const en = {
   'dialog.direction.one-side': 'One Side',
   'dialog.direction.symmetric': 'Symmetric',
   'dialog.direction.two-sides': 'Two Sides',
+  'dialog.direction.all': 'Through All',
   'dialog.operation': 'Operation',
   'dialog.operation.NewBody': 'New Body',
   'dialog.operation.Join': 'Join',

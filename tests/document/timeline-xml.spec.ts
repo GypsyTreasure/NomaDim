@@ -187,6 +187,25 @@ describe('timeline XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(data);
   });
 
+  it('round-trips a Through All cut extrude (#7)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({
+          direction: 'all',
+          distanceMm: 0,
+          operation: 'Cut',
+          targetBodyId: body('b0'),
+        }),
+      ],
+      rollbackIndex: 2,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
   it('serialization is deterministic (re-emitting the parse is byte-identical)', () => {
     const data: TimelineData = {
       ops: [sketchOp('so1', 's1'), extrudeOp()],

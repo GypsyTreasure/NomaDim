@@ -26,7 +26,7 @@ export interface SketchOp extends OpBase {
 
 export type BooleanOperation = 'NewBody' | 'Join' | 'Cut' | 'Intersect';
 
-export type ExtrudeDirection = 'one-side' | 'symmetric' | 'two-sides';
+export type ExtrudeDirection = 'one-side' | 'symmetric' | 'two-sides' | 'all';
 
 export interface ExtrudeOp extends OpBase {
   readonly type: 'Extrude';

@@ -186,7 +186,7 @@ Home + 6-face view buttons (Front/Back/Left/Right/Top/Bottom, world Z-up) that s
 - App shell interactive < 2 s; OCCT WASM lazy-loaded with progress bar.
 
 ## 7. Error handling policy
-Typed error taxonomy per ARCHITECTURE §12. Failed op → red chip + toast, last good state rendered. XML import validates fully before touching the document. Autosave XML to `localStorage` every 60 s + `beforeunload`, under a **per-tab session key** (`nomadim.autosave.<sessionId>`, sessionId minted at tab open) with timestamp; on startup the restore dialog lists all found autosaves newest-first and prunes entries older than 14 days. This prevents two open tabs from overwriting each other's recovery slot.
+Typed error taxonomy per ARCHITECTURE §12. Failed op → red chip + toast, last good state rendered. XML import validates fully before touching the document. **Autosave (ADR-0042):** the whole document is mirrored to `localStorage` (key `nomadim.document.v1`) on every change — debounced, plus an immediate flush on `visibilitychange`/`pagehide` so a backgrounded/killed mobile tab still saves — and restored automatically on the next load, so a refresh resumes the project rather than dropping to blank. Restore replays through the same load→regen path as File → Open; a parse failure (corrupt data / newer schema) or a blocked store (private mode) falls back to a fresh document instead of crashing. **Simplification vs the original design:** a single silent slot (auto-restore, no chooser dialog) rather than per-tab session keys + a newest-first restore dialog + 14-day pruning; consequently two tabs open on the same origin share one slot and the last writer wins. Multi-slot/multi-tab recovery and time-stamped history remain a follow-up.
 
 ## 8. Milestones
 

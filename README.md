@@ -28,7 +28,9 @@ milestone roadmap.
   **undo/redo** (Ctrl+Z / Ctrl+Y).
 - **Save / Open:** _Save_ downloads a `.nomadim.xml` file; _Open_ (or drag a
   file onto the viewport) reloads it — the whole timeline replays. **Export
-  STL** for printing.
+  STL** for printing. Your work is also **autosaved in the browser** — close
+  the tab or refresh (including on mobile) and the project comes back on its
+  own.
 - **Navigate:** the top-centre view bar snaps to _Home_ (isometric) or the six
   standard faces (Front/Back/Left/Right/Top/Bottom), toggles between
   _Perspective_ and _Orthographic_ projection, and _Zoom to Fit_ frames the

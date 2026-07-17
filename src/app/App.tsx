@@ -26,6 +26,7 @@ import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
 import { OnboardingHint } from './features/onboarding/OnboardingHint';
 import { useModelingShortcuts } from './features/shortcuts/useModelingShortcuts';
 import { loadDocumentText } from './features/document-io/documentIO';
+import { restorePersistedDocument, startAutosave } from './features/persistence/autosave';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -68,9 +69,13 @@ export function App(): React.JSX.Element {
     hasSketch: sketches.length > 0,
   });
 
-  // Boot the worker + RegenScheduler once, on first mount (§4).
+  // Restore the autosaved document, boot the worker + RegenScheduler, then keep
+  // autosaving — once, on first mount (§4). Restore runs BEFORE startRegen so
+  // the scheduler's initial regen rebuilds bodies from the restored timeline.
   useEffect(() => {
+    restorePersistedDocument();
     startRegen();
+    return startAutosave();
   }, []);
 
   const edgePick = useMemo<EdgePickProps | null>(() => {

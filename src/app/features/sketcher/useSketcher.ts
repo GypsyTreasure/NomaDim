@@ -14,7 +14,8 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
-import { originPlaneBasis, type SketchModeProps, type SketchPlaneBasis } from '../../../viewport';
+import { type SketchModeProps } from '../../../viewport';
+import { sketchPlaneBasis } from './planeBasis';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { resolveSketchFace } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
@@ -39,25 +40,6 @@ const GRID_SPACING_MM = 1;
 const snapEngine = new SnapEngine();
 
 /** World-space basis of a sketch's plane (origin plane, or a body-face snapshot). */
-function sketchPlaneBasis(sketch: Sketch): SketchPlaneBasis {
-  if (sketch.plane.kind === 'origin') return originPlaneBasis(sketch.plane.plane);
-  const s = sketch.plane.planeSnapshot;
-  const [ax, ay, az] = s.xAxis;
-  const [bx, by, bz] = s.yAxis;
-  const normal: readonly [number, number, number] = [
-    ay * bz - az * by,
-    az * bx - ax * bz,
-    ax * by - ay * bx,
-  ];
-  return {
-    key: `face:${sketch.plane.fingerprint}`,
-    origin: s.origin,
-    uAxis: s.xAxis,
-    vAxis: s.yAxis,
-    normal,
-  };
-}
-
 export interface FinishSummary {
   readonly profiles: number;
   readonly withHoles: number;

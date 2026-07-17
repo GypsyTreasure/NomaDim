@@ -3,12 +3,20 @@ import {
   err,
   ok,
   ImportError,
+  type DimensionId,
   type EntityId,
   type PointId,
   type Result,
   type SketchId,
 } from '../../core';
-import type { Sketch, SketchEntity, SketchPlaneRef, SketchPoint } from '../sketch/types';
+import type {
+  Sketch,
+  SketchDimension,
+  SketchDimensionKind,
+  SketchEntity,
+  SketchPlaneRef,
+  SketchPoint,
+} from '../sketch/types';
 import { validateSketch } from '../sketch/validate';
 import { writeXml, type XmlElement } from './xmlWriter';
 import { asRaw, asRawArray, boolAttr, numAttr, strAttr, type Raw } from './xmlRaw';
@@ -106,9 +114,16 @@ export function sketchElement(sketch: Sketch): XmlElement {
     tag: 'entities',
     children: [...sketch.entities].sort(byId).map(entityToXml),
   });
-  // Reserved v2 slots (C6) — serialized even while empty so files are forward-shaped.
+  // Reserved v2 solver slot (C6) — serialized even while empty so files are forward-shaped.
   children.push({ tag: 'constraints' });
-  children.push({ tag: 'dimensions' });
+  // Reference dimensions (associative, solver-free): populated in v1.
+  children.push({
+    tag: 'dimensions',
+    children: [...sketch.dimensions].sort(byId).map((d) => ({
+      tag: 'dimension',
+      attrs: { id: d.id, kind: d.kind, a: d.a, b: d.b, offset: d.offset },
+    })),
+  });
 
   return {
     tag: 'sketch',
@@ -235,6 +250,40 @@ function parseEntities(entitiesRaw: Raw): Result<SketchEntity[], ImportError> {
   return ok(entities);
 }
 
+const DIMENSION_KINDS: readonly SketchDimensionKind[] = [
+  'linear',
+  'horizontal',
+  'vertical',
+  'angle',
+  'radius',
+];
+
+function parseDimensions(dimsRaw: Raw): Result<SketchDimension[], ImportError> {
+  const dimensions: SketchDimension[] = [];
+  for (const raw of asRawArray(dimsRaw.dimension)) {
+    const id = strAttr(raw, 'id');
+    const kind = strAttr(raw, 'kind');
+    const a = strAttr(raw, 'a');
+    const b = strAttr(raw, 'b');
+    const offset = numAttr(raw, 'offset');
+    if (id === null || kind === null || a === null || b === null || offset === null) {
+      return fail('malformed <dimension>');
+    }
+    if (!DIMENSION_KINDS.includes(kind as SketchDimensionKind)) {
+      return fail(`unknown dimension kind "${kind}"`);
+    }
+    dimensions.push({
+      id: id as DimensionId,
+      kind: kind as SketchDimensionKind,
+      a: a as PointId,
+      b: b as PointId,
+      offset,
+    });
+  }
+  dimensions.sort(byId);
+  return ok(dimensions);
+}
+
 /** Parses one already-extracted `<sketch>` Raw object — reused by the document codec (M6). */
 export function sketchFromRaw(root: Raw): Result<Sketch, ImportError> {
   const id = strAttr(root, 'id');
@@ -266,6 +315,10 @@ export function sketchFromRaw(root: Raw): Result<Sketch, ImportError> {
   const entities = entitiesContainer ? parseEntities(entitiesContainer) : ok([]);
   if (!entities.ok) return entities;
 
+  const dimensionsContainer = asRaw(root.dimensions);
+  const dimensions = dimensionsContainer ? parseDimensions(dimensionsContainer) : ok([]);
+  if (!dimensions.ok) return dimensions;
+
   const sketch: Sketch = {
     id: id as SketchId,
     name,
@@ -273,7 +326,7 @@ export function sketchFromRaw(root: Raw): Result<Sketch, ImportError> {
     points,
     entities: entities.value,
     constraints: [],
-    dimensions: [],
+    dimensions: dimensions.value,
   };
 
   const valid = validateSketch(sketch);

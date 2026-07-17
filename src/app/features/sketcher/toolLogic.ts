@@ -244,8 +244,9 @@ export function toolClick(state: ToolState, spec: PointSpec): ToolStep {
       };
     }
     case 'change':
-      // Editing tool: clicks select/drag existing points (handled in the hook),
-      // never place geometry.
+    case 'dimension':
+      // Editing / annotation tools: clicks select existing points (handled in
+      // the hook), never place geometry.
       return noCommit(state);
     default: {
       const exhaustive: never = state.tool;
@@ -358,6 +359,7 @@ export function toolEnter(
       };
     }
     case 'change':
+    case 'dimension':
       return noCommit(state);
     default: {
       const exhaustive: never = state.tool;
@@ -451,6 +453,7 @@ export function toolPreview(
     }
     case 'point':
     case 'change':
+    case 'dimension':
       return [];
     default: {
       const exhaustive: never = state.tool;

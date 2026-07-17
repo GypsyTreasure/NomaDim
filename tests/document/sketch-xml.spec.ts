@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { EntityId, PointId, SketchId } from '../../src/core/ids';
+import type { DimensionId, EntityId, PointId, SketchId } from '../../src/core/ids';
 import type { Sketch } from '../../src/document';
 import { sketchFromXml, sketchToXml } from '../../src/document/xml/sketchXml';
 
@@ -119,6 +119,49 @@ describe('sketch XML round-trip', () => {
     const parsed = sketchFromXml(xml);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value).toEqual(original);
+  });
+
+  it('round-trips reference dimensions of every kind, serializing <dimension>', () => {
+    const did = (id: string): DimensionId => id as DimensionId;
+    const original: Sketch = {
+      id: 'skD' as SketchId,
+      name: 'WithDimensions',
+      plane: { kind: 'origin', plane: 'XY' },
+      points: [
+        { id: pid('c'), x: 0, y: 0 },
+        { id: pid('p'), x: 10, y: 5 },
+      ],
+      entities: [],
+      constraints: [],
+      dimensions: [
+        { id: did('d1'), kind: 'linear', a: pid('c'), b: pid('p'), offset: 8 },
+        { id: did('d2'), kind: 'horizontal', a: pid('c'), b: pid('p'), offset: -4 },
+        { id: did('d3'), kind: 'vertical', a: pid('c'), b: pid('p'), offset: 4 },
+        { id: did('d4'), kind: 'angle', a: pid('c'), b: pid('p'), offset: 6 },
+        { id: did('d5'), kind: 'radius', a: pid('c'), b: pid('p'), offset: 0 },
+      ],
+    };
+    const xml = sketchToXml(original);
+    expect(xml).toContain('<dimension id="d1" kind="linear" a="c" b="p" offset="8"/>');
+    const parsed = sketchFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(original);
+  });
+
+  it('rejects a dimension referencing a missing point (validation on import)', () => {
+    const xml = [
+      '<sketch id="s" plane="XY" name="n">',
+      '  <points><point id="p1" x="0" y="0"/></points>',
+      '  <entities/>',
+      '  <constraints/>',
+      '  <dimensions>',
+      '    <dimension id="d1" kind="linear" a="p1" b="pMissing" offset="5"/>',
+      '  </dimensions>',
+      '</sketch>',
+    ].join('\n');
+    const result = sketchFromXml(xml);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.detail).toContain('missing point');
   });
 
   it('rejects malformed XML with ImportError', () => {

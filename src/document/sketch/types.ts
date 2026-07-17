@@ -1,4 +1,4 @@
-import type { EntityId, PointId, SketchId } from '../../core';
+import type { DimensionId, EntityId, PointId, SketchId } from '../../core';
 
 /**
  * Sketch document model (MASTER_DOCUMENT F2/F7, ARCHITECTURE §8, §10).
@@ -94,6 +94,27 @@ export interface FacePlaneRef {
 
 export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef;
 
+/**
+ * Reference (associative) dimension between two pool points — solver-free
+ * (ADR-0002): the value is MEASURED from the current point positions and
+ * displayed, never driving the geometry. Occupies the constraint-ready C6
+ * `dimensions` slot; a v2 solver can later make these driving.
+ * - `linear`     straight distance |ab|
+ * - `horizontal` |Δx|      · `vertical` |Δy|
+ * - `angle`      inclination of a→b from +X, degrees
+ * - `radius`     distance |ab| shown as R (a = centre, b = on the circle)
+ */
+export type SketchDimensionKind = 'linear' | 'horizontal' | 'vertical' | 'angle' | 'radius';
+
+export interface SketchDimension {
+  readonly id: DimensionId;
+  readonly kind: SketchDimensionKind;
+  readonly a: PointId;
+  readonly b: PointId;
+  /** Perpendicular offset (mm) of the dimension line from the a→b span; sign = side. */
+  readonly offset: number;
+}
+
 export interface Sketch {
   readonly id: SketchId;
   readonly name: string;
@@ -103,6 +124,6 @@ export interface Sketch {
   readonly entities: readonly SketchEntity[];
   /** Reserved for the v2 solver (C6). Always empty in v1 — but always present. */
   readonly constraints: readonly never[];
-  /** Reserved for the v2 solver (C6). Always empty in v1 — but always present. */
-  readonly dimensions: readonly never[];
+  /** Reference dimensions (C6 slot). Associative + solver-free in v1. */
+  readonly dimensions: readonly SketchDimension[];
 }

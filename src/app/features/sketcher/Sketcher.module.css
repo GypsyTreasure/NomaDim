@@ -39,6 +39,18 @@
   background-color: var(--color-primary);
 }
 
+/* Dim-tool kind chooser — styled to match the toolbar buttons. */
+.select {
+  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-flat);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .planePicker {
   position: absolute;
   top: 50%;

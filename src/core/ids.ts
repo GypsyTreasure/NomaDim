@@ -13,6 +13,7 @@ export type SketchId = Brand<string, 'SketchId'>;
 export type EntityId = Brand<string, 'EntityId'>;
 export type PointId = Brand<string, 'PointId'>;
 export type ProfileId = Brand<string, 'ProfileId'>;
+export type DimensionId = Brand<string, 'DimensionId'>;
 
 const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const ID_LENGTH = 8;

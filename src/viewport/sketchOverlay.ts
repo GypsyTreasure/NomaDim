@@ -3,6 +3,7 @@ import type { Vec2 } from '../core';
 import {
   sampleCurve,
   type Curve,
+  type DimensionRender,
   type EvaluatedEntity,
   type Guide,
   type SnapCandidate,
@@ -33,6 +34,8 @@ const COLOR_PREVIEW = '#1a6b5a';
 const COLOR_GUIDE = '#4fae63';
 const COLOR_SNAP = '#e0554f';
 const COLOR_POINT = '#0d1b2a';
+const COLOR_DIMENSION = '#1a6b5a'; // teal — reference-dimension annotations
+const COLOR_DIMENSION_HALO = '#f4f5f6'; // light halo so labels read over geometry
 
 export interface SketchOverlayState {
   /** Pre-evaluated curves (app evaluates once per document change — never per frame). */
@@ -44,6 +47,8 @@ export interface SketchOverlayState {
   readonly snap: SnapCandidate | null;
   readonly guides: readonly Guide[];
   readonly selectedEntityIds: ReadonlySet<string>;
+  /** Reference dimensions (associative, solver-free) as plane-space geometry + label. */
+  readonly dimensions: readonly DimensionRender[];
 }
 
 function strokePolyline(ctx: CanvasRenderingContext2D, points: readonly Vec2[]): void {
@@ -112,6 +117,36 @@ export function drawSketchOverlay(
   ctx.beginPath();
   ctx.arc(origin.x, origin.y, 3.5, 0, 2 * Math.PI);
   ctx.stroke();
+
+  // Reference dimensions (associative, solver-free): extension/dimension lines
+  // plus a haloed measured-value label. Everything arrives plane-space and is
+  // projected through the live camera like the rest of the overlay.
+  ctx.strokeStyle = COLOR_DIMENSION;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '12px Barlow, system-ui, sans-serif';
+  for (const dim of state.dimensions) {
+    ctx.beginPath();
+    for (const [a, b] of dim.segments) {
+      const sa = toScreen(a);
+      const sb = toScreen(b);
+      ctx.moveTo(sa.x, sa.y);
+      ctx.lineTo(sb.x, sb.y);
+    }
+    ctx.stroke();
+    const anchor = toScreen(dim.labelAnchor);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = COLOR_DIMENSION_HALO;
+    ctx.strokeText(dim.label, anchor.x, anchor.y);
+    ctx.fillStyle = COLOR_DIMENSION;
+    ctx.fillText(dim.label, anchor.x, anchor.y);
+    ctx.strokeStyle = COLOR_DIMENSION;
+    ctx.lineWidth = 1;
+  }
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
 
   // Inference guides — dashed, extended far beyond the viewport.
   ctx.strokeStyle = COLOR_GUIDE;

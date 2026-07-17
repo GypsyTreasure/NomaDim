@@ -63,6 +63,8 @@ export interface SketcherApi {
   /** Hint shown when a face pick misses a planar face. */
   readonly faceError: string | null;
   readonly setTool: (tool: SketchToolId | null) => void;
+  /** Mouse-select a numeric field by index (F2). */
+  readonly focusField: (index: number) => void;
   readonly toggleConstruction: () => void;
   readonly newSketch: () => void;
   readonly choosePlane: (plane: SketchPlaneChoice) => void;
@@ -312,6 +314,10 @@ export function useSketcher(): SketcherApi {
   }, [sketch, toolState, effectiveCursor, applyStep, setTool]);
 
   // --- Public API ------------------------------------------------------------
+  const focusField = useCallback((index: number) => {
+    setInputState((s) => reduceInput(s, { type: 'focus', index }).state);
+  }, []);
+
   const toggleConstruction = useCallback(() => {
     setToolState((s) => setConstructionMode(s, !s.constructionMode));
   }, []);
@@ -434,6 +440,7 @@ export function useSketcher(): SketcherApi {
     pickingFace,
     faceError,
     setTool,
+    focusField,
     toggleConstruction,
     newSketch,
     choosePlane,

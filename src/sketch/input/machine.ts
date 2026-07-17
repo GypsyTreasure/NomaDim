@@ -31,6 +31,7 @@ export type NumericInputEvent =
   | { readonly type: 'tab' }
   | { readonly type: 'enter' }
   | { readonly type: 'escape' }
+  | { readonly type: 'focus'; readonly index: number }
   | { readonly type: 'setFields'; readonly fields: readonly FieldDef[] }
   | { readonly type: 'clearValues' };
 
@@ -107,6 +108,11 @@ export function reduceInput(
       if (state.fields.length === 0) return { state, effect: NONE };
       const next = state.activeIndex === null ? 0 : (state.activeIndex + 1) % state.fields.length;
       return { state: { ...state, activeIndex: next }, effect: NONE };
+    }
+    case 'focus': {
+      // Mouse-select a field (not only Tab). Out-of-range is a no-op.
+      if (event.index < 0 || event.index >= state.fields.length) return { state, effect: NONE };
+      return { state: { ...state, activeIndex: event.index }, effect: NONE };
     }
     case 'enter':
       return {

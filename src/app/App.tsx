@@ -162,7 +162,7 @@ export function App(): React.JSX.Element {
         {sketcher.activeSketch ? (
           <>
             <SketchToolbar sketcher={sketcher} />
-            <NumericHud input={sketcher.inputState} />
+            <NumericHud input={sketcher.inputState} onFocus={sketcher.focusField} />
             <PropertiesPanel sketch={sketcher.activeSketch} />
           </>
         ) : (

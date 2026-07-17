@@ -80,6 +80,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'Shift+A', desc: 'help.tool.arcCenter' },
       { keys: 'P', desc: 'help.tool.point' },
       { keys: 'G', desc: 'help.tool.polygon' },
+      { keys: 'D', desc: 'help.tool.dimension' },
       { keys: 'X', desc: 'help.construction' },
       { keys: 'Q', desc: 'help.snap' },
     ],

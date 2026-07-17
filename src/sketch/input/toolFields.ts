@@ -20,7 +20,8 @@ export type SketchToolId =
   | 'arc-center'
   | 'point'
   | 'polygon'
-  | 'change';
+  | 'change'
+  | 'dimension';
 
 const LENGTH = (id: string): FieldDef => ({ id, kind: 'length' });
 const ANGLE = (id: string): FieldDef => ({ id, kind: 'angle' });
@@ -48,7 +49,9 @@ export const LINE_FIELDS_CHAINED: readonly FieldDef[] = [
  * numeric-HUD fields at all.
  */
 export function fieldsForToolWithStart(tool: SketchToolId, chained = false): readonly FieldDef[] {
-  if (tool === 'change') return [];
+  // Change and Dimension operate on existing points (pick / drag), so neither
+  // exposes numeric-HUD or start-point fields.
+  if (tool === 'change' || tool === 'dimension') return [];
   return [...fieldsForTool(tool, chained), ...START_POINT_FIELDS];
 }
 
@@ -68,6 +71,7 @@ export function fieldsForTool(tool: SketchToolId, chained = false): readonly Fie
       return [LENGTH('radius'), ANGLE('angle')];
     case 'point':
     case 'change':
+    case 'dimension':
       return [];
     case 'polygon':
       return [COUNT('sides'), LENGTH('diameter')];

@@ -1,4 +1,6 @@
 import type { SketchToolId } from '../../../sketch';
+import type { SketchDimensionKind } from '../../../document';
+import type { TranslationKey } from '../../i18n/en';
 import { t } from '../../i18n/t';
 import { useSessionStore } from '../../store/sessionStore';
 import type { SketcherApi } from './useSketcher';
@@ -27,7 +29,24 @@ const TOOL_LABEL_KEYS = {
   point: 'sketch.tool.point',
   polygon: 'sketch.tool.polygon',
   change: 'sketch.tool.change',
+  dimension: 'sketch.tool.dimension',
 } as const;
+
+/** Dim-tool kinds (F2) with their i18n label keys, in menu order. */
+const DIMENSION_KINDS: readonly SketchDimensionKind[] = [
+  'linear',
+  'horizontal',
+  'vertical',
+  'angle',
+  'radius',
+];
+const DIMENSION_KIND_LABEL_KEYS: Record<SketchDimensionKind, TranslationKey> = {
+  linear: 'sketch.dimensionKind.linear',
+  horizontal: 'sketch.dimensionKind.horizontal',
+  vertical: 'sketch.dimensionKind.vertical',
+  angle: 'sketch.dimensionKind.angle',
+  radius: 'sketch.dimensionKind.radius',
+};
 
 /** Keyboard shortcut per tool, shown as a tooltip (master rule, ADR-0032). */
 const TOOL_SHORTCUT: Record<SketchToolId, string> = {
@@ -41,6 +60,7 @@ const TOOL_SHORTCUT: Record<SketchToolId, string> = {
   point: 'P',
   polygon: 'G',
   change: 'M',
+  dimension: 'D',
 };
 
 export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JSX.Element {
@@ -72,6 +92,33 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       >
         {t('sketch.tool.change')}
       </button>
+      <button
+        type="button"
+        className={buttonClass(sketcher.tool === 'dimension')}
+        title={TOOL_SHORTCUT.dimension}
+        onClick={() => {
+          sketcher.setTool('dimension');
+        }}
+      >
+        {t('sketch.tool.dimension')}
+      </button>
+      {sketcher.tool === 'dimension' && (
+        <select
+          className={styles.select}
+          value={sketcher.dimensionKind}
+          title={t('sketch.dimensionKind.label')}
+          aria-label={t('sketch.dimensionKind.label')}
+          onChange={(event) => {
+            sketcher.setDimensionKind(event.target.value as SketchDimensionKind);
+          }}
+        >
+          {DIMENSION_KINDS.map((kind) => (
+            <option key={kind} value={kind}>
+              {t(DIMENSION_KIND_LABEL_KEYS[kind])}
+            </option>
+          ))}
+        </select>
+      )}
       {TOOLS.map((tool) => (
         <button
           key={tool}

@@ -4,13 +4,20 @@ import {
   vec2,
   DEG_TO_RAD,
   type BodyId,
+  type DimensionId,
   type EntityId,
   type PointId,
   type Vec2,
 } from '../../../core';
-import { findSketch, type Sketch, type SketchPlaneRef } from '../../../document';
+import {
+  findSketch,
+  type Sketch,
+  type SketchDimensionKind,
+  type SketchPlaneRef,
+} from '../../../document';
 import {
   detectProfiles,
+  dimensionRender,
   distanceToCurve,
   evaluateSketch,
   fieldsForToolWithStart,
@@ -18,7 +25,9 @@ import {
   parseField,
   parsedValues,
   reduceInput,
+  DEFAULT_DIMENSION_OFFSET_MM,
   SnapEngine,
+  type DimensionRender,
   type NumericInputState,
   type SnapResult,
   type SketchToolId,
@@ -79,6 +88,11 @@ export interface SketcherApi {
   readonly viewportSketchMode: SketchModeProps | null;
   readonly tool: SketchToolId | null;
   readonly constructionMode: boolean;
+  /** Which reference-dimension kind the Dim tool will create (F2). */
+  readonly dimensionKind: SketchDimensionKind;
+  /** True once the Dim tool has its first point and is awaiting the second. */
+  readonly dimensionArmed: boolean;
+  readonly setDimensionKind: (kind: SketchDimensionKind) => void;
   readonly inputState: NumericInputState;
   readonly lastFinish: FinishSummary | null;
   /** True after "New Sketch" until a plane is chosen (F2). */
@@ -145,6 +159,19 @@ export function useSketcher(): SketcherApi {
     dragRef.current = drag;
   }, [drag]);
 
+  // Dim tool: the chosen dimension kind + the first picked point (awaiting the
+  // second). Both are read via refs inside the stable click callback.
+  const [dimensionKind, setDimensionKindState] = useState<SketchDimensionKind>('linear');
+  const dimensionKindRef = useRef(dimensionKind);
+  useEffect(() => {
+    dimensionKindRef.current = dimensionKind;
+  }, [dimensionKind]);
+  const [dimFirst, setDimFirst] = useState<PointId | null>(null);
+  const dimFirstRef = useRef(dimFirst);
+  useEffect(() => {
+    dimFirstRef.current = dimFirst;
+  }, [dimFirst]);
+
   // While dragging (Change tool), render the sketch with the grabbed point
   // moved to its live position; the command only fires on drop.
   const displaySketch = useMemo(() => {
@@ -161,6 +188,21 @@ export function useSketcher(): SketcherApi {
     () => (displaySketch ? evaluateSketch(displaySketch) : []),
     [displaySketch]
   );
+
+  // Reference-dimension geometry, measured live from the (possibly dragged)
+  // point positions so annotations track the geometry (associative, ADR-0002).
+  const dimensionRenders = useMemo<DimensionRender[]>(() => {
+    const src = displaySketch ?? sketch;
+    if (!src) return [];
+    const byId = new Map(src.points.map((pt) => [pt.id, pt]));
+    const out: DimensionRender[] = [];
+    for (const dim of src.dimensions) {
+      const a = byId.get(dim.a);
+      const b = byId.get(dim.b);
+      if (a && b) out.push(dimensionRender(dim, vec2(a.x, a.y), vec2(b.x, b.y)));
+    }
+    return out;
+  }, [displaySketch, sketch]);
 
   const snapResult: SnapResult = useMemo(() => {
     if (!sketch || !snapEnabled || ctrlHeld) return { snap: null, guides: [] };
@@ -228,6 +270,36 @@ export function useSketcher(): SketcherApi {
         useSessionStore.getState().setSelection(bestId ? [bestId] : []);
         return;
       }
+      if (tool === 'dimension') {
+        // Reference dimensions annotate two existing pool points: each click must
+        // land on a point (snap-assisted). First click arms; second commits.
+        const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        const picked = nearestPointId(current.points, snapResult.snap?.point ?? p, tolMm);
+        if (!picked) return;
+        const first = dimFirstRef.current;
+        if (!first) {
+          setDimFirst(picked);
+          return;
+        }
+        if (first === picked) return;
+        const existing = new Set<string>(current.dimensions.map((d) => d.id));
+        const dimensionId = createId<'DimensionId'>(existing);
+        commandBus.dispatch({
+          type: 'AddSketchDimension',
+          payload: {
+            sketchId: current.id,
+            dimension: {
+              id: dimensionId,
+              kind: dimensionKindRef.current,
+              a: first,
+              b: picked,
+              offset: DEFAULT_DIMENSION_OFFSET_MM,
+            },
+          },
+        });
+        setDimFirst(null);
+        return;
+      }
       const snap = snapResult.snap;
       const spec =
         snap?.sourceRef.type === 'point'
@@ -271,6 +343,7 @@ export function useSketcher(): SketcherApi {
 
   const setTool = useCallback((tool: SketchToolId | null) => {
     useSessionStore.getState().setActiveTool(tool);
+    setDimFirst(null); // leaving/entering a tool cancels a half-placed dimension
     if (tool) {
       setToolState((prev) => ({
         ...initialToolState(tool),
@@ -278,6 +351,10 @@ export function useSketcher(): SketcherApi {
       }));
       setInputState(initialInputState(fieldsForToolWithStart(tool, false)));
     }
+  }, []);
+
+  const setDimensionKind = useCallback((kind: SketchDimensionKind) => {
+    setDimensionKindState(kind);
   }, []);
 
   // --- Keyboard ------------------------------------------------------------
@@ -321,6 +398,7 @@ export function useSketcher(): SketcherApi {
         const cleared = toolEscape(toolState);
         setToolState(cleared);
         setInputState(initialInputState(fieldsForToolWithStart(cleared.tool, false)));
+        setDimFirst(null); // also cancel a half-placed dimension
         return;
       }
       if (/^[0-9.-]$/.test(event.key)) {
@@ -384,6 +462,7 @@ export function useSketcher(): SketcherApi {
         p: 'point',
         g: 'polygon',
         m: 'change',
+        d: 'dimension',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
       if (hotkey) {
@@ -498,6 +577,27 @@ export function useSketcher(): SketcherApi {
     finishRef.current = finishSketch;
   }, [finishSketch]);
 
+  // While the Dim tool is armed, add a live preview annotation from the first
+  // point to the cursor so the user sees the measurement before committing.
+  const overlayDimensions: DimensionRender[] = (() => {
+    if (activeTool !== 'dimension' || !dimFirst) return dimensionRenders;
+    const src = displaySketch ?? sketch;
+    const a = src?.points.find((pt) => pt.id === dimFirst);
+    if (!a) return dimensionRenders;
+    const preview = dimensionRender(
+      {
+        id: '' as DimensionId,
+        kind: dimensionKind,
+        a: dimFirst,
+        b: dimFirst,
+        offset: DEFAULT_DIMENSION_OFFSET_MM,
+      },
+      vec2(a.x, a.y),
+      effectiveCursor
+    );
+    return [...dimensionRenders, preview];
+  })();
+
   const basis = sketch ? sketchPlaneBasis(sketch) : null;
   // A typed start point arms the preview at those coordinates too (not just the commit).
   const typedStart = startPointOf(inputState);
@@ -516,6 +616,7 @@ export function useSketcher(): SketcherApi {
             snap: snapResult.snap,
             guides: snapResult.guides,
             selectedEntityIds: new Set(selectedEntityIds),
+            dimensions: overlayDimensions,
           },
           onCursor,
           onClickPoint,
@@ -530,6 +631,9 @@ export function useSketcher(): SketcherApi {
     viewportSketchMode,
     tool: activeTool,
     constructionMode: toolState.constructionMode,
+    dimensionKind,
+    dimensionArmed: dimFirst !== null,
+    setDimensionKind,
     inputState,
     lastFinish,
     choosingPlane,

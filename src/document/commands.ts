@@ -3,6 +3,7 @@ import {
   ok,
   ValidationError,
   type BodyId,
+  type DimensionId,
   type EntityId,
   type PointId,
   type Result,
@@ -14,7 +15,13 @@ import { getBodyMeta, upsertBodyMeta } from './bodies/access';
 import type { BodyMeta } from './bodies/types';
 import { getSketchMeta, upsertSketchMeta } from './sketch/meta';
 import { referencedPointIds } from './sketch/roles';
-import type { Sketch, SketchEntity, SketchPlaneRef, SketchPoint } from './sketch/types';
+import type {
+  Sketch,
+  SketchDimension,
+  SketchEntity,
+  SketchPlaneRef,
+  SketchPoint,
+} from './sketch/types';
 import { validateSketch } from './sketch/validate';
 import type { BodyMetaPatch, SketchMetaPatch, SketchPatch, Transaction } from './history';
 import type { OpId } from '../core';
@@ -62,6 +69,14 @@ export type Command =
   | {
       readonly type: 'DeleteSketchEntities';
       readonly payload: { sketchId: SketchId; entityIds: readonly EntityId[] };
+    }
+  | {
+      readonly type: 'AddSketchDimension';
+      readonly payload: { sketchId: SketchId; dimension: SketchDimension };
+    }
+  | {
+      readonly type: 'DeleteSketchDimensions';
+      readonly payload: { sketchId: SketchId; dimensionIds: readonly DimensionId[] };
     }
   | { readonly type: 'RenameSketch'; readonly payload: { sketchId: SketchId; name: string } }
   | { readonly type: 'SetBodyName'; readonly payload: { bodyId: BodyId; name: string } }
@@ -254,14 +269,44 @@ export function applyCommand(
       const before = found.value;
       const doomed = new Set<string>(command.payload.entityIds);
       const entities = before.entities.filter((e) => !doomed.has(e.id));
-      // Garbage-collect pool points no surviving entity references.
+      // Garbage-collect pool points no surviving entity OR dimension references.
       const referenced = new Set<string>(entities.flatMap((e) => [...referencedPointIds(e)]));
+      for (const d of before.dimensions) {
+        referenced.add(d.a);
+        referenced.add(d.b);
+      }
       const after: Sketch = {
         ...before,
         entities,
         points: before.points.filter((p) => referenced.has(p.id)),
       };
       return commitSketchEdit(state, 'Delete', before, after);
+    }
+    case 'AddSketchDimension': {
+      const found = requireSketch(state, command.payload.sketchId);
+      if (!found.ok) return found;
+      const before = found.value;
+      const { dimension } = command.payload;
+      const pointIds = new Set(before.points.map((p) => p.id));
+      if (!pointIds.has(dimension.a) || !pointIds.has(dimension.b)) {
+        return err(new ValidationError('Dimension references an unknown point'));
+      }
+      if (dimension.a === dimension.b) {
+        return err(new ValidationError('Dimension needs two distinct points'));
+      }
+      const after: Sketch = { ...before, dimensions: [...before.dimensions, dimension] };
+      return commitSketchEdit(state, 'Add Dimension', before, after);
+    }
+    case 'DeleteSketchDimensions': {
+      const found = requireSketch(state, command.payload.sketchId);
+      if (!found.ok) return found;
+      const before = found.value;
+      const doomed = new Set<string>(command.payload.dimensionIds);
+      const after: Sketch = {
+        ...before,
+        dimensions: before.dimensions.filter((d) => !doomed.has(d.id)),
+      };
+      return commitSketchEdit(state, 'Delete Dimension', before, after);
     }
     case 'RenameSketch': {
       const found = requireSketch(state, command.payload.sketchId);

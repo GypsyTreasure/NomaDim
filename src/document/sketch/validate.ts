@@ -96,5 +96,31 @@ export function validateSketch(sketch: Sketch): Result<void, ValidationError> {
     }
   }
 
+  const dimensionIds = new Set<string>();
+  for (const dim of sketch.dimensions) {
+    if (dimensionIds.has(dim.id)) {
+      return err(new ValidationError(`Duplicate dimension id "${dim.id}"`, 'dimensions'));
+    }
+    dimensionIds.add(dim.id);
+    if (dim.a === dim.b) {
+      return err(
+        new ValidationError(`Dimension "${dim.id}" references a single point twice`, 'dimensions')
+      );
+    }
+    for (const pointId of [dim.a, dim.b]) {
+      if (!pointsById.has(pointId)) {
+        return err(
+          new ValidationError(
+            `Dimension "${dim.id}" references missing point "${pointId}"`,
+            'dimensions'
+          )
+        );
+      }
+    }
+    if (!Number.isFinite(dim.offset)) {
+      return err(new ValidationError(`Dimension "${dim.id}" has non-finite offset`, 'dimensions'));
+    }
+  }
+
   return ok(undefined);
 }

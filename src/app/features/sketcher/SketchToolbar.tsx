@@ -28,6 +28,19 @@ const TOOL_LABEL_KEYS = {
   polygon: 'sketch.tool.polygon',
 } as const;
 
+/** Keyboard shortcut per tool, shown as a tooltip (master rule, ADR-0032). */
+const TOOL_SHORTCUT: Record<SketchToolId, string> = {
+  line: 'L',
+  axis: 'I',
+  'rectangle-2p': 'R',
+  'rectangle-center': 'Shift+R',
+  'circle-center-diameter': 'C',
+  'arc-3p': 'A',
+  'arc-center': 'Shift+A',
+  point: 'P',
+  polygon: 'G',
+};
+
 export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JSX.Element {
   const snapEnabled = useSessionStore((s) => s.snapEnabled);
   const setSnapEnabled = useSessionStore((s) => s.setSnapEnabled);
@@ -40,6 +53,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={buttonClass(sketcher.tool === null)}
+        title="S"
         onClick={() => {
           sketcher.setTool(null);
         }}
@@ -51,6 +65,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
           key={tool}
           type="button"
           className={buttonClass(sketcher.tool === tool)}
+          title={TOOL_SHORTCUT[tool]}
           onClick={() => {
             sketcher.setTool(tool);
           }}
@@ -69,13 +84,14 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={buttonClass(snapEnabled)}
+        title="Q"
         onClick={() => {
           setSnapEnabled(!snapEnabled);
         }}
       >
         {t('sketch.snap')}
       </button>
-      <button type="button" className={styles.button} onClick={sketcher.finishSketch}>
+      <button type="button" className={styles.button} title="F" onClick={sketcher.finishSketch}>
         {t('sketch.finish')}
       </button>
     </div>

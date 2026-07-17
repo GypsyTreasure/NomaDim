@@ -1,10 +1,20 @@
 import type { OpRunStatus } from '../../../kernel';
-import type { TimelineOp } from '../../../document';
+import type { OpType, TimelineOp } from '../../../document';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
 import { CREATABLE_OP_TYPES, OP_FEATURES } from './registry';
 import type { TimelineApi } from './useTimeline';
 import styles from './Timeline.module.css';
+
+/** Create-op keyboard shortcut, shown as a tooltip (master rule, ADR-0032). */
+const OP_SHORTCUT: Partial<Record<OpType, string>> = {
+  Extrude: 'E',
+  Revolve: 'V',
+  Fillet: 'F',
+  Chamfer: 'H',
+  Combine: 'B',
+  CopyBody: 'D',
+};
 
 /** Effective chip status (suppressed overrides the last run result). */
 function chipStatus(op: TimelineOp, reported: OpRunStatus | undefined): OpRunStatus {
@@ -90,6 +100,7 @@ export function TimelineBar({ timeline }: { timeline: TimelineApi }): React.JSX.
             key={type}
             type="button"
             className={styles.button}
+            title={OP_SHORTCUT[type]}
             disabled={!hasSketch}
             onClick={() => {
               timeline.openCreate(type);

@@ -18,12 +18,17 @@
   touch-action: none;
 }
 
+/* Sits on its own row below the app action toolbar so the two never overlap;
+   the full responsive layout pass is tracked separately. */
 .overlay {
   position: absolute;
-  top: var(--grid-unit);
+  top: calc(var(--grid-unit) * 6);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 90%;
   gap: var(--grid-unit);
 }
 

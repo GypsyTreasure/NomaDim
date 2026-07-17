@@ -189,8 +189,7 @@ export function App(): React.JSX.Element {
               </div>
             )}
             <div
-              className={sketcherStyles.toolbar}
-              style={{ left: 'auto', right: 'var(--grid-unit)' }}
+              className={`${sketcherStyles.toolbar ?? ''} ${sketcherStyles.toolbarActions ?? ''}`}
             >
               <button
                 type="button"

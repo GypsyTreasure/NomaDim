@@ -3,6 +3,7 @@
   top: var(--grid-unit);
   left: var(--grid-unit);
   width: 200px;
+  max-width: calc(100vw - 2 * var(--grid-unit));
   max-height: 70%;
   overflow-y: auto;
   padding: calc(var(--grid-unit) * 0.75);
@@ -10,6 +11,16 @@
   color: var(--color-panel-fg);
   border: var(--border-width) solid var(--color-border);
   font-size: 12px;
+}
+
+/* Phones: drop the tree below the top toolbar rows and cap its height so it
+   floats over the left of the canvas without covering the controls. */
+@media (max-width: 700px) {
+  .tree {
+    top: calc(var(--grid-unit) * 15);
+    width: min(200px, 62vw);
+    max-height: 40vh;
+  }
 }
 
 .section {

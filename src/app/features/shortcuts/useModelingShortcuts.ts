@@ -36,6 +36,9 @@ export function useModelingShortcuts(active: boolean, actions: ModelingShortcutA
         event.ctrlKey ||
         event.metaKey ||
         event.altKey ||
+        // Shift is reserved for other actions (e.g. Shift+N = New Project); none
+        // of these single-letter shortcuts use it.
+        event.shiftKey ||
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement
       ) {

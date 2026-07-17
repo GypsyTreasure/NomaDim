@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { documentToXml } from '../../../document';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
-import { loadDocumentText } from './documentIO';
+import { downloadDocument, loadDocumentText } from './documentIO';
 import styles from '../timeline/Timeline.module.css';
 
 /**
@@ -12,24 +11,12 @@ import styles from '../timeline/Timeline.module.css';
  * regen. A newer schema version is rejected (ADR-0007).
  */
 
-const FILE_NAME = 'model.nomadim.xml';
-
-function downloadText(text: string, fileName: string): void {
-  const blob = new Blob([text], { type: 'application/xml' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 export function DocumentIO(): React.JSX.Element {
   const doc = useDocumentStore((s) => s.document);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const save = (): void => {
-    downloadText(documentToXml(doc), FILE_NAME);
+    downloadDocument(doc);
   };
 
   // Ctrl+S / Ctrl+O shortcuts (master rule, ADR-0032). Rebinds `save` each

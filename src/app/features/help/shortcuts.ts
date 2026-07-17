@@ -25,6 +25,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     title: 'help.group.general',
     items: [
       { keys: 'N', desc: 'help.newSketch' },
+      { keys: 'Shift+N', desc: 'help.newProject' },
       { keys: 'M', desc: 'help.measure' },
       { keys: 'Ctrl+Z', desc: 'help.undo' },
       { keys: 'Ctrl+Y', desc: 'help.redo' },

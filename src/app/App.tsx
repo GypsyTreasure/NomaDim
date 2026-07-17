@@ -27,6 +27,7 @@ import { OnboardingHint } from './features/onboarding/OnboardingHint';
 import { useModelingShortcuts } from './features/shortcuts/useModelingShortcuts';
 import { loadDocumentText } from './features/document-io/documentIO';
 import { restorePersistedDocument, startAutosave } from './features/persistence/autosave';
+import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -216,6 +217,7 @@ export function App(): React.JSX.Element {
               >
                 {t('measure.toggle')}
               </button>
+              <NewProjectButton />
               <DocumentIO />
               <ExportStlButton />
               <button

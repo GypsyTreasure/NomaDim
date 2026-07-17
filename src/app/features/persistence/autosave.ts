@@ -41,6 +41,15 @@ export function restorePersistedDocument(): void {
   commandBus.loadDocument(result.value);
 }
 
+/** Erase the autosaved document (New Project). The next load starts blank. */
+export function clearPersistedDocument(): void {
+  try {
+    safeStorage()?.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage blocked — nothing to clear.
+  }
+}
+
 function persist(doc: DocumentState): void {
   const storage = safeStorage();
   if (!storage) return;

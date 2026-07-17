@@ -30,7 +30,8 @@ milestone roadmap.
   file onto the viewport) reloads it — the whole timeline replays. **Export
   STL** for printing. Your work is also **autosaved in the browser** — close
   the tab or refresh (including on mobile) and the project comes back on its
-  own.
+  own. **New Project** (Shift+N) clears everything to start fresh, offering to
+  export the current model first.
 - **Navigate:** the top-centre view bar snaps to _Home_ (isometric) or the six
   standard faces (Front/Back/Left/Right/Top/Bottom), toggles between
   _Perspective_ and _Orthographic_ projection, and _Zoom to Fit_ frames the

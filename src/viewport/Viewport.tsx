@@ -51,6 +51,12 @@ export interface SketchModeProps {
   readonly onCursor: (point: Vec2, pxPerMm: number) => void;
   /** Primary click on the sketch plane. */
   readonly onClickPoint: (point: Vec2, pxPerMm: number) => void;
+  /** Change tool (F2): grab the nearest point for dragging; true if one was grabbed. */
+  readonly onPointGrab?: (point: Vec2, pxPerMm: number) => boolean;
+  /** A grabbed point is being dragged to `point`. */
+  readonly onPointDrag?: (point: Vec2) => void;
+  /** The grabbed point was released (commit the move). */
+  readonly onPointDrop?: () => void;
 }
 
 /** Active while a Fillet/Chamfer dialog is picking edges (F4). */
@@ -504,6 +510,7 @@ export function Viewport({
     let downX = 0;
     let downY = 0;
     let idleDown = false;
+    let sketchDragging = false;
 
     const onPointerMove = (event: PointerEvent): void => {
       if (edgePickRef.current) {
@@ -511,7 +518,12 @@ export function Viewport({
         return;
       }
       const hit = pointerToPlane(event);
-      if (hit) sketchModeRef.current?.onCursor(hit.point, hit.pxPerMm);
+      if (!hit) return;
+      if (sketchDragging) {
+        sketchModeRef.current?.onPointDrag?.(hit.point);
+        return;
+      }
+      sketchModeRef.current?.onCursor(hit.point, hit.pxPerMm);
     };
     const onPointerDown = (event: PointerEvent): void => {
       if (event.button !== 0) return;
@@ -528,9 +540,17 @@ export function Viewport({
         if (measured) meas.onPick(measured);
         return;
       }
-      if (sketchModeRef.current) {
+      const mode = sketchModeRef.current;
+      if (mode) {
         const hit = pointerToPlane(event);
-        if (hit) sketchModeRef.current.onClickPoint(hit.point, hit.pxPerMm);
+        if (!hit) return;
+        // Change tool: grab a nearby point to drag; otherwise a normal click.
+        if (mode.onPointGrab?.(hit.point, hit.pxPerMm)) {
+          sketchDragging = true;
+          overlayCanvas.setPointerCapture(event.pointerId);
+          return;
+        }
+        mode.onClickPoint(hit.point, hit.pxPerMm);
         return;
       }
       // Idle: arm a possible body-select, resolved on pointerup if not dragged.
@@ -539,6 +559,14 @@ export function Viewport({
       idleDown = true;
     };
     const onPointerUp = (event: PointerEvent): void => {
+      if (sketchDragging) {
+        sketchDragging = false;
+        if (overlayCanvas.hasPointerCapture(event.pointerId)) {
+          overlayCanvas.releasePointerCapture(event.pointerId);
+        }
+        sketchModeRef.current?.onPointDrop?.();
+        return;
+      }
       if (!idleDown) return;
       idleDown = false;
       if (Math.hypot(event.clientX - downX, event.clientY - downY) > 4) return; // a drag

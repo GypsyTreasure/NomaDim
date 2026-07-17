@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createId, vec2, DEG_TO_RAD, type BodyId, type EntityId, type Vec2 } from '../../../core';
+import {
+  createId,
+  vec2,
+  DEG_TO_RAD,
+  type BodyId,
+  type EntityId,
+  type PointId,
+  type Vec2,
+} from '../../../core';
 import { findSketch, type Sketch, type SketchPlaneRef } from '../../../document';
 import {
   detectProfiles,
@@ -30,6 +38,7 @@ import {
   toolEnter,
   toolEscape,
   toolPreview,
+  nearestPointId,
   withStartPoint,
   type ToolState,
 } from './toolLogic';
@@ -129,8 +138,29 @@ export function useSketcher(): SketcherApi {
   const [choosingPlane, setChoosingPlane] = useState(false);
   const [pickingFace, setPickingFace] = useState(false);
   const [faceError, setFaceError] = useState<string | null>(null);
+  // Change tool: the point currently being dragged + its live position.
+  const [drag, setDrag] = useState<{ pointId: PointId; pos: Vec2 } | null>(null);
+  const dragRef = useRef(drag);
+  useEffect(() => {
+    dragRef.current = drag;
+  }, [drag]);
 
-  const evaluated = useMemo(() => (sketch ? evaluateSketch(sketch) : []), [sketch]);
+  // While dragging (Change tool), render the sketch with the grabbed point
+  // moved to its live position; the command only fires on drop.
+  const displaySketch = useMemo(() => {
+    if (!sketch || !drag) return sketch;
+    return {
+      ...sketch,
+      points: sketch.points.map((pt) =>
+        pt.id === drag.pointId ? { ...pt, x: drag.pos.x, y: drag.pos.y } : pt
+      ),
+    };
+  }, [sketch, drag]);
+
+  const evaluated = useMemo(
+    () => (displaySketch ? evaluateSketch(displaySketch) : []),
+    [displaySketch]
+  );
 
   const snapResult: SnapResult = useMemo(() => {
     if (!sketch || !snapEnabled || ctrlHeld) return { snap: null, guides: [] };
@@ -182,8 +212,9 @@ export function useSketcher(): SketcherApi {
       const current = liveSketch();
       if (!current) return;
       const tool = useSessionStore.getState().activeTool;
-      if (!tool) {
-        // Select mode: pick the nearest entity within tolerance.
+      if (!tool || tool === 'change') {
+        // Select / Change: a click that didn't grab a point picks the nearest
+        // entity within tolerance (Change then shows its points in Properties).
         const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
         let bestId: EntityId | null = null;
         let bestDist = tolMm;
@@ -206,6 +237,37 @@ export function useSketcher(): SketcherApi {
     },
     [applyStep, liveSketch, snapResult, toolState]
   );
+
+  // --- Change tool point drag (F2) -----------------------------------------
+  const onPointGrab = useCallback(
+    (p: Vec2, scale: number): boolean => {
+      if (useSessionStore.getState().activeTool !== 'change') return false;
+      const current = liveSketch();
+      if (!current) return false;
+      const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+      const pointId = nearestPointId(current.points, p, tolMm);
+      if (!pointId) return false;
+      setDrag({ pointId, pos: p });
+      return true;
+    },
+    [liveSketch]
+  );
+
+  const onPointDrag = useCallback((p: Vec2) => {
+    setDrag((d) => (d ? { ...d, pos: p } : d));
+  }, []);
+
+  const onPointDrop = useCallback(() => {
+    const d = dragRef.current;
+    const current = liveSketch();
+    if (d && current) {
+      commandBus.dispatch({
+        type: 'MoveSketchPoints',
+        payload: { sketchId: current.id, moves: [{ pointId: d.pointId, x: d.pos.x, y: d.pos.y }] },
+      });
+    }
+    setDrag(null);
+  }, [liveSketch]);
 
   const setTool = useCallback((tool: SketchToolId | null) => {
     useSessionStore.getState().setActiveTool(tool);
@@ -321,6 +383,7 @@ export function useSketcher(): SketcherApi {
         a: 'arc-3p',
         p: 'point',
         g: 'polygon',
+        m: 'change',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
       if (hotkey) {
@@ -445,7 +508,7 @@ export function useSketcher(): SketcherApi {
           basis,
           overlay: {
             entities: evaluated,
-            points: sketch.points.map((p) => vec2(p.x, p.y)),
+            points: (displaySketch ?? sketch).points.map((p) => vec2(p.x, p.y)),
             basis,
             previewCurves: activeTool
               ? toolPreview(previewToolState, effectiveCursor, typedValues)
@@ -456,6 +519,9 @@ export function useSketcher(): SketcherApi {
           },
           onCursor,
           onClickPoint,
+          onPointGrab,
+          onPointDrag,
+          onPointDrop,
         }
       : null;
 

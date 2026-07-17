@@ -26,6 +26,7 @@ const TOOL_LABEL_KEYS = {
   'arc-center': 'sketch.tool.arc-center',
   point: 'sketch.tool.point',
   polygon: 'sketch.tool.polygon',
+  change: 'sketch.tool.change',
 } as const;
 
 /** Keyboard shortcut per tool, shown as a tooltip (master rule, ADR-0032). */
@@ -39,6 +40,7 @@ const TOOL_SHORTCUT: Record<SketchToolId, string> = {
   'arc-center': 'Shift+A',
   point: 'P',
   polygon: 'G',
+  change: 'M',
 };
 
 export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JSX.Element {
@@ -59,6 +61,16 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
         }}
       >
         {t('sketch.tool.select')}
+      </button>
+      <button
+        type="button"
+        className={buttonClass(sketcher.tool === 'change')}
+        title={TOOL_SHORTCUT.change}
+        onClick={() => {
+          sketcher.setTool('change');
+        }}
+      >
+        {t('sketch.tool.change')}
       </button>
       {TOOLS.map((tool) => (
         <button

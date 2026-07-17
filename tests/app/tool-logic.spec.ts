@@ -3,9 +3,11 @@ import type { SketchId } from '../../src/core/ids';
 import { vec2 } from '../../src/core/math';
 import { emptySketch, type Sketch } from '../../src/document';
 import { GeometryPlan } from '../../src/app/features/sketcher/geometryPlan';
+import type { PointId } from '../../src/core/ids';
 import {
   initialToolState,
   isChained,
+  nearestPointId,
   toolClick,
   toolEnter,
   toolEscape,
@@ -189,6 +191,23 @@ describe('start-point fields place the first anchor (F2 #4b)', () => {
     const placed = toolClick(initialToolState('circle-center-diameter'), { p: vec2(1, 1) }).state;
     const armed = withStartPoint(placed, vec2(9, 9));
     expect(armed.clicks[0]?.p).toEqual(vec2(1, 1));
+  });
+});
+
+describe('nearestPointId (Change tool grab, #3)', () => {
+  const pt = (id: string, x: number, y: number) => ({ id: id as PointId, x, y });
+  const points = [pt('a', 0, 0), pt('b', 10, 0), pt('c', 10, 10)];
+
+  it('returns the closest point within tolerance', () => {
+    expect(nearestPointId(points, vec2(9.5, 0.2), 1)).toBe('b');
+  });
+
+  it('returns null when nothing is within tolerance', () => {
+    expect(nearestPointId(points, vec2(5, 5), 1)).toBeNull();
+  });
+
+  it('breaks ties toward the nearer point', () => {
+    expect(nearestPointId(points, vec2(0.1, 0), 2)).toBe('a');
   });
 });
 

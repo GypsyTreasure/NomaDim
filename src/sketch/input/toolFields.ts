@@ -19,7 +19,8 @@ export type SketchToolId =
   | 'arc-3p'
   | 'arc-center'
   | 'point'
-  | 'polygon';
+  | 'polygon'
+  | 'change';
 
 const LENGTH = (id: string): FieldDef => ({ id, kind: 'length' });
 const ANGLE = (id: string): FieldDef => ({ id, kind: 'angle' });
@@ -41,8 +42,13 @@ export const LINE_FIELDS_CHAINED: readonly FieldDef[] = [
   ANGLE('angleRel'),
 ];
 
-/** Tool fields plus the trailing start-point (X, Y) coordinate fields. */
+/**
+ * Tool fields plus the trailing start-point (X, Y) coordinate fields. The
+ * Change tool edits existing points (drag / properties panel), so it has no
+ * numeric-HUD fields at all.
+ */
 export function fieldsForToolWithStart(tool: SketchToolId, chained = false): readonly FieldDef[] {
+  if (tool === 'change') return [];
   return [...fieldsForTool(tool, chained), ...START_POINT_FIELDS];
 }
 
@@ -61,6 +67,7 @@ export function fieldsForTool(tool: SketchToolId, chained = false): readonly Fie
     case 'arc-center':
       return [LENGTH('radius'), ANGLE('angle')];
     case 'point':
+    case 'change':
       return [];
     case 'polygon':
       return [COUNT('sides'), LENGTH('diameter')];

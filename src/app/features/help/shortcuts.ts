@@ -70,6 +70,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     title: 'help.group.sketchTools',
     items: [
       { keys: 'S', desc: 'help.tool.select' },
+      { keys: 'M', desc: 'help.tool.change' },
       { keys: 'L', desc: 'help.tool.line' },
       { keys: 'I', desc: 'help.tool.axis' },
       { keys: 'R', desc: 'help.tool.rectangle' },

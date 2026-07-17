@@ -2,7 +2,15 @@
   position: relative;
   width: 100%;
   height: 100%;
-  background-color: var(--color-canvas-bg);
+  /* Irregular light-grey gradient: several offset radial washes over a base
+     grey read as one soft, organic backdrop. The WebGL canvas clears to
+     transparent (renderer alpha) so this shows through behind the model. */
+  background-color: var(--color-viewport-bg);
+  background-image:
+    radial-gradient(58% 55% at 22% 18%, var(--color-grey-100), transparent 70%),
+    radial-gradient(55% 50% at 82% 30%, var(--color-grey-300), transparent 72%),
+    radial-gradient(70% 66% at 58% 88%, var(--color-grey-300), transparent 72%),
+    radial-gradient(44% 40% at 10% 92%, var(--color-grey-100), transparent 70%);
 }
 
 .canvasHost {

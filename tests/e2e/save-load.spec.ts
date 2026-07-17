@@ -1,12 +1,15 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Save / Load .nomadim.xml (M6, F7): build a body, save the document, reload
- * the app to a blank state, then open the saved file — the timeline replays
- * and the body comes back. Proves the whole document codec + load→regen path.
+ * Save / Load .nomadim.xml (M6, F7): build a body, save the document, then open
+ * the saved file in a FRESH browser context (empty autosave storage → blank) —
+ * the timeline replays and the body comes back. Proves the whole document codec
+ * + load→regen path. (A same-context reload would now restore via autosave, so
+ * the file-open path is verified in a clean context instead — see
+ * persistence.spec for the reload-restore behavior.)
  */
 
-test('save a document, reload, and open it back', async ({ page }) => {
+test('save a document, then open it back in a fresh session', async ({ page, browser }) => {
   await page.goto('/');
 
   // Build one body.
@@ -30,11 +33,14 @@ test('save a document, reload, and open it back', async ({ page }) => {
   ]);
   const savedPath = await download.path();
 
-  // Reload to a blank document (no bodies).
-  await page.reload();
-  await expect(page.getByTestId('body-count')).toHaveText('0', { timeout: 30_000 });
+  // A brand-new session starts blank (no autosaved document)…
+  const ctx = await browser.newContext();
+  const fresh = await ctx.newPage();
+  await fresh.goto('/');
+  await expect(fresh.getByTestId('body-count')).toHaveText('0', { timeout: 30_000 });
 
-  // Open the saved file → the timeline replays and the body returns.
-  await page.getByTestId('doc-file-input').setInputFiles(savedPath);
-  await expect(page.getByTestId('body-count')).toHaveText('1', { timeout: 30_000 });
+  // …and opening the saved file replays the timeline, bringing the body back.
+  await fresh.getByTestId('doc-file-input').setInputFiles(savedPath);
+  await expect(fresh.getByTestId('body-count')).toHaveText('1', { timeout: 30_000 });
+  await ctx.close();
 });

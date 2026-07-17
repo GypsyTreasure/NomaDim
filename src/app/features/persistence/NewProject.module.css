@@ -1,0 +1,46 @@
+/* New Project confirm dialog (F7). Shares the app's panel tokens; the button
+   itself reuses the toolbar button style from the sketcher module. */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--grid-unit);
+  background-color: var(--color-scrim);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-unit);
+  width: 320px;
+  max-width: 100%;
+  padding: calc(var(--grid-unit) * 1.5);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-flat);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  font-size: 15px;
+}
+
+.message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--grid-unit) * 0.5);
+  justify-content: flex-end;
+}

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { documentToXml } from '../../../document';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
@@ -32,6 +32,25 @@ export function DocumentIO(): React.JSX.Element {
     downloadText(documentToXml(doc), FILE_NAME);
   };
 
+  // Ctrl+S / Ctrl+O shortcuts (master rule, ADR-0032). Rebinds `save` each
+  // render so it always serializes the current document.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.key === 's') {
+        event.preventDefault();
+        save();
+      } else if (event.key === 'o') {
+        event.preventDefault();
+        inputRef.current?.click();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  });
+
   const onFile = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     event.target.value = ''; // allow re-opening the same file
@@ -44,12 +63,19 @@ export function DocumentIO(): React.JSX.Element {
 
   return (
     <>
-      <button type="button" className={styles.button} onClick={save} data-testid="doc-save">
+      <button
+        type="button"
+        className={styles.button}
+        title="Ctrl+S"
+        onClick={save}
+        data-testid="doc-save"
+      >
         {t('io.save')}
       </button>
       <button
         type="button"
         className={styles.button}
+        title="Ctrl+O"
         onClick={() => inputRef.current?.click()}
         data-testid="doc-open"
       >

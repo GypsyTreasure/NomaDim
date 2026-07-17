@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   DEFAULT_EXPORT_ANGULAR_DEFLECTION_DEG,
   DEFAULT_EXPORT_LINEAR_DEFLECTION_MM,
@@ -34,10 +35,25 @@ export function ExportStlButton(): React.JSX.Element {
     })();
   };
 
+  // Ctrl+E export shortcut (master rule, ADR-0032).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'e') {
+        event.preventDefault();
+        exportStl();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  });
+
   return (
     <button
       type="button"
       className={styles.button}
+      title="Ctrl+E"
       disabled={liveBodyIds.length === 0}
       onClick={exportStl}
     >

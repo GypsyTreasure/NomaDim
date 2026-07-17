@@ -23,6 +23,7 @@ import { useMeasure } from './features/measure/useMeasure';
 import { DocumentIO } from './features/document-io/DocumentIO';
 import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
 import { OnboardingHint } from './features/onboarding/OnboardingHint';
+import { useModelingShortcuts } from './features/shortcuts/useModelingShortcuts';
 import { loadDocumentText } from './features/document-io/documentIO';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
@@ -62,6 +63,12 @@ export function App(): React.JSX.Element {
   const setHelpOpen = useSessionStore((s) => s.setHelpOpen);
 
   useGlobalShortcuts(sketcher.activeSketch !== null);
+  useModelingShortcuts(sketcher.activeSketch === null, {
+    newSketch: sketcher.newSketch,
+    toggleMeasure: measure.toggle,
+    createOp: timeline.openCreate,
+    hasSketch: sketches.length > 0,
+  });
 
   // Boot the worker + RegenScheduler once, on first mount (§4).
   useEffect(() => {
@@ -197,11 +204,17 @@ export function App(): React.JSX.Element {
               className={sketcherStyles.toolbar}
               style={{ left: 'auto', right: 'var(--grid-unit)' }}
             >
-              <button type="button" className={sketcherStyles.button} onClick={sketcher.newSketch}>
+              <button
+                type="button"
+                className={sketcherStyles.button}
+                title="N"
+                onClick={sketcher.newSketch}
+              >
                 {t('sketch.newSketch')}
               </button>
               <button
                 type="button"
+                title="M"
                 className={
                   measure.active
                     ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
@@ -216,12 +229,13 @@ export function App(): React.JSX.Element {
               <button
                 type="button"
                 className={sketcherStyles.button}
+                title="?"
                 data-testid="shortcuts-open"
                 onClick={() => {
                   setHelpOpen(true);
                 }}
               >
-                {t('help.open')}
+                {t('help.openButton')}
               </button>
               <span className={sketcherStyles.button} data-testid="body-count">
                 {liveBodyIds.length}

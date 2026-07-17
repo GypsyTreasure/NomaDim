@@ -31,6 +31,16 @@ import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
 const BACKGROUND_COLOR = 0xfaf7f0; // var(--color-canvas-bg), Three.js needs a numeric literal here.
+/** Keyboard shortcut per standard view, shown as a tooltip (master rule, ADR-0032). */
+const VIEW_KEY_HINT: Record<ViewId, string> = {
+  home: '0',
+  front: '1',
+  back: '2',
+  left: '3',
+  right: '4',
+  top: '5',
+  bottom: '6',
+};
 const CAMERA_INITIAL_POSITION = new THREE.Vector3(280, -280, 220); // Z-up isometric-ish
 const SKETCH_CAMERA_LERP = 0.18;
 
@@ -309,6 +319,35 @@ export function Viewport({
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(host);
 
+    // Viewport navigation shortcuts (master rule, ADR-0032): Z zoom-to-fit,
+    // O projection toggle, 0 Home, 1–6 the six standard faces. Inert while
+    // sketching (camera plane-locked) or typing.
+    const viewKeys: Record<string, ViewId> = {
+      '0': 'home',
+      '1': 'front',
+      '2': 'back',
+      '3': 'left',
+      '4': 'right',
+      '5': 'top',
+      '6': 'bottom',
+    };
+    const onViewKey = (event: KeyboardEvent): void => {
+      if (sketchModeRef.current || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      const view = viewKeys[event.key];
+      if (key === 'z') {
+        fitRequestRef.current?.();
+      } else if (key === 'o') {
+        projectionRequestRef.current?.();
+      } else if (view) {
+        viewRequestRef.current?.(view);
+      }
+    };
+    window.addEventListener('keydown', onViewKey);
+
     // --- Sketch-mode camera animation state -------------------------------
     let animatedPlaneKey: string | null = null;
     let cameraTarget: { position: THREE.Vector3; up: THREE.Vector3; look: THREE.Vector3 } | null =
@@ -537,6 +576,7 @@ export function Viewport({
     return () => {
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
+      window.removeEventListener('keydown', onViewKey);
       overlayCanvas.removeEventListener('pointermove', onPointerMove);
       overlayCanvas.removeEventListener('pointerdown', onPointerDown);
       overlayCanvas.removeEventListener('pointerup', onPointerUp);
@@ -662,7 +702,12 @@ export function Viewport({
         <canvas ref={overlayRef} className={styles.overlayCanvas} data-testid="sketch-overlay" />
       </div>
       <div className={styles.overlay}>
-        <button type="button" className={styles.button} onClick={() => fitRequestRef.current?.()}>
+        <button
+          type="button"
+          className={styles.button}
+          title="Z"
+          onClick={() => fitRequestRef.current?.()}
+        >
           {zoomToFitLabel}
         </button>
         {viewLabels &&
@@ -674,6 +719,7 @@ export function Viewport({
                 key={id}
                 type="button"
                 className={styles.button}
+                title={VIEW_KEY_HINT[id]}
                 data-testid={`view-${id}`}
                 onClick={() => viewRequestRef.current?.(id)}
               >
@@ -685,6 +731,7 @@ export function Viewport({
           <button
             type="button"
             className={styles.button}
+            title="O"
             data-testid="projection-toggle"
             onClick={() => projectionRequestRef.current?.()}
           >

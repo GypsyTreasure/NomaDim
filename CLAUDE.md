@@ -16,6 +16,7 @@ Read all three fully before any work. Ambiguity → choose the behavior closest 
 5. **OCCT only inside `kernel-worker/`**, meshes only as Transferables, every shape `.delete()`d on invalidation (ARCHITECTURE §6, R5–R8). Treat WASM leaks as P1.
 6. **No solver in v1** — precision via SnapEngine + NumericInputMachine. But the data model stays constraint-ready (C6): reserved arrays, stable point roles. Do not "optimize away" the reserved slots.
 7. **Static-host compatible**: no SharedArrayBuffer, no custom headers, no backend.
+8. **Every menu tool has a keyboard shortcut** (ADR-0032): each tool/action button must have a shortcut, listed in the shortcuts catalog and shown as its `title`. A new tool isn't done until its shortcut is wired, catalogued, and title-hinted.
 
 ## Stack (fixed — do not substitute)
 TypeScript strict · React 18 · Vite · Zustand · Three.js · OpenCascade.js (single-threaded trimmed build) · fast-xml-parser · Vitest · Playwright · dependency-cruiser · ESLint + Prettier + stylelint (no-hardcoded-color rule). Node 20 LTS, npm.

@@ -119,6 +119,9 @@ export function useSketcher(): SketcherApi {
   useEffect(() => {
     inputStateRef.current = inputState;
   }, [inputState]);
+  // Lets the keydown handler invoke Finish Sketch (defined later) by its 'F'
+  // shortcut without a use-before-define cycle.
+  const finishRef = useRef<() => void>(() => undefined);
   const [cursor, setCursor] = useState<Vec2>(() => vec2(0, 0));
   const [pxPerMm, setPxPerMm] = useState(1);
   const [ctrlHeld, setCtrlHeld] = useState(false);
@@ -275,8 +278,35 @@ export function useSketcher(): SketcherApi {
         commandBus.redo();
         return;
       }
+      if (event.ctrlKey || event.metaKey) return;
+      // Sketch-menu buttons that aren't drawing tools still get shortcuts
+      // (project master rule, ADR-0032): Snap (Q) and Finish Sketch (F).
+      if (event.key === 'q' || event.key === 'Q') {
+        const s = useSessionStore.getState();
+        s.setSnapEnabled(!s.snapEnabled);
+        return;
+      }
+      if (event.key === 'f' || event.key === 'F') {
+        finishRef.current();
+        return;
+      }
+      if (event.key === 's' || event.key === 'S') {
+        setTool(null); // Select
+        return;
+      }
+      // Shift+R / Shift+A choose the Center variants; the plain keys the others.
+      const shifted: Partial<Record<string, SketchToolId>> = {
+        R: 'rectangle-center',
+        A: 'arc-center',
+      };
+      if (event.shiftKey) {
+        const shiftedTool = shifted[event.key];
+        if (shiftedTool) setTool(shiftedTool);
+        return;
+      }
       const toolHotkeys: Record<string, SketchToolId> = {
         l: 'line',
+        i: 'axis',
         r: 'rectangle-2p',
         c: 'circle-center-diameter',
         a: 'arc-3p',
@@ -284,7 +314,7 @@ export function useSketcher(): SketcherApi {
         g: 'polygon',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
-      if (hotkey && !event.ctrlKey && !event.metaKey) {
+      if (hotkey) {
         setTool(hotkey);
       }
     };
@@ -388,6 +418,9 @@ export function useSketcher(): SketcherApi {
     });
     useSessionStore.getState().exitSketch();
   }, [liveSketch]);
+  useEffect(() => {
+    finishRef.current = finishSketch;
+  }, [finishSketch]);
 
   const basis = sketch ? sketchPlaneBasis(sketch) : null;
   const viewportSketchMode: SketchModeProps | null =

@@ -235,3 +235,16 @@ Format: `ADR-NNNN · date · title` → Context / Decision / Consequences. Appen
 **Context:** Final M7 (F11) deliverable: the README user-guide pass, and closing out the M0→M7 roadmap.
 **Decision:** README's "Using NomaDim" section now documents the M7 viewport polish — the standard-view bar (Home + six faces), the perspective/orthographic toggle, and zoom-to-fit/orbit navigation — plus the `?` shortcuts overlay and first-run hint, and carries a keyboard-shortcuts table mirroring the in-app catalog. The status summary lists the shipped surface.
 **Consequences:** M7's four deliverables are all in — NomaDirection-styled viewport controls (ADR-0027/0028, tokens-only CSS), the shortcuts overlay (ADR-0029), onboarding hints (ADR-0030), and the README/user-guide pass — meeting the "Design review pass" acceptance. With M0–M6 already shipped and deployed, the **M0→M7 roadmap in MASTER_DOCUMENT §8 is complete.** Remaining F11 nice-to-haves stay logged as follow-ups (orbit-scheme setting; GPU-/body-count-gated edge anti-aliasing per ADR-0027; always-on edge display), plus F6's triangle-count STL preview — none are milestone-blocking.
+
+## ADR-0032 · 2026-07-17 · MASTER RULE — every menu tool has a keyboard shortcut
+**Status:** Binding project rule (requested by the product owner).
+**Rule:** *Every tool/action button in every menu MUST have a keyboard shortcut, and that shortcut MUST be listed in the shortcuts catalog (`app/features/help/shortcuts.ts`) and shown as the button's `title` tooltip.* New tools are not "done" until their shortcut is wired, catalogued, and title-hinted. The catalog↔i18n unit test and the shortcuts overlay are the enforcement surface.
+**Shortcut scheme (v1).** Modes have separate keyspaces (sketch keystrokes are owned by the sketcher), so letters may repeat across modes; within a mode chords are unique. Ctrl/Cmd chords are global.
+- **General:** N New Sketch · M Measure · Ctrl+Z/Ctrl+Y undo/redo · Ctrl+C/Ctrl+V copy/paste body · `?` help.
+- **Model (non-sketch):** E Extrude · V Revolve · F Fillet · H Chamfer · B Combine · D Copy Body.
+- **Document:** Ctrl+S Save · Ctrl+O Open · Ctrl+E Export STL.
+- **View (non-sketch):** Z Zoom to Fit · O projection toggle · 0 Home · 1–6 Front/Back/Left/Right/Top/Bottom.
+- **Sketch tools:** S Select · L Line · I Axis · R Rectangle · Shift+R Rectangle (center) · C Circle · A Arc · Shift+A Arc (center) · P Point · G Polygon · X construction · Q snap.
+- **Sketch input:** Tab next field · Enter confirm · Esc cancel step · Delete remove selection · F Finish Sketch.
+**Implementation.** Sketch keys extend the existing `useSketcher` keydown; non-sketch model actions live in `useModelingShortcuts` (bound only when no sketch is active); Save/Open/Export bind in their owning components (DocumentIO, ExportStlButton); view/projection/zoom bind inside `Viewport` (inert while plane-locked). Every handler ignores events targeting a text field, and digit keys stay reserved for numeric input while sketching (so view digits are non-sketch-only).
+**Consequences:** Every current menu button is keyboard-reachable and tooltip-hinted; the overlay lists the full map in six groups. Future tools (the "Change" tool, intersect/cut, etc.) inherit the rule. Spot-checked by an e2e (N/M + a sketch tool hotkey) on top of the catalog unit test.

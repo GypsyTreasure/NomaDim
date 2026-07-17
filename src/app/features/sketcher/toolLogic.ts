@@ -8,6 +8,7 @@ import {
   sub,
   vec2,
   DEG_TO_RAD,
+  type PointId,
   type Vec2,
 } from '../../../core';
 import type { Curve, SketchToolId } from '../../../sketch';
@@ -61,6 +62,23 @@ export function isChained(state: ToolState): boolean {
 
 export function toolEscape(state: ToolState): ToolState {
   return { ...state, clicks: [], chainAnchor: null, prevDirection: null };
+}
+
+/**
+ * Nearest sketch point to `p` within `tolMm`, for the Change tool's grab
+ * (F2 point drag). Pure — the closest point inside tolerance, or null.
+ */
+export function nearestPointId(
+  points: readonly { readonly id: PointId; readonly x: number; readonly y: number }[],
+  p: Vec2,
+  tolMm: number
+): PointId | null {
+  let best: { id: PointId; d: number } | null = null;
+  for (const pt of points) {
+    const d = Math.hypot(pt.x - p.x, pt.y - p.y);
+    if (d <= tolMm && (!best || d < best.d)) best = { id: pt.id, d };
+  }
+  return best?.id ?? null;
 }
 
 /**
@@ -225,6 +243,10 @@ export function toolClick(state: ToolState, spec: PointSpec): ToolStep {
         },
       };
     }
+    case 'change':
+      // Editing tool: clicks select/drag existing points (handled in the hook),
+      // never place geometry.
+      return noCommit(state);
     default: {
       const exhaustive: never = state.tool;
       return exhaustive;
@@ -335,6 +357,8 @@ export function toolEnter(
         },
       };
     }
+    case 'change':
+      return noCommit(state);
     default: {
       const exhaustive: never = state.tool;
       return exhaustive;
@@ -426,6 +450,7 @@ export function toolPreview(
       }));
     }
     case 'point':
+    case 'change':
       return [];
     default: {
       const exhaustive: never = state.tool;

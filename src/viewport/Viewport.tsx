@@ -93,7 +93,8 @@ export interface BodyStyle {
  */
 export interface SketchPreview {
   readonly sketchId: string;
-  readonly plane: OriginPlaneId;
+  /** World-space plane basis (origin plane OR body face), so face sketches show too. */
+  readonly basis: SketchPlaneBasis;
   readonly polylines: readonly (readonly Vec2[])[];
 }
 
@@ -645,7 +646,7 @@ export function Viewport({
     disposeSceneObjects(group);
     group.clear();
     for (const preview of sketchPreviews ?? []) {
-      const mapping = planeMapping(preview.plane);
+      const mapping = mappingFromBasis(preview.basis);
       for (const polyline of preview.polylines) {
         if (polyline.length < 2) continue;
         const positions = new Float32Array(polyline.length * 3);

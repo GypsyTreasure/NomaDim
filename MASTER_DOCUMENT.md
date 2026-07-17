@@ -230,7 +230,7 @@ nomadim/
 Constraint solver & driving dimensions (v2) · assemblies · joints · drawings · parameters table/expressions · splines · loft/sweep/shell/hole/thread · variable fillets · timeline reordering · Project/Include into sketch · multi-document · touch UI · slicer integration · dark theme.
 
 ## 12. Visual design (NomaDirection brand)
-Teal `#1A6B5A` (primary/active/selection @40% alpha), navy `#0D1B2A` (panels), cream canvas, warm-grey 1-px borders, 8-px grid, flat. Typography **Barlow** (600 headings / 400 body), monospace for numeric fields. Icons: Lucide stroke, token-colored. Light theme only. All values as CSS custom properties in `app/ui-tokens/tokens.css`; hardcoded colors fail lint.
+Teal `#1A6B5A` (primary/active/selection @40% alpha), navy `#0D1B2A` (panels), cream canvas, warm-grey 1-px borders, 8-px grid, flat. Typography **Barlow** (600 headings / 400 body), monospace for numeric fields. Icons: Lucide stroke, token-colored. Light theme only. All values as CSS custom properties in `app/ui-tokens/tokens.css`; hardcoded colors fail lint. The full graphic identity — logo/logotype, palette, typography, usage — is documented in **`BRAND.md`** (the "N" mark lives in `public/brand/` + `src/app/features/brand/Logo.tsx`); use those assets as the default for visual changes.
 
 ## 13. Open decisions (owner)
 1. Repo name `nomadim`? 2. EN-only v1, PL in v1.1? 3. Default orbit scheme? 4. Camera in XML?

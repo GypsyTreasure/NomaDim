@@ -45,6 +45,19 @@ describe('NumericInputMachine transitions (MASTER_DOCUMENT F2)', () => {
     expect(run(s2, { type: 'tab' }).state.activeIndex).toBe(0); // wrap
   });
 
+  it('focus selects a field by index (mouse), then typing writes it', () => {
+    const s0 = initialInputState(LINE_FIELDS_CHAINED);
+    const s1 = run(s0, { type: 'focus', index: 2 }).state;
+    expect(s1.activeIndex).toBe(2);
+    expect(run(s1, ...type('30')).state.values).toEqual(['', '', '30']);
+  });
+
+  it('focus ignores an out-of-range index', () => {
+    const s0 = initialInputState(LINE_FIELDS);
+    expect(run(s0, { type: 'focus', index: 5 }).state.activeIndex).toBeNull();
+    expect(run(s0, { type: 'focus', index: -1 }).state.activeIndex).toBeNull();
+  });
+
   it('Tab then typing writes the newly focused field', () => {
     const { state } = run(
       initialInputState(LINE_FIELDS),

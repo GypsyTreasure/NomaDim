@@ -9,7 +9,7 @@
  * numbers once and holds no live links afterwards.
  */
 
-export type FieldKind = 'length' | 'angle' | 'count';
+export type FieldKind = 'length' | 'angle' | 'count' | 'coord';
 
 export interface FieldDef {
   /** Stable field id, also the i18n label key suffix (app resolves `t()`). */
@@ -70,6 +70,8 @@ export function parseField(def: FieldDef, text: string): number | null {
       return value;
     case 'count':
       return Number.isInteger(value) && value >= 3 ? value : null;
+    case 'coord':
+      return value; // any finite coordinate, incl. negative and zero
     default: {
       const exhaustive: never = def.kind;
       return exhaustive;

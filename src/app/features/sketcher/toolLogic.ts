@@ -63,6 +63,20 @@ export function toolEscape(state: ToolState): ToolState {
   return { ...state, clicks: [], chainAnchor: null, prevDirection: null };
 }
 
+/**
+ * Inject a typed start point as the tool's first anchor (F2 start-point
+ * fields), equivalent to clicking there: sets the line chain anchor or the
+ * first click when none exists yet, otherwise leaves the state untouched so a
+ * placed point always wins over typed coordinates.
+ */
+export function withStartPoint(state: ToolState, p: Vec2): ToolState {
+  const spec: PointSpec = { p };
+  if (isLineLike(state.tool)) {
+    return state.chainAnchor ? state : { ...state, chainAnchor: spec };
+  }
+  return state.clicks.length > 0 ? state : { ...state, clicks: [spec] };
+}
+
 export function setConstructionMode(state: ToolState, construction: boolean): ToolState {
   return { ...state, constructionMode: construction };
 }
@@ -308,8 +322,19 @@ export function toolEnter(
       const startAngle = distance(center.p, cursor) > 0 ? angleOf(sub(cursor, center.p)) : 0;
       return polygonStep(state, center.p, sides, diameter, startAngle);
     }
-    case 'point':
-      return noCommit(state);
+    case 'point': {
+      // Keyboard placement: a typed start point (injected as clicks[0]) commits
+      // a point at exact coordinates; otherwise Enter does nothing (click-only).
+      const p = state.clicks[0];
+      if (!p) return noCommit(state);
+      const construction = state.constructionMode;
+      return {
+        state: { ...state, clicks: [] },
+        commit: (plan) => {
+          plan.addPointEntity(p, construction);
+        },
+      };
+    }
     default: {
       const exhaustive: never = state.tool;
       return exhaustive;

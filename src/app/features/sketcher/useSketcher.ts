@@ -5,8 +5,9 @@ import {
   detectProfiles,
   distanceToCurve,
   evaluateSketch,
-  fieldsForTool,
+  fieldsForToolWithStart,
   initialInputState,
+  parseField,
   parsedValues,
   reduceInput,
   SnapEngine,
@@ -29,6 +30,7 @@ import {
   toolEnter,
   toolEscape,
   toolPreview,
+  withStartPoint,
   type ToolState,
 } from './toolLogic';
 
@@ -38,6 +40,20 @@ const ANGULAR_TOLERANCE_RAD = 2 * DEG_TO_RAD;
 const GRID_SPACING_MM = 1;
 
 const snapEngine = new SnapEngine();
+
+/** startX/startY fields appended to every tool (F2 start-point entry). */
+const START_FIELD_COUNT = 2;
+
+/** The typed start point (the last two coord fields), or null if either is unset. */
+function startPointOf(state: NumericInputState): Vec2 | null {
+  const n = state.fields.length;
+  const xDef = state.fields[n - 2];
+  const yDef = state.fields[n - 1];
+  if (xDef?.id !== 'startX' || yDef?.id !== 'startY') return null;
+  const x = parseField(xDef, state.values[n - 2] ?? '');
+  const y = parseField(yDef, state.values[n - 1] ?? '');
+  return x !== null && y !== null ? vec2(x, y) : null;
+}
 
 /** World-space basis of a sketch's plane (origin plane, or a body-face snapshot). */
 export interface FinishSummary {
@@ -97,7 +113,7 @@ export function useSketcher(): SketcherApi {
 
   const [toolState, setToolState] = useState<ToolState>(() => initialToolState('line'));
   const [inputState, setInputState] = useState<NumericInputState>(() =>
-    initialInputState(fieldsForTool('line'))
+    initialInputState(fieldsForToolWithStart('line'))
   );
   const inputStateRef = useRef(inputState);
   useEffect(() => {
@@ -146,7 +162,9 @@ export function useSketcher(): SketcherApi {
       setToolState(step.state);
       // Fields track the tool's chain state (chained Line gains angleRel);
       // each step starts the next entry fresh, matching the machine's Enter reset.
-      setInputState(initialInputState(fieldsForTool(step.state.tool, isChained(step.state))));
+      setInputState(
+        initialInputState(fieldsForToolWithStart(step.state.tool, isChained(step.state)))
+      );
     },
     [liveSketch]
   );
@@ -196,7 +214,7 @@ export function useSketcher(): SketcherApi {
         ...initialToolState(tool),
         constructionMode: prev.constructionMode,
       }));
-      setInputState(initialInputState(fieldsForTool(tool, false)));
+      setInputState(initialInputState(fieldsForToolWithStart(tool, false)));
     }
   }, []);
 
@@ -223,17 +241,24 @@ export function useSketcher(): SketcherApi {
       if (event.key === 'Enter') {
         // Transition computed OUTSIDE the setState updater — updaters are
         // pure and may be double-invoked (StrictMode); dispatch is not.
-        const t = reduceInput(inputStateRef.current, { type: 'enter' });
+        const before = inputStateRef.current;
+        const t = reduceInput(before, { type: 'enter' });
         setInputState(t.state);
         if (t.effect.kind === 'commit') {
-          applyStep(toolEnter(toolState, t.effect.values, effectiveCursor));
+          // The last two fields are startX/startY: a typed start point is
+          // injected as the tool's first anchor; the rest feed toolEnter as
+          // before (positional shape values).
+          const start = startPointOf(before);
+          const shapeValues = t.effect.values.slice(0, before.fields.length - START_FIELD_COUNT);
+          const armed = start ? withStartPoint(toolState, start) : toolState;
+          applyStep(toolEnter(armed, shapeValues, effectiveCursor));
         }
         return;
       }
       if (event.key === 'Escape') {
         const cleared = toolEscape(toolState);
         setToolState(cleared);
-        setInputState(initialInputState(fieldsForTool(cleared.tool, false)));
+        setInputState(initialInputState(fieldsForToolWithStart(cleared.tool, false)));
         return;
       }
       if (/^[0-9.-]$/.test(event.key)) {
@@ -352,7 +377,7 @@ export function useSketcher(): SketcherApi {
       setFaceError(null);
       setLastFinish(null);
       setToolState(initialToolState('line'));
-      setInputState(initialInputState(fieldsForTool('line', false)));
+      setInputState(initialInputState(fieldsForToolWithStart('line', false)));
     }
   }, []);
 
@@ -411,6 +436,9 @@ export function useSketcher(): SketcherApi {
   }, [finishSketch]);
 
   const basis = sketch ? sketchPlaneBasis(sketch) : null;
+  // A typed start point arms the preview at those coordinates too (not just the commit).
+  const typedStart = startPointOf(inputState);
+  const previewToolState = typedStart ? withStartPoint(toolState, typedStart) : toolState;
   const viewportSketchMode: SketchModeProps | null =
     sketch && basis
       ? {
@@ -419,7 +447,9 @@ export function useSketcher(): SketcherApi {
             entities: evaluated,
             points: sketch.points.map((p) => vec2(p.x, p.y)),
             basis,
-            previewCurves: activeTool ? toolPreview(toolState, effectiveCursor, typedValues) : [],
+            previewCurves: activeTool
+              ? toolPreview(previewToolState, effectiveCursor, typedValues)
+              : [],
             snap: snapResult.snap,
             guides: snapResult.guides,
             selectedEntityIds: new Set(selectedEntityIds),

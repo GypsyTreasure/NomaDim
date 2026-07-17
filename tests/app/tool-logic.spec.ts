@@ -9,6 +9,7 @@ import {
   toolClick,
   toolEnter,
   toolEscape,
+  withStartPoint,
   type ToolState,
 } from '../../src/app/features/sketcher/toolLogic';
 import { lineEndFrom } from '../../src/app/features/sketcher/shapeMath';
@@ -157,6 +158,37 @@ describe('axis tool (F3 centerline)', () => {
     expect(isChained(initialToolState('axis'))).toBe(false);
     const step = toolEnter(initialToolState('axis'), [10, 0, null], vec2(0, 0));
     expect(isChained(step.state)).toBe(true);
+  });
+});
+
+describe('start-point fields place the first anchor (F2 #4b)', () => {
+  const has = (sketch: Sketch, x: number, y: number): boolean =>
+    sketch.points.some((p) => p.x === x && p.y === y);
+
+  it('circle: typed start centers the circle at those coordinates', () => {
+    const armed = withStartPoint(initialToolState('circle-center-diameter'), vec2(10, 5));
+    const { sketch } = commitStep(blank(), toolEnter(armed, [20], vec2(0, 0)));
+    expect(has(sketch, 10, 5)).toBe(true); // center
+  });
+
+  it('line: typed start anchors the segment there', () => {
+    const armed = withStartPoint(initialToolState('line'), vec2(5, 0));
+    const { sketch } = commitStep(blank(), toolEnter(armed, [10, 0, null], vec2(0, 0)));
+    expect(has(sketch, 5, 0)).toBe(true);
+    expect(has(sketch, 15, 0)).toBe(true); // length 10 along +X
+  });
+
+  it('point: typed start commits a point at exact coordinates', () => {
+    const armed = withStartPoint(initialToolState('point'), vec2(3, 4));
+    const { sketch } = commitStep(blank(), toolEnter(armed, [], vec2(0, 0)));
+    expect(has(sketch, 3, 4)).toBe(true);
+    expect(sketch.entities.some((e) => e.type === 'point')).toBe(true);
+  });
+
+  it('a placed anchor wins over a typed start point', () => {
+    const placed = toolClick(initialToolState('circle-center-diameter'), { p: vec2(1, 1) }).state;
+    const armed = withStartPoint(placed, vec2(9, 9));
+    expect(armed.clicks[0]?.p).toEqual(vec2(1, 1));
   });
 });
 

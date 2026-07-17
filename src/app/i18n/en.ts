@@ -168,6 +168,8 @@ export const en = {
   'sketch.field.radius': 'Radius',
   'sketch.field.angle': 'Angle',
   'sketch.field.sides': 'Sides',
+  'sketch.field.startX': 'Start X',
+  'sketch.field.startY': 'Start Y',
   'sketch.summary.profiles': 'Profiles:',
   'sketch.summary.withHoles': 'with holes:',
   'sketch.summary.open': 'open:',

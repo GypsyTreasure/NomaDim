@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fieldsForTool,
   initialInputState,
+  parseField,
   parsedValues,
   reduceInput,
   LINE_FIELDS,
@@ -56,6 +57,13 @@ describe('NumericInputMachine transitions (MASTER_DOCUMENT F2)', () => {
     const s0 = initialInputState(LINE_FIELDS);
     expect(run(s0, { type: 'focus', index: 5 }).state.activeIndex).toBeNull();
     expect(run(s0, { type: 'focus', index: -1 }).state.activeIndex).toBeNull();
+  });
+
+  it('coord fields accept negative and zero (start-point entry)', () => {
+    const coord = { id: 'startX', kind: 'coord' } as const;
+    expect(parseField(coord, '-12.5')).toBe(-12.5);
+    expect(parseField(coord, '0')).toBe(0);
+    expect(parseField(coord, '')).toBeNull();
   });
 
   it('Tab then typing writes the newly focused field', () => {

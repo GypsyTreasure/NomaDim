@@ -24,6 +24,14 @@ export type SketchToolId =
 const LENGTH = (id: string): FieldDef => ({ id, kind: 'length' });
 const ANGLE = (id: string): FieldDef => ({ id, kind: 'angle' });
 const COUNT = (id: string): FieldDef => ({ id, kind: 'count' });
+const COORD = (id: string): FieldDef => ({ id, kind: 'coord' });
+
+/**
+ * Start-point (X, Y) fields, appended to every tool so the first anchor can be
+ * typed as exact coordinates instead of clicked (F2). Kept LAST so the
+ * keyboard-first flow (typing focuses the primary shape field) is unchanged.
+ */
+export const START_POINT_FIELDS: readonly FieldDef[] = [COORD('startX'), COORD('startY')];
 
 export const LINE_FIELDS: readonly FieldDef[] = [LENGTH('length'), ANGLE('angleAbs')];
 /** Chained line segments: relative angle joins the Tab cycle. */
@@ -32,6 +40,11 @@ export const LINE_FIELDS_CHAINED: readonly FieldDef[] = [
   ANGLE('angleAbs'),
   ANGLE('angleRel'),
 ];
+
+/** Tool fields plus the trailing start-point (X, Y) coordinate fields. */
+export function fieldsForToolWithStart(tool: SketchToolId, chained = false): readonly FieldDef[] {
+  return [...fieldsForTool(tool, chained), ...START_POINT_FIELDS];
+}
 
 export function fieldsForTool(tool: SketchToolId, chained = false): readonly FieldDef[] {
   switch (tool) {

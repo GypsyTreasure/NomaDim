@@ -57,7 +57,8 @@ Three binding documents govern this codebase (precedence order on conflict):
 2. [`MASTER_DOCUMENT.md`](./MASTER_DOCUMENT.md) — product/functional specification.
 3. [`CLAUDE.md`](./CLAUDE.md) — implementation working method.
 
-Structural and product decisions are logged in [`DECISIONS.md`](./DECISIONS.md).
+Structural and product decisions are logged in [`DECISIONS.md`](./DECISIONS.md);
+the visual identity (logo, palette, typography) is in [`BRAND.md`](./BRAND.md).
 
 ## Stack
 

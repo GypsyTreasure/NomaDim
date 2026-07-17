@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NomaDim logomark">
+  <rect width="64" height="64" rx="10" fill="#0d1b2a" />
+  <!-- Geometric "N" / direction mark: up → diagonal → up, like a plotted vector path. -->
+  <path
+    d="M16 46 L16 20 L26 20 L48 46 L48 20"
+    fill="none"
+    stroke="#1a6b5a"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Start node, echoing a sketch point / origin. -->
+  <circle cx="16" cy="20" r="4" fill="#faf7f0" />
+</svg>

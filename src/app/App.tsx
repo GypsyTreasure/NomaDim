@@ -17,6 +17,7 @@ import { PropertiesPanel } from './features/sketcher/PropertiesPanel';
 import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
 import { buildSketchPreviews } from './features/sketcher/sketchPreviews';
+import { Logo } from './features/brand/Logo';
 import { BrowserTree } from './features/browser/BrowserTree';
 import { MeasureHud } from './features/measure/MeasureHud';
 import { useMeasure } from './features/measure/useMeasure';
@@ -124,7 +125,9 @@ export function App(): React.JSX.Element {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <h1 className={styles.title}>{t('app.title')}</h1>
+        <h1 className={styles.title}>
+          <Logo />
+        </h1>
       </header>
       <main
         className={styles.viewportArea}

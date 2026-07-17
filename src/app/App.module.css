@@ -2,7 +2,10 @@
   display: flex;
   flex-direction: column;
   width: 100vw;
+  /* 100dvh tracks the iOS Safari dynamic toolbar so nothing is clipped/scrolls. */
   height: 100vh;
+  height: 100dvh;
+  overflow: hidden; /* floating panels scroll internally; the page never does */
   background-color: var(--color-canvas-bg);
   color: var(--color-canvas-fg);
   font-family: var(--font-body);
@@ -12,6 +15,9 @@
 .header {
   flex: 0 0 auto;
   padding: var(--grid-unit) calc(var(--grid-unit) * 2);
+  /* Clear the iPhone notch / status bar in landscape + portrait. */
+  padding-left: max(calc(var(--grid-unit) * 2), env(safe-area-inset-left));
+  padding-right: max(calc(var(--grid-unit) * 2), env(safe-area-inset-right));
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
   border-bottom: var(--border-width) solid var(--color-border);
@@ -28,4 +34,5 @@
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden; /* floating panels are clipped to the canvas area, never the page */
 }

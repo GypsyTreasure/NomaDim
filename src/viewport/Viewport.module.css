@@ -55,3 +55,24 @@
 .button:hover {
   background-color: var(--color-primary);
 }
+
+/* Phones: the nav becomes a full-width, single-row horizontal-scroll strip
+   below the top action row, so all view buttons stay reachable. */
+@media (max-width: 700px) {
+  .overlay {
+    top: calc(var(--grid-unit) * 8.5); /* clear the taller top toolbar row */
+    left: var(--grid-unit);
+    right: var(--grid-unit);
+    max-width: none;
+    transform: none;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .button {
+    padding: calc(var(--grid-unit) * 0.5) calc(var(--grid-unit) * 0.75);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+}

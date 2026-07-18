@@ -2,15 +2,17 @@
   position: absolute;
   top: var(--grid-unit);
   left: var(--grid-unit);
-  width: 200px;
+  width: 210px;
   max-width: calc(100vw - 2 * var(--grid-unit));
   max-height: 70%;
   overflow-y: auto;
-  padding: calc(var(--grid-unit) * 0.75);
+  padding: var(--grid-unit);
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
-  font-size: 12px;
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-sm);
 }
 
 /* Phones: drop the tree below the top toolbar rows and cap its height so it
@@ -28,13 +30,13 @@
 }
 
 .heading {
-  margin: 0 0 calc(var(--grid-unit) * 0.25);
+  margin: 0 0 calc(var(--grid-unit) * 0.4);
   font-family: var(--font-heading);
   font-weight: var(--font-weight-heading);
-  font-size: 12px;
+  font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.75;
+  letter-spacing: 0.06em;
+  color: var(--color-canvas-alpha-70);
 }
 
 .row {
@@ -53,6 +55,7 @@
 
 .selected {
   background-color: var(--color-selection);
+  border-radius: var(--radius-sm);
 }
 
 .itemButton {
@@ -90,7 +93,8 @@
   width: 18px;
   height: 18px;
   padding: 0;
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-hairline-strong);
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
 }

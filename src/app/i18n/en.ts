@@ -20,6 +20,7 @@ export const en = {
   'io.save': 'Save',
   'io.open': 'Open',
   'io.loadError': 'Could not open file:',
+  'menu.toggle': 'Menu',
   'project.new': 'New Project',
   'project.new.confirm':
     'Starting a new project clears the current model and its saved copy. Export it first?',

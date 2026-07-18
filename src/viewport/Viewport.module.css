@@ -41,19 +41,27 @@
 }
 
 .button {
-  padding: calc(var(--grid-unit) * 0.75) var(--grid-unit);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-flat);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
   font-family: var(--font-body);
-  font-weight: var(--font-weight-body);
-  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-sm);
   cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .button:hover {
-  background-color: var(--color-primary);
+  background-color: var(--color-panel-raised);
+  border-color: var(--color-primary);
 }
 
 /* Phones: the nav becomes a full-width, single-row horizontal-scroll strip
@@ -71,8 +79,9 @@
   }
 
   .button {
-    padding: calc(var(--grid-unit) * 0.5) calc(var(--grid-unit) * 0.75);
-    font-size: 11px;
+    min-height: var(--control-h-touch);
+    padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+    font-size: var(--text-sm);
     white-space: nowrap;
   }
 }

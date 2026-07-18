@@ -3,12 +3,14 @@
   top: calc(var(--grid-unit) * 6);
   left: 50%;
   transform: translateX(-50%);
-  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+  padding: calc(var(--grid-unit) * 0.6) var(--grid-unit);
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
   border: var(--border-width) solid var(--color-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-base);
   white-space: nowrap;
 }
 

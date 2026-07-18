@@ -9,7 +9,9 @@
   padding: calc(var(--grid-unit) * 0.75);
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
 }
 
 .createRow {
@@ -26,36 +28,50 @@
 }
 
 .button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
   padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
-  background-color: var(--color-panel-bg);
+  background-color: var(--color-panel-raised);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-flat);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-sm);
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .button:hover:not(:disabled) {
-  background-color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.buttonPrimary {
+.buttonPrimary,
+.buttonPrimary:hover {
   background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-canvas);
 }
 
 .chip {
   display: flex;
   flex-direction: column;
-  min-width: 88px;
-  border: var(--border-width) solid var(--color-border);
+  min-width: 92px;
+  background-color: var(--color-panel-raised);
+  border: var(--border-width) solid var(--color-panel-border);
   border-left-width: calc(var(--grid-unit) * 0.5);
   border-left-color: var(--color-status-ok);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .chip[data-status='error'] {
@@ -80,7 +96,7 @@
   color: var(--color-panel-fg);
   border: none;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--text-sm);
   text-align: left;
   cursor: pointer;
 }
@@ -91,17 +107,18 @@
 
 .chipActions {
   display: flex;
-  border-top: var(--border-width) solid var(--color-border);
+  border-top: var(--border-width) solid var(--color-panel-border);
 }
 
 .chipActions button {
   flex: 1;
-  padding: 2px;
+  padding: 3px;
   background-color: transparent;
   color: var(--color-panel-fg);
   border: none;
-  font-size: 11px;
+  font-size: var(--text-xs);
   cursor: pointer;
+  transition: background-color var(--transition-fast);
 }
 
 .chipActions button:hover {
@@ -112,7 +129,8 @@
   padding: 0 calc(var(--grid-unit) * 0.6);
   background-color: transparent;
   color: var(--color-panel-fg);
-  border: var(--border-width) dashed var(--color-border);
+  border: var(--border-width) dashed var(--color-hairline-strong);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -134,9 +152,6 @@
 
 .dialog {
   pointer-events: auto;
-}
-
-.dialog {
   display: flex;
   flex-direction: column;
   gap: var(--grid-unit);
@@ -144,17 +159,19 @@
   max-width: calc(100vw - 2 * var(--grid-unit));
   max-height: 80%;
   overflow-y: auto;
-  padding: var(--grid-unit);
+  padding: calc(var(--grid-unit) * 1.25);
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
 }
 
 .dialogTitle {
   margin: 0;
   font-family: var(--font-heading);
   font-weight: var(--font-weight-heading);
-  font-size: 15px;
+  font-size: var(--text-md);
 }
 
 .dialogBody {
@@ -174,26 +191,28 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--grid-unit);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .input {
   width: 160px;
-  padding: 2px 4px;
+  padding: calc(var(--grid-unit) * 0.4) calc(var(--grid-unit) * 0.6);
   background-color: var(--color-canvas-bg);
   color: var(--color-canvas-fg);
   border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .fieldset {
   display: flex;
   flex-direction: column;
   gap: calc(var(--grid-unit) * 0.25);
-  padding: calc(var(--grid-unit) * 0.5);
-  border: var(--border-width) solid var(--color-border);
-  font-size: 12px;
+  padding: calc(var(--grid-unit) * 0.75);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
 }
 
 .checkRow {

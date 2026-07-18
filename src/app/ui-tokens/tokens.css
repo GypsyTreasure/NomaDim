@@ -3,35 +3,58 @@
  * color literals are allowed to live — every other stylesheet must reference
  * these custom properties (stylelint `no-hardcoded-color` rule, CLAUDE.md).
  * Light theme only in v1.
+ *
+ * Restyle (ADR-0044): a deeper navy elevation ramp, hairline borders + soft
+ * shadows for real depth, a rounded-corner + type scale, and control-sizing
+ * tokens — a bolder, more professional surface while keeping the brand
+ * (teal / navy / Barlow, NomaDirection).
  */
 :root {
   /* Brand */
   --color-teal: #1a6b5a;
+  --color-teal-bright: #2a9c82; /* accent hover / focus ring */
   --color-teal-alpha-40: rgb(26 107 90 / 40%);
   --color-navy: #0d1b2a;
   --color-navy-alpha-55: rgb(13 27 42 / 55%);
   --color-canvas: #faf7f0;
+
+  /* Navy elevation ramp (dark panels) */
+  --color-navy-900: #081320;
+  --color-navy-800: #0a1826;
+  --color-navy-700: #0d1b2a;
+  --color-navy-600: #16293b;
+  --color-navy-500: #20364b;
+
   /* Light-grey viewport backdrop ramp (irregular gradient) — kept high-key so
      navy bodies + teal sketch lines stay clearly visible. */
   --color-grey-100: #f3f5f7;
   --color-grey-200: #e9ecef;
   --color-grey-300: #dce0e5;
   --color-border: #c9c2b4;
-  --color-error-red: #b3261e;
+  --color-error-red: #d5372c;
   --color-grey-muted: #8a8578;
-  --color-amber: #b5860a;
+  --color-amber: #d29a1f;
+
+  /* Hairlines / scrims on dark surfaces (cream at low alpha) */
+  --color-hairline: rgb(250 247 240 / 12%);
+  --color-hairline-strong: rgb(250 247 240 / 22%);
+  --color-canvas-alpha-70: rgb(250 247 240 / 70%);
 
   /* Semantic aliases */
   --color-primary: var(--color-teal);
   --color-active: var(--color-teal);
   --color-selection: var(--color-teal-alpha-40);
-  --color-panel-bg: var(--color-navy);
+  --color-panel-bg: var(--color-navy-700);
+  --color-panel-raised: var(--color-navy-600);
+  --color-panel-input: var(--color-navy-500);
   --color-panel-fg: var(--color-canvas);
+  --color-panel-border: var(--color-hairline);
   --color-scrim: var(--color-navy-alpha-55);
   --color-canvas-bg: var(--color-canvas);
   --color-viewport-bg: var(--color-grey-200);
   --color-canvas-fg: var(--color-navy);
   --color-error: var(--color-error-red);
+  --color-focus-ring: var(--color-teal-bright);
   /* Timeline op status (F1 chip colours) */
   --color-status-ok: var(--color-teal);
   --color-status-error: var(--color-error-red);
@@ -45,9 +68,35 @@
   --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   --font-weight-heading: 600;
   --font-weight-body: 400;
+  --font-weight-medium: 500;
+
+  /* Type scale */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
 
   /* Layout */
   --grid-unit: 8px;
   --border-width: 1px;
+
+  /* Radius scale */
   --radius-flat: 0;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* Elevation (navy-tinted, for panels floating over the viewport) */
+  --shadow-sm: 0 1px 3px rgb(8 19 32 / 22%);
+  --shadow-md: 0 6px 20px rgb(8 19 32 / 30%);
+  --shadow-lg: 0 16px 40px rgb(8 19 32 / 42%);
+
+  /* Controls */
+  --control-h: 32px;
+  --control-h-touch: 44px;
+  --transition-fast: 120ms ease;
+  --transition: 160ms ease;
 }

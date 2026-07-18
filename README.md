@@ -39,6 +39,9 @@ milestone roadmap.
 - **Shortcuts:** press `?` (or the _Shortcuts_ button) any time for the full
   keyboard reference. First-timers get a short getting-started hint on the
   empty canvas.
+- **Works on phones:** the interface adapts to small screens — the app menu
+  collapses into a hamburger and controls grow to comfortable touch targets
+  (iPhone 12 and newer, and every desktop browser).
 
 ### Keyboard shortcuts
 

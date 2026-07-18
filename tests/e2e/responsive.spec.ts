@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Responsive layout (#2): at an iPhone-12 viewport (390×844) the menus reflow so
- * every control stays reachable (long toolbars scroll) and the page itself never
- * scrolls horizontally, in both non-sketch and sketch modes.
+ * Responsive layout (#2 / ADR-0044): at an iPhone-12 viewport (390×844) the app
+ * actions collapse behind a hamburger, the sketch tool row scrolls, and the
+ * page itself never scrolls horizontally, in both non-sketch and sketch modes.
  */
 
 const overflowPx = (page: Page): Promise<number> =>
@@ -16,8 +16,9 @@ test('iPhone-12 viewport: controls reachable, no horizontal page scroll', async 
 
   expect(await overflowPx(page)).toBeLessThanOrEqual(0);
 
-  // Top action bar + timeline ops are present and clickable.
-  await expect(page.getByRole('button', { name: 'Shortcuts' })).toBeVisible();
+  // App actions live behind the hamburger; open it and start a sketch.
+  await expect(page.getByTestId('app-menu-toggle')).toBeVisible();
+  await page.getByTestId('app-menu-toggle').click();
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();

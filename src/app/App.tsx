@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { BodyId } from '../core';
 import { edgeFingerprintKey } from '../kernel';
 import { defaultBodyMeta } from '../document';
@@ -61,6 +61,9 @@ export function App(): React.JSX.Element {
   const profileHighlight = useSessionStore((s) => s.profileHighlight);
   const setSelectedBody = useSessionStore((s) => s.setSelectedBody);
   const setHelpOpen = useSessionStore((s) => s.setHelpOpen);
+  // Mobile hamburger: whether the app-action cluster is expanded (ignored on
+  // desktop, where the cluster is always shown inline).
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   useGlobalShortcuts(sketcher.activeSketch !== null);
   useModelingShortcuts(sketcher.activeSketch === null, {
@@ -194,8 +197,33 @@ export function App(): React.JSX.Element {
                 </button>
               </div>
             )}
+            <button
+              type="button"
+              className={sketcherStyles.menuToggle}
+              aria-label={t('menu.toggle')}
+              aria-expanded={actionsOpen}
+              data-testid="app-menu-toggle"
+              onClick={() => {
+                setActionsOpen((open) => !open);
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M3 5h14M3 10h14M3 15h14"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
             <div
-              className={`${sketcherStyles.toolbar ?? ''} ${sketcherStyles.toolbarActions ?? ''}`}
+              className={`${sketcherStyles.toolbar ?? ''} ${sketcherStyles.toolbarActions ?? ''} ${
+                actionsOpen ? (sketcherStyles.toolbarActionsOpen ?? '') : ''
+              }`}
+              data-testid="app-actions"
+              onClick={() => {
+                setActionsOpen(false);
+              }}
             >
               <button
                 type="button"

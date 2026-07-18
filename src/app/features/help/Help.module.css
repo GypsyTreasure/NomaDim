@@ -17,10 +17,12 @@
   max-width: 100%;
   max-height: 85%;
   overflow-y: auto;
-  padding: calc(var(--grid-unit) * 1.5);
+  padding: calc(var(--grid-unit) * 2);
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 .header {
@@ -37,17 +39,22 @@
 }
 
 .close {
+  min-height: var(--control-h);
   padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
-  background-color: transparent;
+  background-color: var(--color-panel-raised);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-flat);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-sm);
   font-family: var(--font-body);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .close:hover {
-  background-color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .groups {
@@ -93,12 +100,14 @@
 
 .kbd {
   display: inline-block;
-  padding: 2px 6px;
+  padding: 2px 7px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-xs);
   background-color: var(--color-canvas-bg);
   color: var(--color-canvas-fg);
   border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
 }
 
 .desc {

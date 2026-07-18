@@ -14,4 +14,23 @@ body,
 
 body {
   font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizelegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* One consistent keyboard-focus ring everywhere (accessibility); pointer
+   clicks don't show it (:focus-visible), so the UI stays clean. */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }

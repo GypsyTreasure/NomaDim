@@ -8,10 +8,12 @@
   gap: var(--grid-unit);
   width: 340px;
   max-width: 90%;
-  padding: calc(var(--grid-unit) * 1.5);
+  padding: calc(var(--grid-unit) * 2);
   background-color: var(--color-panel-bg);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   text-align: center;
   /* Never swallow viewport/plane-picker clicks — only the button is live. */
   pointer-events: none;
@@ -37,12 +39,18 @@
   align-self: center;
   pointer-events: auto;
   margin-top: calc(var(--grid-unit) * 0.5);
-  padding: calc(var(--grid-unit) * 0.75) calc(var(--grid-unit) * 1.5);
+  min-height: var(--control-h-touch);
+  padding: calc(var(--grid-unit) * 0.75) calc(var(--grid-unit) * 2);
   background-color: var(--color-primary);
-  color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-flat);
+  color: var(--color-canvas);
+  border: var(--border-width) solid var(--color-primary);
+  border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-weight: var(--font-weight-body);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.dismiss:hover {
+  background-color: var(--color-teal-bright);
 }

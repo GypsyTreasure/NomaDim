@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * New Project (F7): clears the current model AND its autosaved copy, guarded by
@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  * erased, not re-mirrored).
  */
 
-async function buildBody(page: import('@playwright/test').Page): Promise<void> {
+async function buildBody(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();

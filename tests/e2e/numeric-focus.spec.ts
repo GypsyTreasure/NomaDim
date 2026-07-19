@@ -18,8 +18,8 @@ test('clicking a numeric field focuses it, then typing fills that field', async 
   // Click the Angle field (the second one) and type — it must land there.
   await angle.click();
   await page.keyboard.type('45');
-  await expect(angle).toContainText('45');
+  await expect(angle).toHaveValue('45');
 
   // Length stays untouched.
-  await expect(page.getByTestId('hud-field-length')).toContainText('—');
+  await expect(page.getByTestId('hud-field-length')).toHaveValue('');
 });

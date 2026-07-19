@@ -39,6 +39,19 @@
   color: var(--color-canvas-alpha-70);
 }
 
+/* Live body count, shown next to the Bodies heading. */
+.count {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 5px;
+  margin-left: calc(var(--grid-unit) * 0.25);
+  background-color: var(--color-panel-raised);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
 .row {
   display: flex;
   align-items: center;

@@ -16,9 +16,8 @@ test('iPhone-12 viewport: controls reachable, no horizontal page scroll', async 
 
   expect(await overflowPx(page)).toBeLessThanOrEqual(0);
 
-  // App actions live behind the hamburger; open it and start a sketch.
+  // New Sketch is always visible (primary action); the hamburger holds the rest.
   await expect(page.getByTestId('app-menu-toggle')).toBeVisible();
-  await page.getByTestId('app-menu-toggle').click();
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByTestId('numeric-hud')).toBeVisible();

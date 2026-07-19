@@ -104,6 +104,14 @@ export interface SketcherApi {
   readonly setTool: (tool: SketchToolId | null) => void;
   /** Mouse-select a numeric field by index (F2). */
   readonly focusField: (index: number) => void;
+  /** Set a numeric field's raw text (DOM `<input>` → machine; raises the mobile keyboard). */
+  readonly setFieldText: (index: number, text: string) => void;
+  /** Commit the numeric input (Enter / input "Go"). */
+  readonly submitInput: () => void;
+  /** Cancel the numeric input (Esc). */
+  readonly cancelInput: () => void;
+  /** Advance to the next numeric field (Tab). */
+  readonly cycleField: () => void;
   readonly toggleConstruction: () => void;
   readonly newSketch: () => void;
   readonly choosePlane: (plane: SketchPlaneChoice) => void;
@@ -240,6 +248,38 @@ export function useSketcher(): SketcherApi {
     },
     [liveSketch]
   );
+
+  // --- Numeric HUD input (shared by the global keydown handler AND the DOM
+  // <input> fields, so a mobile soft keyboard drives the same machine) -------
+  const submitInput = useCallback(() => {
+    const before = inputStateRef.current;
+    const transition = reduceInput(before, { type: 'enter' });
+    setInputState(transition.state);
+    if (transition.effect.kind === 'commit') {
+      const start = startPointOf(before);
+      const shapeValues = transition.effect.values.slice(
+        0,
+        before.fields.length - START_FIELD_COUNT
+      );
+      const armed = start ? withStartPoint(toolState, start) : toolState;
+      applyStep(toolEnter(armed, shapeValues, effectiveCursor));
+    }
+  }, [applyStep, toolState, effectiveCursor]);
+
+  const cancelInput = useCallback(() => {
+    const cleared = toolEscape(toolState);
+    setToolState(cleared);
+    setInputState(initialInputState(fieldsForToolWithStart(cleared.tool, false)));
+    setDimFirst(null);
+  }, [toolState]);
+
+  const setFieldText = useCallback((index: number, text: string) => {
+    setInputState((s) => reduceInput(s, { type: 'setText', index, text }).state);
+  }, []);
+
+  const cycleField = useCallback(() => {
+    setInputState((s) => reduceInput(s, { type: 'tab' }).state);
+  }, []);
 
   // --- Viewport callbacks --------------------------------------------------
   const onCursor = useCallback((p: Vec2, scale: number) => {
@@ -378,27 +418,11 @@ export function useSketcher(): SketcherApi {
         return;
       }
       if (event.key === 'Enter') {
-        // Transition computed OUTSIDE the setState updater — updaters are
-        // pure and may be double-invoked (StrictMode); dispatch is not.
-        const before = inputStateRef.current;
-        const t = reduceInput(before, { type: 'enter' });
-        setInputState(t.state);
-        if (t.effect.kind === 'commit') {
-          // The last two fields are startX/startY: a typed start point is
-          // injected as the tool's first anchor; the rest feed toolEnter as
-          // before (positional shape values).
-          const start = startPointOf(before);
-          const shapeValues = t.effect.values.slice(0, before.fields.length - START_FIELD_COUNT);
-          const armed = start ? withStartPoint(toolState, start) : toolState;
-          applyStep(toolEnter(armed, shapeValues, effectiveCursor));
-        }
+        submitInput();
         return;
       }
       if (event.key === 'Escape') {
-        const cleared = toolEscape(toolState);
-        setToolState(cleared);
-        setInputState(initialInputState(fieldsForToolWithStart(cleared.tool, false)));
-        setDimFirst(null); // also cancel a half-placed dimension
+        cancelInput();
         return;
       }
       if (/^[0-9.-]$/.test(event.key)) {
@@ -478,7 +502,7 @@ export function useSketcher(): SketcherApi {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [sketch, toolState, effectiveCursor, applyStep, setTool]);
+  }, [sketch, submitInput, cancelInput, setTool]);
 
   // --- Public API ------------------------------------------------------------
   const focusField = useCallback((index: number) => {
@@ -641,6 +665,10 @@ export function useSketcher(): SketcherApi {
     faceError,
     setTool,
     focusField,
+    setFieldText,
+    submitInput,
+    cancelInput,
+    cycleField,
     toggleConstruction,
     newSketch,
     choosePlane,

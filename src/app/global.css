@@ -34,3 +34,17 @@ textarea {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
+
+/* iOS Safari auto-zooms the page when a text field with font-size < 16px is
+   focused — jarring, and the resulting reflow can destabilise the WebGL
+   viewport. On touch devices, force 16px on text-entry fields so focus never
+   triggers a zoom (desktop keeps its compact sizing). */
+@media (pointer: coarse) {
+  input[type='text'],
+  input[type='number'],
+  input:not([type]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

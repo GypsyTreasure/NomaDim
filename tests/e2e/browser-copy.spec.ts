@@ -24,6 +24,7 @@ test('100-body copy/paste session renders at 30fps', async ({ page }) => {
   await page.getByRole('dialog', { name: 'Extrude' }).getByRole('checkbox').first().check();
   await page.getByRole('button', { name: 'OK' }).click();
   await expect(page.getByTestId('body-count')).toHaveText('1', { timeout: 30_000 });
+  await page.getByTestId('browser-toggle').click(); // reveal the tree (collapsed by default)
   await expect(page.getByTestId('tree-body')).toHaveCount(1);
 
   // Browser tree visibility toggle (F8): the eye checkbox flips.

@@ -24,6 +24,9 @@ test('the view buttons snap the camera without disturbing the model', async ({ p
   await page.getByRole('button', { name: 'OK' }).click();
   await expect(page.getByTestId('body-count')).toHaveText('1', { timeout: 30_000 });
 
+  // Reveal the view bar (collapsed behind the View menu).
+  await page.getByTestId('view-toggle').click();
+
   // Cycle through every standard view.
   for (const id of ['home', 'front', 'back', 'left', 'right', 'top', 'bottom']) {
     await page.getByTestId(`view-${id}`).click();

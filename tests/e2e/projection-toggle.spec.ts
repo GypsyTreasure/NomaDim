@@ -24,6 +24,9 @@ test('the projection toggle swaps camera without disturbing the model', async ({
   await page.getByRole('button', { name: 'OK' }).click();
   await expect(page.getByTestId('body-count')).toHaveText('1', { timeout: 30_000 });
 
+  // Reveal the view bar (collapsed behind the View menu).
+  await page.getByTestId('view-toggle').click();
+
   const toggle = page.getByTestId('projection-toggle');
   await expect(toggle).toHaveText('Perspective');
 

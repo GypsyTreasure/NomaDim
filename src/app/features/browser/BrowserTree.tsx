@@ -105,10 +105,7 @@ export function BrowserTree(): React.JSX.Element {
 
       <section className={styles.section}>
         <h3 className={styles.heading}>
-          {t('tree.bodies')}{' '}
-          <span className={styles.count} data-testid="body-count">
-            {liveBodyIds.length}
-          </span>
+          {t('tree.bodies')} <span className={styles.count}>{liveBodyIds.length}</span>
         </h3>
         {liveBodyIds.length === 0 && <div className={styles.row}>{t('tree.empty')}</div>}
         {liveBodyIds.map((bodyId) => {

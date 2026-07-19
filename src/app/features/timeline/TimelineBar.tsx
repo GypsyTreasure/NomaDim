@@ -90,11 +90,26 @@ function OpChip({
   );
 }
 
-export function TimelineBar({ timeline }: { timeline: TimelineApi }): React.JSX.Element {
+export function TimelineBar({
+  timeline,
+  onNewSketch,
+}: {
+  timeline: TimelineApi;
+  onNewSketch: () => void;
+}): React.JSX.Element {
   const hasSketch = useDocumentStore((s) => s.document.sketches.length > 0);
   return (
     <div className={styles.bar} data-testid="timeline-bar">
       <div className={styles.createRow}>
+        {/* New Sketch leads the operations row — the step before any 3D op. */}
+        <button
+          type="button"
+          className={`${styles.button ?? ''} ${styles.buttonPrimary ?? ''}`}
+          title="N"
+          onClick={onNewSketch}
+        >
+          {t('sketch.newSketch')}
+        </button>
         {CREATABLE_OP_TYPES.map((type) => (
           <button
             key={type}

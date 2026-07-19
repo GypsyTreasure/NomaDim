@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BodyId } from '../core';
 import { edgeFingerprintKey } from '../kernel';
 import { defaultBodyMeta } from '../document';
@@ -64,6 +64,23 @@ export function App(): React.JSX.Element {
   // Mobile hamburger: whether the app-action cluster is expanded (ignored on
   // desktop, where the cluster is always shown inline).
   const [actionsOpen, setActionsOpen] = useState(false);
+  const appBarRef = useRef<HTMLDivElement>(null);
+
+  // Tapping outside the app bar closes the menu — but NOT on item clicks, so a
+  // dialog opened from the menu (e.g. New Project) keeps the menu open while
+  // the decision is made (the dialog's scrim lives inside the app bar subtree).
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const onPointerDown = (event: PointerEvent): void => {
+      if (appBarRef.current && !appBarRef.current.contains(event.target as Node)) {
+        setActionsOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [actionsOpen]);
 
   useGlobalShortcuts(sketcher.activeSketch !== null);
   useModelingShortcuts(sketcher.activeSketch === null, {
@@ -171,7 +188,14 @@ export function App(): React.JSX.Element {
         {sketcher.activeSketch ? (
           <>
             <SketchToolbar sketcher={sketcher} />
-            <NumericHud input={sketcher.inputState} onFocus={sketcher.focusField} />
+            <NumericHud
+              input={sketcher.inputState}
+              onFocus={sketcher.focusField}
+              onChangeField={sketcher.setFieldText}
+              onSubmit={sketcher.submitInput}
+              onCancel={sketcher.cancelInput}
+              onCycle={sketcher.cycleField}
+            />
             <PropertiesPanel sketch={sketcher.activeSketch} />
           </>
         ) : (
@@ -197,37 +221,12 @@ export function App(): React.JSX.Element {
                 </button>
               </div>
             )}
-            <button
-              type="button"
-              className={sketcherStyles.menuToggle}
-              aria-label={t('menu.toggle')}
-              aria-expanded={actionsOpen}
-              data-testid="app-menu-toggle"
-              onClick={() => {
-                setActionsOpen((open) => !open);
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M3 5h14M3 10h14M3 15h14"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-            <div
-              className={`${sketcherStyles.toolbar ?? ''} ${sketcherStyles.toolbarActions ?? ''} ${
-                actionsOpen ? (sketcherStyles.toolbarActionsOpen ?? '') : ''
-              }`}
-              data-testid="app-actions"
-              onClick={() => {
-                setActionsOpen(false);
-              }}
-            >
+            <div className={sketcherStyles.appBar} ref={appBarRef}>
+              {/* New Sketch is the primary entry point — always visible, never
+                  collapsed behind the hamburger. */}
               <button
                 type="button"
-                className={sketcherStyles.button}
+                className={`${sketcherStyles.button ?? ''} ${sketcherStyles.primaryAction ?? ''}`}
                 title="N"
                 onClick={sketcher.newSketch}
               >
@@ -235,38 +234,61 @@ export function App(): React.JSX.Element {
               </button>
               <button
                 type="button"
-                title="M"
-                className={
-                  measure.active
-                    ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
-                    : (sketcherStyles.button ?? '')
-                }
-                onClick={measure.toggle}
-              >
-                {t('measure.toggle')}
-              </button>
-              <NewProjectButton />
-              <DocumentIO />
-              <ExportStlButton />
-              <button
-                type="button"
-                className={sketcherStyles.button}
-                title="?"
-                data-testid="shortcuts-open"
+                className={sketcherStyles.menuToggle}
+                aria-label={t('menu.toggle')}
+                aria-expanded={actionsOpen}
+                data-testid="app-menu-toggle"
                 onClick={() => {
-                  setHelpOpen(true);
+                  setActionsOpen((open) => !open);
                 }}
               >
-                {t('help.openButton')}
+                <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+                  <path
+                    d="M3 5h14M3 10h14M3 15h14"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </button>
-              <span className={sketcherStyles.button} data-testid="body-count">
-                {liveBodyIds.length}
-              </span>
-              {kernelError && (
-                <span className={sketcherStyles.summary}>
-                  {t('kernel.status.error')} {kernelError}
-                </span>
-              )}
+              <div
+                className={`${sketcherStyles.menuPanel ?? ''} ${
+                  actionsOpen ? (sketcherStyles.menuPanelOpen ?? '') : ''
+                }`}
+                data-testid="app-actions"
+              >
+                <button
+                  type="button"
+                  title="M"
+                  className={
+                    measure.active
+                      ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
+                      : (sketcherStyles.button ?? '')
+                  }
+                  onClick={measure.toggle}
+                >
+                  {t('measure.toggle')}
+                </button>
+                <NewProjectButton />
+                <DocumentIO />
+                <ExportStlButton />
+                <button
+                  type="button"
+                  className={sketcherStyles.button}
+                  title="?"
+                  data-testid="shortcuts-open"
+                  onClick={() => {
+                    setHelpOpen(true);
+                  }}
+                >
+                  {t('help.openButton')}
+                </button>
+                {kernelError && (
+                  <span className={sketcherStyles.summary}>
+                    {t('kernel.status.error')} {kernelError}
+                  </span>
+                )}
+              </div>
             </div>
             {sketcher.lastFinish && (
               <div className={sketcherStyles.summary} data-testid="finish-summary">

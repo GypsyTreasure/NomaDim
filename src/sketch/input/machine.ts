@@ -32,6 +32,9 @@ export type NumericInputEvent =
   | { readonly type: 'enter' }
   | { readonly type: 'escape' }
   | { readonly type: 'focus'; readonly index: number }
+  /** Replace a field's raw text wholesale (a DOM `<input>`'s value on mobile,
+   * where soft keyboards emit `input` events rather than reliable keydowns). */
+  | { readonly type: 'setText'; readonly index: number; readonly text: string }
   | { readonly type: 'setFields'; readonly fields: readonly FieldDef[] }
   | { readonly type: 'clearValues' };
 
@@ -115,6 +118,13 @@ export function reduceInput(
       // Mouse-select a field (not only Tab). Out-of-range is a no-op.
       if (event.index < 0 || event.index >= state.fields.length) return { state, effect: NONE };
       return { state: { ...state, activeIndex: event.index }, effect: NONE };
+    }
+    case 'setText': {
+      if (event.index < 0 || event.index >= state.fields.length) return { state, effect: NONE };
+      // Keep only accepted characters so a soft keyboard can't inject letters.
+      const cleaned = event.text.replace(/[^0-9.-]/g, '');
+      const focused = { ...state, activeIndex: event.index };
+      return { state: withValue(focused, event.index, cleaned), effect: NONE };
     }
     case 'enter':
       return {

@@ -165,6 +165,25 @@ describe('NumericInputMachine transitions (MASTER_DOCUMENT F2)', () => {
   });
 });
 
+describe('setText (DOM <input> value → machine, mobile soft keyboard)', () => {
+  it('replaces a field wholesale, focuses it, and strips non-numeric chars', () => {
+    const { state } = run(initialInputState(LINE_FIELDS), {
+      type: 'setText',
+      index: 1,
+      text: '4a5.-x',
+    });
+    expect(state.activeIndex).toBe(1);
+    expect(state.values[1]).toBe('45.-');
+    expect(state.values[0]).toBe('');
+  });
+
+  it('ignores an out-of-range index', () => {
+    const before = initialInputState(LINE_FIELDS);
+    const { state } = run(before, { type: 'setText', index: 9, text: '5' });
+    expect(state).toEqual(before);
+  });
+});
+
 describe('fieldsForTool (MASTER_DOCUMENT F2 field sets)', () => {
   it('matches the spec per tool', () => {
     expect(fieldsForTool('line').map((f) => f.id)).toEqual(['length', 'angleAbs']);

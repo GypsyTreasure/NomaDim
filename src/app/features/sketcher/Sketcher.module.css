@@ -17,20 +17,47 @@
   box-shadow: var(--shadow-md);
 }
 
-/* App-action toolbar (New Sketch / Measure / IO / Shortcuts): top-right on
-   wide screens; collapses behind the hamburger on narrow ones. */
-.toolbarActions {
-  left: auto;
-  right: var(--grid-unit);
-  max-width: calc(100vw - 2 * var(--grid-unit));
-}
-
-/* Hamburger — only shown on narrow screens; toggles .toolbarActions. */
-.menuToggle {
+/* Top-right app-action cluster: an always-visible primary New Sketch button +
+   (on phones) a hamburger, then the rest of the actions in .menuPanel. */
+.appBar {
   position: absolute;
   top: var(--grid-unit);
   right: var(--grid-unit);
-  z-index: 6;
+  left: auto;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--grid-unit) * 0.5);
+  max-width: calc(100vw - 2 * var(--grid-unit));
+}
+
+/* The collapsible remainder of the actions — a floating panel. On wide screens
+   it sits inline in the app bar; on phones it drops into a hamburger dropdown. */
+.menuPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--grid-unit) * 0.5);
+  padding: calc(var(--grid-unit) * 0.75);
+  background-color: var(--color-panel-bg);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+/* Primary action (New Sketch) — filled teal so the main entry point stands
+   out against the viewport, always reachable (never behind the hamburger). */
+.primaryAction,
+.primaryAction:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-canvas);
+  box-shadow: var(--shadow-md);
+}
+
+/* Hamburger — only shown on narrow screens; toggles .menuPanel. */
+.menuToggle {
   display: none;
   align-items: center;
   justify-content: center;
@@ -172,6 +199,27 @@
   background-color: var(--color-selection);
 }
 
+.hudLabel {
+  opacity: 0.8;
+}
+
+.hudInput {
+  width: 56px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: right;
+  outline: none;
+}
+
+.hudInput::placeholder {
+  color: inherit;
+  opacity: 0.5;
+}
+
 .hudValue {
   min-width: 48px;
   text-align: right;
@@ -260,13 +308,13 @@
     display: inline-flex;
   }
 
-  /* The action cluster becomes a dropdown anchored under the hamburger. */
-  .toolbarActions {
-    top: calc(var(--grid-unit) + var(--control-h-touch) + var(--grid-unit) * 0.5);
-    right: var(--grid-unit);
-    left: auto;
+  /* The rest of the actions become a dropdown anchored under the app bar
+     (New Sketch stays visible alongside the hamburger). */
+  .menuPanel {
+    position: absolute;
+    top: calc(100% + var(--grid-unit) * 0.5);
+    right: 0;
     width: min(240px, 72vw);
-    max-width: none;
     flex-direction: column;
     align-items: stretch;
     max-height: 70vh;
@@ -274,7 +322,7 @@
     display: none;
   }
 
-  .toolbarActionsOpen {
+  .menuPanelOpen {
     display: flex;
   }
 

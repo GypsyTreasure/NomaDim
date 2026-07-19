@@ -1,8 +1,10 @@
 /* New Project confirm dialog (F7). Shares the app's panel tokens; the button
    itself reuses the toolbar button style from the sketcher module. */
 
+/* Fixed (not absolute) so the modal covers the whole viewport even though the
+   button is nested inside the app-bar menu panel (ADR-0045). */
 .backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 20;
   display: flex;

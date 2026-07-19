@@ -27,6 +27,7 @@ import {
   type SketchPlaneBasis,
 } from './planeMapping';
 import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
+import { sliceMesh, MAX_SECTION_SEGMENTS } from './section';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
@@ -42,6 +43,15 @@ const VIEW_KEY_HINT: Record<ViewId, string> = {
 };
 const CAMERA_INITIAL_POSITION = new THREE.Vector3(280, -280, 220); // Z-up isometric-ish
 const SKETCH_CAMERA_LERP = 0.18;
+/**
+ * Device-pixel-ratio ceiling for the drawing buffers (ADR-0050). iPhones report
+ * dpr 3, so an uncapped full-screen WebGL buffer + a same-size 2D overlay is ~9×
+ * the CSS-pixel area — enough, with the always-on render loop, to OOM-kill the
+ * Safari renderer (the "a problem repeatedly occurred" crash). Capping at 2 keeps
+ * lines crisp while roughly halving buffer memory on dpr-3 devices.
+ */
+const MAX_DEVICE_PIXEL_RATIO = 2;
+const renderDpr = (): number => Math.min(window.devicePixelRatio, MAX_DEVICE_PIXEL_RATIO);
 
 export interface SketchModeProps {
   /** World-space basis of the sketch plane (origin plane or body face). */
@@ -151,6 +161,7 @@ const EDGE_HOVER_COLOR = 0x2fa78d; // bright teal
 const EDGE_PICK_THRESHOLD_MM = 2;
 const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (tokens brand teal)
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
+const SECTION_COLOR = 0x7b5ea7; // violet — body cross-section on the sketch plane (#2), distinct from teal/navy/amber
 
 /**
  * Owns the Three.js scene, camera/controls, picking, and the 2D sketch
@@ -183,6 +194,7 @@ export function Viewport({
   const bodyGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
+  const sectionGroupRef = useRef<THREE.Group | null>(null);
   const highlightGroupRef = useRef<THREE.Group | null>(null);
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
   const cameraRef = useRef<RigCamera | null>(null);
@@ -239,7 +251,7 @@ export function Viewport({
     // gated quality toggle rather than shipped globally.
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
     renderer.setClearColor(0x000000, 0); // transparent → CSS gradient backdrop shows
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(renderDpr());
     host.appendChild(renderer.domElement);
     host.appendChild(overlayCanvas); // keep overlay above the WebGL canvas
     const ctx = overlayCanvas.getContext('2d');
@@ -263,6 +275,9 @@ export function Viewport({
     const sketchGroup = new THREE.Group();
     sketchGroup.name = 'SketchPreviews';
     sketchGroupRef.current = sketchGroup;
+    const sectionGroup = new THREE.Group();
+    sectionGroup.name = 'PlaneSections';
+    sectionGroupRef.current = sectionGroup;
     const highlightGroup = new THREE.Group();
     highlightGroup.name = 'OpHighlight';
     highlightGroup.renderOrder = 999; // drawn last, over bodies (depth-test off)
@@ -276,6 +291,7 @@ export function Viewport({
       bodyGroup,
       edgeGroup,
       sketchGroup,
+      sectionGroup,
       highlightGroup
     );
 
@@ -286,8 +302,9 @@ export function Viewport({
       height = host.clientHeight;
       if (width === 0 || height === 0) return;
       rig.setAspect(width / height);
+      renderer.setPixelRatio(renderDpr());
       renderer.setSize(width, height);
-      const dpr = window.devicePixelRatio;
+      const dpr = renderDpr();
       overlayCanvas.width = Math.round(width * dpr);
       overlayCanvas.height = Math.round(height * dpr);
       overlayCanvas.style.width = `${String(width)}px`;
@@ -585,14 +602,43 @@ export function Viewport({
     overlayCanvas.addEventListener('pointerdown', onPointerDown);
     overlayCanvas.addEventListener('pointerup', onPointerUp);
 
+    // WebGL context loss (ADR-0050): under memory pressure iOS may reset the GPU
+    // context. Without preventDefault the browser never fires a restore and the
+    // canvas is permanently dead → a hard crash/blank. We suppress the default,
+    // pause rendering while lost, and rebuild resources on restore.
+    let contextLost = false;
+    const onContextLost = (event: Event): void => {
+      event.preventDefault();
+      contextLost = true;
+    };
+    const onContextRestored = (): void => {
+      contextLost = false;
+      resize();
+    };
+    renderer.domElement.addEventListener('webglcontextlost', onContextLost);
+    renderer.domElement.addEventListener('webglcontextrestored', onContextRestored);
+
+    // Pause the render loop while the tab is hidden (ADR-0050): a backgrounded
+    // mobile tab kept doing full-rate WebGL work is a needless memory/GPU load
+    // that invites the OS to kill it. Resume (and resize, in case the device
+    // rotated while away) on return.
+    let hidden = document.hidden;
+    const onVisibility = (): void => {
+      hidden = document.hidden;
+      if (!hidden) resize();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     let animationFrame = 0;
     const animate = (): void => {
+      animationFrame = requestAnimationFrame(animate);
+      if (hidden || contextLost) return;
       updateSketchCamera();
       controls.update();
       renderer.render(scene, camera);
       const mode = sketchModeRef.current;
       if (ctx) {
-        const dpr = window.devicePixelRatio;
+        const dpr = renderDpr();
         ctx.save();
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         if (mode) {
@@ -602,13 +648,15 @@ export function Viewport({
         }
         ctx.restore();
       }
-      animationFrame = requestAnimationFrame(animate);
     };
     animate();
 
     return () => {
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
+      renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
       window.removeEventListener('keydown', onViewKey);
       overlayCanvas.removeEventListener('pointermove', onPointerMove);
       overlayCanvas.removeEventListener('pointerdown', onPointerDown);
@@ -620,6 +668,7 @@ export function Viewport({
       bodyGroupRef.current = null;
       edgeGroupRef.current = null;
       sketchGroupRef.current = null;
+      sectionGroupRef.current = null;
       highlightGroupRef.current = null;
       originPlanesRef.current = null;
       cameraRef.current = null;
@@ -695,6 +744,34 @@ export function Viewport({
       }
     }
   }, [sketchPreviews]);
+
+  // Body cross-section on the sketch plane (#2): a display-only violet outline
+  // where the plane cuts each visible body, so the user can draw against
+  // existing geometry. Recomputed on the main thread by slicing the already-
+  // tessellated body meshes — no kernel round-trip and never persisted. Keyed
+  // on the plane (its stable `key`) + bodies/visibility, NOT the whole sketch
+  // mode, so cursor moves while drawing don't rebuild it. Cleared off-plane.
+  useEffect(() => {
+    const group = sectionGroupRef.current;
+    if (!group) return;
+    disposeSceneObjects(group);
+    group.clear();
+    const basis = sketchModeRef.current?.basis;
+    if (!basis) return;
+    const coords: number[] = [];
+    for (const mesh of bodies) {
+      if (coords.length >= MAX_SECTION_SEGMENTS * 6) break;
+      const style = bodyStyles?.get(mesh.bodyId);
+      if (style && !style.visible) continue; // respect F8 hidden bodies
+      const seg = sliceMesh(mesh.positions, mesh.indices, basis.origin, basis.normal);
+      for (const v of seg) coords.push(v);
+    }
+    if (coords.length === 0) return;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(coords), 3));
+    const material = new THREE.LineBasicMaterial({ color: SECTION_COLOR });
+    group.add(new THREE.LineSegments(geometry, material));
+  }, [sketchMode?.basis.key, bodies, bodyStyles]);
 
   // Rebuild the op-selection highlight (F3): selected profile loops + axis,
   // drawn amber over everything while an Extrude/Revolve dialog is open.

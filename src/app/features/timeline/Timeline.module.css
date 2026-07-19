@@ -1,23 +1,26 @@
+/* Fills the shared bottom dock (#3): a static column (op tools over the feature
+   timeline), not a panel floating over the canvas — so it never hides the
+   model. Matches the sketch toolbar's placement in the same strip. */
 .bar {
-  position: absolute;
-  bottom: var(--grid-unit);
-  left: var(--grid-unit);
-  right: var(--grid-unit);
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: calc(var(--grid-unit) * 0.5);
-  padding: calc(var(--grid-unit) * 0.75);
-  background-color: var(--color-panel-bg);
+  padding: calc(var(--grid-unit) * 0.6) var(--grid-unit);
   color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-panel-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
 }
 
+/* Op-create tools as a two-row grid that scrolls horizontally on overflow —
+   same pattern as the sketch toolbar, half the scroll of a single long row. */
 .createRow {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-columns: max-content;
   gap: calc(var(--grid-unit) * 0.5);
-  overflow-x: auto; /* the op buttons stay one reachable row on narrow screens */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .chips {

@@ -180,6 +180,20 @@ describe('sampleCurve', () => {
     expect(nearlyEqualVec(samples[0] ?? vec2(0, 0), vec2(5, 0), 1e-9)).toBe(true);
     expect(nearlyEqualVec(samples[samples.length - 1] ?? vec2(0, 0), vec2(0, 5), 1e-9)).toBe(true);
   });
+
+  it('caps sampling for a huge radius (never hangs / allocates unbounded)', () => {
+    // A mistyped diameter feeding a live preview must not explode the step count.
+    const samples = sampleCurve(circle(0, 0, 1e12), 0.05);
+    expect(samples.length).toBeLessThanOrEqual(4096);
+    expect(samples.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('degenerate radius/sweep yields a safe minimal polyline', () => {
+    expect(sampleCurve(circle(0, 0, Number.POSITIVE_INFINITY), 0.05).length).toBe(1);
+    expect(sampleCurve(circle(0, 0, 0), 0.05).length).toBe(1);
+    const nanArc: ArcCurve = { kind: 'arc', center: vec2(0, 0), r: 5, startAngle: 0, sweep: NaN };
+    expect(sampleCurve(nanArc, 0.01).length).toBe(1);
+  });
 });
 
 describe('angleOnArc', () => {

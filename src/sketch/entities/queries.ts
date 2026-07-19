@@ -169,6 +169,14 @@ export function sampleCurve(curve: Curve, chordTolMm: number): readonly Vec2[] {
   }
 }
 
+/**
+ * Hard cap on arc tessellation segments. Without it a huge radius (e.g. a
+ * mistyped diameter feeding a live preview) drives the step count into the
+ * millions, allocating enormous point arrays every frame and hanging/OOM-
+ * crashing the tab. A few thousand segments is smooth at any reasonable zoom.
+ */
+const MAX_ARC_STEPS = 4096;
+
 function sampleArcRange(
   curve: CircleCurve | ArcCurve,
   startAngle: number,
@@ -176,9 +184,14 @@ function sampleArcRange(
   chordTolMm: number,
   closeLoop: boolean
 ): Vec2[] {
+  // Degenerate radius/sweep → a minimal, safe polyline (never NaN/∞-driven loops).
+  if (!Number.isFinite(curve.r) || curve.r <= 0 || !Number.isFinite(sweep)) {
+    return [pointAtAngle(curve, startAngle)];
+  }
   const tol = Math.min(Math.max(chordTolMm, 1e-6), curve.r);
   const stepAngle = 2 * Math.acos(Math.max(-1, 1 - tol / curve.r));
-  const steps = Math.max(closeLoop ? 8 : 2, Math.ceil(sweep / Math.max(stepAngle, 1e-6)));
+  const rawSteps = Math.ceil(Math.abs(sweep) / Math.max(stepAngle, 1e-6));
+  const steps = Math.min(MAX_ARC_STEPS, Math.max(closeLoop ? 8 : 2, rawSteps));
   const points: Vec2[] = [];
   const last = closeLoop ? steps - 1 : steps;
   for (let i = 0; i <= last; i += 1) {

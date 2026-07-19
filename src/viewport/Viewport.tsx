@@ -122,6 +122,8 @@ export interface ViewportProps {
   viewLabels?: Partial<Record<ViewId, string>>;
   /** Translated labels for the projection toggle (F11); absent → no toggle. */
   projectionLabels?: Readonly<Record<ProjectionMode, string>>;
+  /** Whether the floating view bar is shown (collapsed behind the View menu). */
+  viewBarOpen?: boolean;
   bodies: MeshTransfer[];
   /** Non-null while a sketch is being edited; camera animates normal-to-plane. */
   sketchMode: SketchModeProps | null;
@@ -160,6 +162,7 @@ export function Viewport({
   zoomToFitLabel,
   viewLabels,
   projectionLabels,
+  viewBarOpen = true,
   bodies,
   sketchMode,
   edgePick = null,
@@ -731,44 +734,46 @@ export function Viewport({
       <div ref={hostRef} className={styles.canvasHost}>
         <canvas ref={overlayRef} className={styles.overlayCanvas} data-testid="sketch-overlay" />
       </div>
-      <div className={styles.overlay}>
-        <button
-          type="button"
-          className={styles.button}
-          title="Z"
-          onClick={() => fitRequestRef.current?.()}
-        >
-          {zoomToFitLabel}
-        </button>
-        {viewLabels &&
-          VIEW_IDS.map((id) => {
-            const label = viewLabels[id];
-            if (label === undefined) return null;
-            return (
-              <button
-                key={id}
-                type="button"
-                className={styles.button}
-                title={VIEW_KEY_HINT[id]}
-                data-testid={`view-${id}`}
-                onClick={() => viewRequestRef.current?.(id)}
-              >
-                {label}
-              </button>
-            );
-          })}
-        {projectionLabels && (
+      {viewBarOpen && (
+        <div className={styles.overlay}>
           <button
             type="button"
             className={styles.button}
-            title="O"
-            data-testid="projection-toggle"
-            onClick={() => projectionRequestRef.current?.()}
+            title="Z"
+            onClick={() => fitRequestRef.current?.()}
           >
-            {projectionLabels[projectionMode]}
+            {zoomToFitLabel}
           </button>
-        )}
-      </div>
+          {viewLabels &&
+            VIEW_IDS.map((id) => {
+              const label = viewLabels[id];
+              if (label === undefined) return null;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={styles.button}
+                  title={VIEW_KEY_HINT[id]}
+                  data-testid={`view-${id}`}
+                  onClick={() => viewRequestRef.current?.(id)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          {projectionLabels && (
+            <button
+              type="button"
+              className={styles.button}
+              title="O"
+              data-testid="projection-toggle"
+              onClick={() => projectionRequestRef.current?.()}
+            >
+              {projectionLabels[projectionMode]}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -76,6 +76,20 @@
   background-color: var(--color-panel-raised);
 }
 
+/* Small count pill on the Browser toggle (live body count). */
+.badge {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 5px;
+  margin-left: calc(var(--grid-unit) * 0.25);
+  background-color: var(--color-navy-800);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
 .button {
   display: inline-flex;
   align-items: center;

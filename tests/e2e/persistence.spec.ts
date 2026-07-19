@@ -43,9 +43,11 @@ test('a returning sketch (no feature yet) is restored too', async ({ page }) => 
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Finish Sketch' }).click();
 
-  // Back in the browser, the sketch is listed in the tree; after a reload it
-  // is still there (the document persisted even without a downstream feature).
+  // Back in the browser, open the tree — the sketch is listed; after a reload
+  // it is still there (the document persisted even without a downstream feature).
+  await page.getByTestId('browser-toggle').click();
   await expect(page.getByTestId('tree-sketch')).toContainText('Sketch1');
   await page.reload();
+  await page.getByTestId('browser-toggle').click();
   await expect(page.getByTestId('tree-sketch')).toContainText('Sketch1', { timeout: 30_000 });
 });

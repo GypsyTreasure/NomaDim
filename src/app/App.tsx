@@ -64,6 +64,10 @@ export function App(): React.JSX.Element {
   // Mobile hamburger: whether the app-action cluster is expanded (ignored on
   // desktop, where the cluster is always shown inline).
   const [actionsOpen, setActionsOpen] = useState(false);
+  // The browser tree (origin planes / sketches / bodies) and the view bar are
+  // collapsed behind their own toggles in the top-right menu cluster.
+  const [treeOpen, setTreeOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
   const appBarRef = useRef<HTMLDivElement>(null);
 
   // Tapping outside the app bar closes the menu — but NOT on item clicks, so a
@@ -184,6 +188,7 @@ export function App(): React.JSX.Element {
           opHighlight={profileHighlight}
           onSelectBody={setSelectedBody}
           facePick={sketcher.pickingFace ? { onPick: sketcher.pickFace } : null}
+          viewBarOpen={viewOpen}
         />
         {sketcher.activeSketch ? (
           <>
@@ -201,7 +206,7 @@ export function App(): React.JSX.Element {
         ) : (
           <>
             {!sketcher.choosingPlane && !sketcher.pickingFace && <OnboardingHint />}
-            <BrowserTree />
+            {treeOpen && <BrowserTree />}
             {sketcher.choosingPlane && (
               <PlanePicker
                 onChoose={sketcher.choosePlane}
@@ -222,15 +227,41 @@ export function App(): React.JSX.Element {
               </div>
             )}
             <div className={sketcherStyles.appBar} ref={appBarRef}>
-              {/* New Sketch is the primary entry point — always visible, never
-                  collapsed behind the hamburger. */}
+              {/* Browser (origin planes / sketches / bodies) and View controls
+                  each collapse behind their own toggle, grouped with the app
+                  menu in the top-right cluster. */}
               <button
                 type="button"
-                className={`${sketcherStyles.button ?? ''} ${sketcherStyles.primaryAction ?? ''}`}
-                title="N"
-                onClick={sketcher.newSketch}
+                className={
+                  treeOpen
+                    ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
+                    : (sketcherStyles.button ?? '')
+                }
+                aria-pressed={treeOpen}
+                data-testid="browser-toggle"
+                onClick={() => {
+                  setTreeOpen((open) => !open);
+                }}
               >
-                {t('sketch.newSketch')}
+                {t('menu.browser')}{' '}
+                <span className={sketcherStyles.badge} data-testid="body-count">
+                  {liveBodyIds.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={
+                  viewOpen
+                    ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
+                    : (sketcherStyles.button ?? '')
+                }
+                aria-pressed={viewOpen}
+                data-testid="view-toggle"
+                onClick={() => {
+                  setViewOpen((open) => !open);
+                }}
+              >
+                {t('menu.view')}
               </button>
               <button
                 type="button"
@@ -298,7 +329,7 @@ export function App(): React.JSX.Element {
               </div>
             )}
             {measure.active && <MeasureHud result={measure.result} />}
-            <TimelineBar timeline={timeline} />
+            <TimelineBar timeline={timeline} onNewSketch={sketcher.newSketch} />
             <OpDialogHost timeline={timeline} />
           </>
         )}

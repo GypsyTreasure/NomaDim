@@ -19,6 +19,9 @@ test('sketch preview shows, auto-hides on extrude, and can be re-shown', async (
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Finish Sketch' }).click();
 
+  // Open the browser tree (collapsed by default).
+  await page.getByTestId('browser-toggle').click();
+
   // Freshly finished sketch: its preview is visible (checkbox checked).
   const sketchRow = page.getByTestId('tree-sketch');
   await expect(sketchRow).toHaveCount(1);

@@ -20,6 +20,10 @@ export const en = {
   'io.save': 'Save',
   'io.open': 'Open',
   'io.loadError': 'Could not open file:',
+  'error.title': 'Something went wrong',
+  'error.message':
+    'The app hit an unexpected error. Your work is autosaved — reload to pick up where you left off.',
+  'error.reload': 'Reload',
   'menu.toggle': 'Menu',
   'menu.browser': 'Browser',
   'menu.view': 'View',

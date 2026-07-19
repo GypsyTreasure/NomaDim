@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
  * Dim tool: adds associative reference dimensions (solver-free, ADR-0002)
  * between two picked pool points. Selectable by button and by its 'D'
  * shortcut, HUD-less (it annotates existing points rather than drawing), with
- * a kind chooser for the five supported kinds, and catalogued in the shortcuts
+ * a kind chooser (defaulting to Auto H/V, AutoCAD-like), and catalogued in the shortcuts
  * overlay. The measure/label/render math is unit-tested in dimensions.spec and
  * the command flow in sketch-dimensions.spec.
  */
@@ -23,15 +23,19 @@ test('the Dim tool is selectable, offers a kind chooser, is HUD-less and catalog
   // …the numeric HUD hides (it annotates existing points, not new geometry)…
   await expect(page.getByTestId('numeric-hud')).toBeHidden();
 
-  // …and a kind chooser appears with all five reference-dimension kinds.
+  // …and a kind chooser appears, defaulting to Auto (H/V) like AutoCAD, with
+  // Parallel/Radius/Diameter/Angle available to override.
   const chooser = page.getByLabel('Dimension type');
   await expect(chooser).toBeVisible();
+  await expect(chooser).toHaveValue('auto');
   await expect(chooser.locator('option')).toHaveText([
-    'Linear',
+    'Auto (H/V)',
+    'Parallel',
     'Horizontal',
     'Vertical',
-    'Angle',
     'Radius',
+    'Diameter',
+    'Angle',
   ]);
   await chooser.selectOption('radius');
   await expect(chooser).toHaveValue('radius');

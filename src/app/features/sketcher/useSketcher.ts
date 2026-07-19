@@ -52,6 +52,19 @@ import {
   type ToolState,
 } from './toolLogic';
 
+/**
+ * The Dim tool's selected kind. `auto` is the AutoCAD-like default: at use it
+ * resolves to a `horizontal` or `vertical` dimension from the span (whichever
+ * axis dominates). The user overrides to parallel/radius/diameter/angle when
+ * needed. Only concrete `SketchDimensionKind`s are ever stored.
+ */
+export type DimensionToolKind = 'auto' | SketchDimensionKind;
+
+function resolveDimensionKind(kind: DimensionToolKind, a: Vec2, b: Vec2): SketchDimensionKind {
+  if (kind !== 'auto') return kind;
+  return Math.abs(b.x - a.x) >= Math.abs(b.y - a.y) ? 'horizontal' : 'vertical';
+}
+
 /** Snap tolerance in screen pixels — converted to mm per query (R11). */
 const SNAP_TOLERANCE_PX = 12;
 const ANGULAR_TOLERANCE_RAD = 2 * DEG_TO_RAD;
@@ -89,10 +102,10 @@ export interface SketcherApi {
   readonly tool: SketchToolId | null;
   readonly constructionMode: boolean;
   /** Which reference-dimension kind the Dim tool will create (F2). */
-  readonly dimensionKind: SketchDimensionKind;
+  readonly dimensionKind: DimensionToolKind;
   /** True once the Dim tool has its first point and is awaiting the second. */
   readonly dimensionArmed: boolean;
-  readonly setDimensionKind: (kind: SketchDimensionKind) => void;
+  readonly setDimensionKind: (kind: DimensionToolKind) => void;
   readonly inputState: NumericInputState;
   readonly lastFinish: FinishSummary | null;
   /** True after "New Sketch" until a plane is chosen (F2). */
@@ -120,6 +133,10 @@ export interface SketcherApi {
   readonly cancelFacePick: () => void;
   readonly pickFace: (bodyId: BodyId, point: readonly [number, number, number]) => void;
   readonly finishSketch: () => void;
+  /** Delete the currently selected sketch entities (touch affordance for the Delete key). */
+  readonly deleteSelection: () => void;
+  /** True when one or more sketch entities are selected. */
+  readonly hasSelection: boolean;
 }
 
 export function useSketcher(): SketcherApi {
@@ -169,7 +186,7 @@ export function useSketcher(): SketcherApi {
 
   // Dim tool: the chosen dimension kind + the first picked point (awaiting the
   // second). Both are read via refs inside the stable click callback.
-  const [dimensionKind, setDimensionKindState] = useState<SketchDimensionKind>('linear');
+  const [dimensionKind, setDimensionKindState] = useState<DimensionToolKind>('auto');
   const dimensionKindRef = useRef(dimensionKind);
   useEffect(() => {
     dimensionKindRef.current = dimensionKind;
@@ -322,6 +339,9 @@ export function useSketcher(): SketcherApi {
           return;
         }
         if (first === picked) return;
+        const aPt = current.points.find((pt) => pt.id === first);
+        const bPt = current.points.find((pt) => pt.id === picked);
+        if (!aPt || !bPt) return;
         const existing = new Set<string>(current.dimensions.map((d) => d.id));
         const dimensionId = createId<'DimensionId'>(existing);
         commandBus.dispatch({
@@ -330,7 +350,12 @@ export function useSketcher(): SketcherApi {
             sketchId: current.id,
             dimension: {
               id: dimensionId,
-              kind: dimensionKindRef.current,
+              // 'auto' resolves to horizontal/vertical from the span (AutoCAD-like).
+              kind: resolveDimensionKind(
+                dimensionKindRef.current,
+                vec2(aPt.x, aPt.y),
+                vec2(bPt.x, bPt.y)
+              ),
               a: first,
               b: picked,
               offset: DEFAULT_DIMENSION_OFFSET_MM,
@@ -393,7 +418,7 @@ export function useSketcher(): SketcherApi {
     }
   }, []);
 
-  const setDimensionKind = useCallback((kind: SketchDimensionKind) => {
+  const setDimensionKind = useCallback((kind: DimensionToolKind) => {
     setDimensionKindState(kind);
   }, []);
 
@@ -513,6 +538,17 @@ export function useSketcher(): SketcherApi {
     setToolState((s) => setConstructionMode(s, !s.constructionMode));
   }, []);
 
+  const deleteSelection = useCallback(() => {
+    const current = liveSketch();
+    const session = useSessionStore.getState();
+    if (!current || session.selectedEntityIds.length === 0) return;
+    commandBus.dispatch({
+      type: 'DeleteSketchEntities',
+      payload: { sketchId: current.id, entityIds: session.selectedEntityIds },
+    });
+    session.setSelection([]);
+  }, [liveSketch]);
+
   // "New Sketch" first asks which plane to draw on (F2 plane selection);
   // the sketch is created once a plane is chosen.
   const newSketch = useCallback(() => {
@@ -611,7 +647,7 @@ export function useSketcher(): SketcherApi {
     const preview = dimensionRender(
       {
         id: '' as DimensionId,
-        kind: dimensionKind,
+        kind: resolveDimensionKind(dimensionKind, vec2(a.x, a.y), effectiveCursor),
         a: dimFirst,
         b: dimFirst,
         offset: DEFAULT_DIMENSION_OFFSET_MM,
@@ -670,6 +706,8 @@ export function useSketcher(): SketcherApi {
     cancelInput,
     cycleField,
     toggleConstruction,
+    deleteSelection,
+    hasSelection: selectedEntityIds.length > 0,
     newSketch,
     choosePlane,
     cancelPlaneChoice,

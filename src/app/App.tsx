@@ -18,6 +18,7 @@ import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
 import { buildSketchPreviews } from './features/sketcher/sketchPreviews';
 import { Logo } from './features/brand/Logo';
+import { UndoRedo } from './features/history/UndoRedo';
 import { BrowserTree } from './features/browser/BrowserTree';
 import { MeasureHud } from './features/measure/MeasureHud';
 import { useMeasure } from './features/measure/useMeasure';
@@ -158,6 +159,7 @@ export function App(): React.JSX.Element {
         <h1 className={styles.title}>
           <Logo />
         </h1>
+        <UndoRedo />
       </header>
       <main
         className={styles.viewportArea}

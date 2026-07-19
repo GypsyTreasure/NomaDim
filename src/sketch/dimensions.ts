@@ -46,6 +46,8 @@ export function dimensionMeasure(kind: SketchDimensionKind, a: Vec2, b: Vec2): n
     case 'linear':
     case 'radius':
       return distance(a, b);
+    case 'diameter':
+      return 2 * distance(a, b);
     case 'horizontal':
       return Math.abs(b.x - a.x);
     case 'vertical':
@@ -73,6 +75,8 @@ export function dimensionLabel(kind: SketchDimensionKind, a: Vec2, b: Vec2): str
       return trimNumber(value);
     case 'radius':
       return `R${trimNumber(value)}`;
+    case 'diameter':
+      return `⌀${trimNumber(value)}`;
     case 'angle':
       return `${trimNumber(value)}°`;
     default: {
@@ -150,6 +154,15 @@ export function dimensionRender(dim: SketchDimension, a: Vec2, b: Vec2): Dimensi
     const n = perp(dir);
     const anchor = add(scale(add(a, b), 0.5), scale(n, offset));
     return { segments: [[a, b]], labelAnchor: anchor, label };
+  }
+
+  if (kind === 'diameter') {
+    // Full chord through the centre: from the rim point b through centre a to
+    // the opposite rim, labelled ⌀ at the far end.
+    const dir = normalize(sub(b, a));
+    const far = sub(a, scale(dir, distance(a, b)));
+    const anchor = add(b, scale(perp(dir), offset));
+    return { segments: [[far, b]], labelAnchor: anchor, label };
   }
 
   // linear: dimension line parallel to a→b, offset perpendicular.

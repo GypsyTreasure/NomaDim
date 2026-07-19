@@ -103,8 +103,10 @@ export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef;
  * - `horizontal` |Δx|      · `vertical` |Δy|
  * - `angle`      inclination of a→b from +X, degrees
  * - `radius`     distance |ab| shown as R (a = centre, b = on the circle)
+ * - `diameter`   2·|ab| shown as ⌀ (a = centre, b = on the circle)
  */
-export type SketchDimensionKind = 'linear' | 'horizontal' | 'vertical' | 'angle' | 'radius';
+export type SketchDimensionKind =
+  'linear' | 'horizontal' | 'vertical' | 'angle' | 'radius' | 'diameter';
 
 export interface SketchDimension {
   readonly id: DimensionId;

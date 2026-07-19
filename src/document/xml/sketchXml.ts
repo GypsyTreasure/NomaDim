@@ -256,6 +256,7 @@ const DIMENSION_KINDS: readonly SketchDimensionKind[] = [
   'vertical',
   'angle',
   'radius',
+  'diameter',
 ];
 
 function parseDimensions(dimsRaw: Raw): Result<SketchDimension[], ImportError> {

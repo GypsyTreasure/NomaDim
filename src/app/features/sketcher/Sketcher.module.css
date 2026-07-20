@@ -1,20 +1,20 @@
 /* Floating control panels over the viewport: rounded, elevated navy surfaces
    with hairline borders (ADR-0044). */
+/* Sketch tool strip: fills the shared bottom dock as a two-row grid that
+   scrolls horizontally when the tools overflow (#3) — half the scroll distance
+   of a single long row. Same layout as the 3D timeline's create row. */
 .toolbar {
-  position: absolute;
-  top: var(--grid-unit);
-  left: var(--grid-unit);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-columns: max-content;
+  align-content: center;
   gap: calc(var(--grid-unit) * 0.5);
-  max-width: calc(100vw - 2 * var(--grid-unit));
-  padding: calc(var(--grid-unit) * 0.75);
-  background-color: var(--color-panel-bg);
-  color: var(--color-panel-fg);
-  border: var(--border-width) solid var(--color-panel-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  padding: calc(var(--grid-unit) * 0.6) var(--grid-unit);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 /* Top-right app-action cluster: an always-visible primary New Sketch button +
@@ -308,14 +308,6 @@
     min-height: var(--control-h-touch);
     padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
     font-size: var(--text-sm);
-  }
-
-  .toolbar {
-    left: var(--grid-unit);
-    right: var(--grid-unit);
-    max-width: none;
-    flex-wrap: nowrap;
-    overflow-x: auto;
   }
 
   .menuToggle {

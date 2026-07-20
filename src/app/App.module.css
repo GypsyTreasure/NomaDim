@@ -17,6 +17,8 @@
   z-index: 2; /* the elevation shadow sits above the viewport panels' top edge */
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--grid-unit);
   padding: calc(var(--grid-unit) * 0.75) calc(var(--grid-unit) * 2);
   /* Clear the iPhone notch / status bar in landscape + portrait. */
   padding-left: max(calc(var(--grid-unit) * 2), env(safe-area-inset-left));
@@ -35,8 +37,30 @@
 }
 
 .viewportArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* floating panels are clipped to the canvas area, never the page */
+}
+
+/* The WebGL canvas + all floating panels. Flex-1 so it yields exactly the
+   remaining height above the docked tool strip — the model is drawn only in
+   this region and so is never hidden behind the tools (#3). */
+.canvasRegion {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden; /* floating panels are clipped to the canvas area, never the page */
+  overflow: hidden;
+}
+
+/* Docked tool strip, shared by both modes and pinned to the same edge (#3).
+   A real layout sibling (not an overlay), so it reserves its own space. */
+.toolDock {
+  flex: 0 0 auto;
+  z-index: 3;
+  display: flex;
+  background-color: var(--color-navy-800);
+  border-top: var(--border-width) solid var(--color-hairline);
+  box-shadow: var(--shadow-sm);
 }

@@ -18,6 +18,10 @@ describe('dimensionMeasure', () => {
     expect(dimensionMeasure('radius', vec2(1, 1), vec2(1, 6))).toBeCloseTo(5);
   });
 
+  it('diameter is twice the straight distance |ab|', () => {
+    expect(dimensionMeasure('diameter', vec2(0, 0), vec2(3, 4))).toBeCloseTo(10);
+  });
+
   it('horizontal/vertical measure absolute axis deltas (sign-free)', () => {
     expect(dimensionMeasure('horizontal', vec2(5, 9), vec2(-3, 2))).toBeCloseTo(8);
     expect(dimensionMeasure('vertical', vec2(5, 9), vec2(-3, 2))).toBeCloseTo(7);
@@ -37,6 +41,7 @@ describe('dimensionLabel', () => {
     expect(dimensionLabel('linear', vec2(0, 0), vec2(3, 4))).toBe('5');
     expect(dimensionLabel('horizontal', vec2(0, 0), vec2(2.5, 0))).toBe('2.5');
     expect(dimensionLabel('radius', vec2(0, 0), vec2(12, 0))).toBe('R12');
+    expect(dimensionLabel('diameter', vec2(0, 0), vec2(12, 0))).toBe('⌀24');
     expect(dimensionLabel('angle', vec2(0, 0), vec2(1, 1))).toBe('45°');
   });
 });
@@ -79,5 +84,15 @@ describe('dimensionRender', () => {
     const r = dimensionRender(dim('radius', 0), vec2(0, 0), vec2(0, 12));
     expect(r.segments).toHaveLength(1);
     expect(r.label).toBe('R12');
+  });
+
+  it('diameter: a single chord through the centre, labelled ⌀', () => {
+    const r = dimensionRender(dim('diameter', 0), vec2(0, 0), vec2(0, 12));
+    expect(r.segments).toHaveLength(1);
+    // The chord spans the full diameter: from the far rim (0,-12) to b (0,12).
+    const chord = r.segments[0];
+    expect(chord?.[0].y).toBeCloseTo(-12);
+    expect(chord?.[1].y).toBeCloseTo(12);
+    expect(r.label).toBe('⌀24');
   });
 });

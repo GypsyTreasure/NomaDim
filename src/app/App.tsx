@@ -18,6 +18,7 @@ import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
 import { buildSketchPreviews } from './features/sketcher/sketchPreviews';
 import { Logo } from './features/brand/Logo';
+import { UndoRedo } from './features/history/UndoRedo';
 import { BrowserTree } from './features/browser/BrowserTree';
 import { MeasureHud } from './features/measure/MeasureHud';
 import { useMeasure } from './features/measure/useMeasure';
@@ -152,102 +153,72 @@ export function App(): React.JSX.Element {
     return map;
   }, [bodyMeta, liveBodyIds, selectedBodyId]);
 
+  const inSketch = sketcher.activeSketch !== null;
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
         <h1 className={styles.title}>
           <Logo />
         </h1>
+        <UndoRedo />
       </header>
-      <main
-        className={styles.viewportArea}
-        onDragOver={(e) => {
-          e.preventDefault();
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          const file = e.dataTransfer.files[0];
-          if (!file) return;
-          void file.text().then((text) => {
-            const error = loadDocumentText(text);
-            if (error !== null) window.alert(`${t('io.loadError')} ${error}`);
-          });
-        }}
-      >
-        <Viewport
-          zoomToFitLabel={t('viewport.zoomToFit')}
-          viewLabels={viewLabels}
-          projectionLabels={projectionLabels}
-          bodies={bodies}
-          sketchMode={sketcher.viewportSketchMode}
-          edgePick={edgePick}
-          measure={measure.measureProps}
-          bodyStyles={bodyStyles}
-          planeVisibility={planeVisibility}
-          sketchPreviews={sketchPreviews}
-          opHighlight={profileHighlight}
-          onSelectBody={setSelectedBody}
-          facePick={sketcher.pickingFace ? { onPick: sketcher.pickFace } : null}
-          viewBarOpen={viewOpen}
-        />
-        {sketcher.activeSketch ? (
-          <>
-            <SketchToolbar sketcher={sketcher} />
-            <NumericHud
-              input={sketcher.inputState}
-              onFocus={sketcher.focusField}
-              onChangeField={sketcher.setFieldText}
-              onSubmit={sketcher.submitInput}
-              onCancel={sketcher.cancelInput}
-              onCycle={sketcher.cycleField}
-            />
-            <PropertiesPanel sketch={sketcher.activeSketch} />
-          </>
-        ) : (
-          <>
-            {!sketcher.choosingPlane && !sketcher.pickingFace && <OnboardingHint />}
-            {treeOpen && <BrowserTree />}
-            {sketcher.choosingPlane && (
-              <PlanePicker
-                onChoose={sketcher.choosePlane}
-                onPickFace={sketcher.beginFacePick}
-                onCancel={sketcher.cancelPlaneChoice}
-              />
-            )}
-            {sketcher.pickingFace && (
-              <div className={sketcherStyles.summary} data-testid="face-pick-hint">
-                {sketcher.faceError ?? t('sketch.facePickHint')}{' '}
-                <button
-                  type="button"
-                  className={sketcherStyles.button}
-                  onClick={sketcher.cancelFacePick}
-                >
-                  {t('dialog.cancel')}
-                </button>
-              </div>
-            )}
-            <div className={sketcherStyles.appBar} ref={appBarRef}>
-              {/* Browser (origin planes / sketches / bodies) and View controls
-                  each collapse behind their own toggle, grouped with the app
-                  menu in the top-right cluster. */}
-              <button
-                type="button"
-                className={
-                  treeOpen
-                    ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
-                    : (sketcherStyles.button ?? '')
-                }
-                aria-pressed={treeOpen}
-                data-testid="browser-toggle"
-                onClick={() => {
-                  setTreeOpen((open) => !open);
-                }}
-              >
-                {t('menu.browser')}{' '}
-                <span className={sketcherStyles.badge} data-testid="body-count">
-                  {liveBodyIds.length}
-                </span>
-              </button>
+      <main className={styles.viewportArea}>
+        <div
+          className={styles.canvasRegion}
+          onDragOver={(e) => {
+            e.preventDefault();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            void file.text().then((text) => {
+              const error = loadDocumentText(text);
+              if (error !== null) window.alert(`${t('io.loadError')} ${error}`);
+            });
+          }}
+        >
+          <Viewport
+            zoomToFitLabel={t('viewport.zoomToFit')}
+            viewLabels={viewLabels}
+            projectionLabels={projectionLabels}
+            bodies={bodies}
+            sketchMode={sketcher.viewportSketchMode}
+            edgePick={edgePick}
+            measure={measure.measureProps}
+            bodyStyles={bodyStyles}
+            planeVisibility={planeVisibility}
+            sketchPreviews={sketchPreviews}
+            opHighlight={profileHighlight}
+            onSelectBody={setSelectedBody}
+            facePick={sketcher.pickingFace ? { onPick: sketcher.pickFace } : null}
+            viewBarOpen={viewOpen}
+          />
+
+          {/* Top-right cluster (both modes). The Browser toggle is always
+              present so bodies/origin planes can be hidden even while sketching
+              (#4); View + the app-action menu are modeling-only. */}
+          <div className={sketcherStyles.appBar} ref={appBarRef}>
+            <button
+              type="button"
+              className={
+                treeOpen
+                  ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
+                  : (sketcherStyles.button ?? '')
+              }
+              aria-pressed={treeOpen}
+              data-testid="browser-toggle"
+              onClick={() => {
+                setTreeOpen((open) => !open);
+              }}
+            >
+              {t('menu.browser')}{' '}
+              <span className={sketcherStyles.badge} data-testid="body-count">
+                {liveBodyIds.length}
+              </span>
+            </button>
+            {!inSketch && (
               <button
                 type="button"
                 className={
@@ -263,6 +234,8 @@ export function App(): React.JSX.Element {
               >
                 {t('menu.view')}
               </button>
+            )}
+            {!inSketch && (
               <button
                 type="button"
                 className={sketcherStyles.menuToggle}
@@ -282,6 +255,8 @@ export function App(): React.JSX.Element {
                   />
                 </svg>
               </button>
+            )}
+            {!inSketch && (
               <div
                 className={`${sketcherStyles.menuPanel ?? ''} ${
                   actionsOpen ? (sketcherStyles.menuPanelOpen ?? '') : ''
@@ -320,20 +295,74 @@ export function App(): React.JSX.Element {
                   </span>
                 )}
               </div>
-            </div>
-            {sketcher.lastFinish && (
-              <div className={sketcherStyles.summary} data-testid="finish-summary">
-                {t('sketch.summary.profiles')} {sketcher.lastFinish.profiles}{' '}
-                {t('sketch.summary.withHoles')} {sketcher.lastFinish.withHoles}{' '}
-                {t('sketch.summary.open')} {sketcher.lastFinish.open}
-              </div>
             )}
-            {measure.active && <MeasureHud result={measure.result} />}
+          </div>
+
+          {treeOpen && <BrowserTree />}
+
+          {sketcher.activeSketch ? (
+            <>
+              <NumericHud
+                input={sketcher.inputState}
+                onFocus={sketcher.focusField}
+                onChangeField={sketcher.setFieldText}
+                onSubmit={sketcher.submitInput}
+                onCancel={sketcher.cancelInput}
+                onCycle={sketcher.cycleField}
+              />
+              <PropertiesPanel sketch={sketcher.activeSketch} />
+            </>
+          ) : (
+            <>
+              {!sketcher.choosingPlane && !sketcher.pickingFace && <OnboardingHint />}
+              {sketcher.choosingPlane && (
+                <PlanePicker
+                  onChoose={sketcher.choosePlane}
+                  onPickFace={sketcher.beginFacePick}
+                  onCancel={sketcher.cancelPlaneChoice}
+                />
+              )}
+              {sketcher.pickingFace && (
+                <div className={sketcherStyles.summary} data-testid="face-pick-hint">
+                  {sketcher.faceError ?? t('sketch.facePickHint')}{' '}
+                  <button
+                    type="button"
+                    className={sketcherStyles.button}
+                    onClick={sketcher.cancelFacePick}
+                  >
+                    {t('dialog.cancel')}
+                  </button>
+                </div>
+              )}
+              {sketcher.lastFinish && (
+                <div className={sketcherStyles.summary} data-testid="finish-summary">
+                  {t('sketch.summary.profiles')} {sketcher.lastFinish.profiles}{' '}
+                  {t('sketch.summary.withHoles')} {sketcher.lastFinish.withHoles}{' '}
+                  {t('sketch.summary.open')} {sketcher.lastFinish.open}
+                </div>
+              )}
+              {measure.active && <MeasureHud result={measure.result} />}
+            </>
+          )}
+          {/* Op dialogs (Extrude/Fillet/…) are non-modal panels anchored to the
+              same top-right corner as the app menu; kept here, after the app
+              bar, so they paint above it and their edge-pick backdrop stays
+              within the canvas region. */}
+          <OpDialogHost timeline={timeline} />
+          <KeyboardShortcuts />
+        </div>
+
+        {/* Shared bottom tool dock (#3): the sketch tools and the 3D timeline
+            occupy the same reserved strip in both modes. Because it is a flex
+            sibling of the canvas (not floating over it), the model is never
+            hidden behind it. */}
+        <div className={styles.toolDock} data-testid="tool-dock">
+          {inSketch ? (
+            <SketchToolbar sketcher={sketcher} />
+          ) : (
             <TimelineBar timeline={timeline} onNewSketch={sketcher.newSketch} />
-            <OpDialogHost timeline={timeline} />
-          </>
-        )}
-        <KeyboardShortcuts />
+          )}
+        </div>
       </main>
     </div>
   );

@@ -139,6 +139,7 @@ describe('sketch XML round-trip', () => {
         { id: did('d3'), kind: 'vertical', a: pid('c'), b: pid('p'), offset: 4 },
         { id: did('d4'), kind: 'angle', a: pid('c'), b: pid('p'), offset: 6 },
         { id: did('d5'), kind: 'radius', a: pid('c'), b: pid('p'), offset: 0 },
+        { id: did('d6'), kind: 'diameter', a: pid('c'), b: pid('p'), offset: 0 },
       ],
     };
     const xml = sketchToXml(original);

@@ -1,0 +1,37 @@
+.cluster {
+  display: flex;
+  gap: calc(var(--grid-unit) * 0.5);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  background-color: var(--color-panel-raised);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .button {
+    width: var(--control-h-touch);
+    height: var(--control-h-touch);
+  }
+}

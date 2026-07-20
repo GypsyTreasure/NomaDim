@@ -1,9 +1,8 @@
 import type { SketchToolId } from '../../../sketch';
-import type { SketchDimensionKind } from '../../../document';
 import type { TranslationKey } from '../../i18n/en';
 import { t } from '../../i18n/t';
 import { useSessionStore } from '../../store/sessionStore';
-import type { SketcherApi } from './useSketcher';
+import type { DimensionToolKind, SketcherApi } from './useSketcher';
 import styles from './Sketcher.module.css';
 
 const TOOLS: readonly SketchToolId[] = [
@@ -32,20 +31,28 @@ const TOOL_LABEL_KEYS = {
   dimension: 'sketch.tool.dimension',
 } as const;
 
-/** Dim-tool kinds (F2) with their i18n label keys, in menu order. */
-const DIMENSION_KINDS: readonly SketchDimensionKind[] = [
+/**
+ * Dim-tool kinds (F2) with their i18n label keys, in menu order. `auto` is a
+ * tool-level default (AutoCAD-like): it resolves to horizontal or vertical per
+ * the span's dominant axis at commit; only concrete kinds are ever stored.
+ */
+const DIMENSION_KINDS: readonly DimensionToolKind[] = [
+  'auto',
   'linear',
   'horizontal',
   'vertical',
-  'angle',
   'radius',
+  'diameter',
+  'angle',
 ];
-const DIMENSION_KIND_LABEL_KEYS: Record<SketchDimensionKind, TranslationKey> = {
+const DIMENSION_KIND_LABEL_KEYS: Record<DimensionToolKind, TranslationKey> = {
+  auto: 'sketch.dimensionKind.auto',
   linear: 'sketch.dimensionKind.linear',
   horizontal: 'sketch.dimensionKind.horizontal',
   vertical: 'sketch.dimensionKind.vertical',
   angle: 'sketch.dimensionKind.angle',
   radius: 'sketch.dimensionKind.radius',
+  diameter: 'sketch.dimensionKind.diameter',
 };
 
 /** Keyboard shortcut per tool, shown as a tooltip (master rule, ADR-0032). */
@@ -109,7 +116,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
           title={t('sketch.dimensionKind.label')}
           aria-label={t('sketch.dimensionKind.label')}
           onChange={(event) => {
-            sketcher.setDimensionKind(event.target.value as SketchDimensionKind);
+            sketcher.setDimensionKind(event.target.value as DimensionToolKind);
           }}
         >
           {DIMENSION_KINDS.map((kind) => (
@@ -149,6 +156,16 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
         }}
       >
         {t('sketch.snap')}
+      </button>
+      <button
+        type="button"
+        className={styles.button}
+        title={t('sketch.delete')}
+        data-testid="sketch-delete"
+        disabled={!sketcher.hasSelection}
+        onClick={sketcher.deleteSelection}
+      >
+        {t('sketch.delete')}
       </button>
       <button type="button" className={styles.button} title="F" onClick={sketcher.finishSketch}>
         {t('sketch.finish')}

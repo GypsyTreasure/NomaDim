@@ -21,6 +21,7 @@ import {
   mappingFromBasis,
   planeMapping,
   planeToWorld,
+  planeToScreen,
   pixelsPerMm,
   worldToPlane,
   type OriginPlaneId,
@@ -137,6 +138,8 @@ export interface ViewportProps {
   bodies: MeshTransfer[];
   /** Non-null while a sketch is being edited; camera animates normal-to-plane. */
   sketchMode: SketchModeProps | null;
+  /** Intersect view (#1): clip the near half of bodies + draw the plane section. */
+  sectionView?: boolean;
   /** Non-null while picking edges for a finishing op (F4). */
   edgePick?: EdgePickProps | null;
   /** Non-null while Measure mode is on (F10). */
@@ -161,7 +164,7 @@ const EDGE_HOVER_COLOR = 0x2fa78d; // bright teal
 const EDGE_PICK_THRESHOLD_MM = 2;
 const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (tokens brand teal)
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
-const SECTION_COLOR = 0x7b5ea7; // violet — body cross-section on the sketch plane (#2), distinct from teal/navy/amber
+const SECTION_CSS = '#7b5ea7'; // violet — body cross-section on the sketch plane (#1), distinct from teal/navy/amber
 
 /**
  * Owns the Three.js scene, camera/controls, picking, and the 2D sketch
@@ -176,6 +179,7 @@ export function Viewport({
   viewBarOpen = true,
   bodies,
   sketchMode,
+  sectionView = false,
   edgePick = null,
   measure = null,
   bodyStyles,
@@ -207,6 +211,12 @@ export function Viewport({
   const measureCandidatesRef = useRef<MeasureCandidate[]>([]);
   const onSelectBodyRef = useRef<((bodyId: BodyId | null) => void) | undefined>(undefined);
   const facePickRef = useRef<FacePickProps | null>(null);
+  // Intersect view (#1): whether it's on, plus the current section drawn as
+  // plane-space segments + vertices (it lies ON the sketch plane, so the rAF
+  // loop can stroke it thick on the 2D overlay and mark its pivot points).
+  const sectionViewRef = useRef(false);
+  const sectionSegRef = useRef<readonly (readonly [Vec2, Vec2])[]>([]);
+  const sectionPtsRef = useRef<readonly Vec2[]>([]);
   useEffect(() => {
     sketchModeRef.current = sketchMode;
   }, [sketchMode]);
@@ -251,6 +261,7 @@ export function Viewport({
     // gated quality toggle rather than shipped globally.
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
     renderer.setClearColor(0x000000, 0); // transparent → CSS gradient backdrop shows
+    renderer.localClippingEnabled = true; // Intersect view clips the near body half (#1)
     renderer.setPixelRatio(renderDpr());
     host.appendChild(renderer.domElement);
     host.appendChild(overlayCanvas); // keep overlay above the WebGL canvas
@@ -643,6 +654,30 @@ export function Viewport({
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         if (mode) {
           drawSketchOverlay(ctx, camera, width, height, mode.overlay);
+          // Intersect view (#1): stroke the plane section thick + mark pivots,
+          // drawn over the sketch so the cut outline is unmissable.
+          if (sectionViewRef.current && sectionSegRef.current.length > 0) {
+            const mapping = mappingFromBasis(mode.basis);
+            const toScreen = (p: Vec2): Vec2 => planeToScreen(mapping, p, camera, width, height);
+            ctx.strokeStyle = SECTION_CSS;
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            for (const [a, b] of sectionSegRef.current) {
+              const sa = toScreen(a);
+              const sb = toScreen(b);
+              ctx.moveTo(sa.x, sa.y);
+              ctx.lineTo(sb.x, sb.y);
+            }
+            ctx.stroke();
+            ctx.fillStyle = SECTION_CSS;
+            for (const p of sectionPtsRef.current) {
+              const s = toScreen(p);
+              ctx.beginPath();
+              ctx.arc(s.x, s.y, 3.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
         } else {
           ctx.clearRect(0, 0, width, height);
         }
@@ -681,12 +716,26 @@ export function Viewport({
     if (!bodyGroup) return;
     disposeSceneObjects(bodyGroup);
     bodyGroup.clear();
+    // Intersect view (#1): clip the near half of every body at the sketch
+    // plane so the cut is exposed. The sketch camera sits on the +normal side,
+    // so removing that half reveals the interior. Applied at mesh creation
+    // (fresh local material) and rebuilt when the toggle/plane changes.
+    const basis = sketchMode ? sketchModeRef.current?.basis : null;
+    const clip =
+      basis && sectionView
+        ? new THREE.Plane().setFromNormalAndCoplanarPoint(
+            new THREE.Vector3(basis.normal[0], basis.normal[1], basis.normal[2]).negate(),
+            new THREE.Vector3(basis.origin[0], basis.origin[1], basis.origin[2])
+          )
+        : null;
     for (const mesh of bodies) {
       const style = bodyStyles?.get(mesh.bodyId);
       if (style && !style.visible) continue; // F8 hidden body
-      bodyGroup.add(createBodyMesh(mesh, style?.color, style?.selected ?? false));
+      bodyGroup.add(
+        createBodyMesh(mesh, style?.color, style?.selected ?? false, clip ? [clip] : undefined)
+      );
     }
-  }, [bodies, bodyStyles]);
+  }, [bodies, bodyStyles, sketchMode, sectionView]);
 
   // Apply origin plane visibility (F8 Origin section).
   useEffect(() => {
@@ -745,38 +794,42 @@ export function Viewport({
     }
   }, [sketchPreviews]);
 
-  // Body cross-section on the sketch plane (#2): a display-only violet outline
-  // where the plane cuts each visible body, so the user can draw against
-  // existing geometry. Recomputed on the main thread by slicing the already-
-  // tessellated body meshes — no kernel round-trip and never persisted. Keyed
-  // on the plane (its stable `key`) + bodies/visibility, NOT the whole sketch
-  // mode, so cursor moves while drawing don't rebuild it. Cleared off-plane.
   useEffect(() => {
-    const group = sectionGroupRef.current;
-    if (!group) return;
-    disposeSceneObjects(group);
-    group.clear();
+    sectionViewRef.current = sectionView;
+  }, [sectionView]);
+
+  // Intersect view (#1): where the sketch plane cuts each visible body, compute
+  // the section as plane-space segments (+ their vertices as pivot points) by
+  // slicing the tessellated body meshes on the main thread — no kernel round
+  // trip, never persisted. The section lies ON the plane, so the rAF loop
+  // strokes it thick on the 2D overlay (unmissable) and marks the pivots.
+  // Keyed on the plane id + bodies/visibility + the toggle, NOT the whole
+  // sketch mode, so cursor moves while drawing don't rebuild it.
+  useEffect(() => {
     const basis = sketchModeRef.current?.basis;
-    if (!basis) return;
-    const coords: number[] = [];
+    if (!basis || !sectionView) {
+      sectionSegRef.current = [];
+      sectionPtsRef.current = [];
+      return;
+    }
+    const mapping = mappingFromBasis(basis);
+    const segs: (readonly [Vec2, Vec2])[] = [];
+    const pts: Vec2[] = [];
     for (const mesh of bodies) {
-      if (coords.length >= MAX_SECTION_SEGMENTS * 6) break;
+      if (segs.length >= MAX_SECTION_SEGMENTS) break;
       const style = bodyStyles?.get(mesh.bodyId);
       if (style && !style.visible) continue; // respect F8 hidden bodies
       const seg = sliceMesh(mesh.positions, mesh.indices, basis.origin, basis.normal);
-      for (const v of seg) coords.push(v);
+      for (let i = 0; i + 5 < seg.length; i += 6) {
+        const a = worldToPlane(mapping, new THREE.Vector3(seg[i], seg[i + 1], seg[i + 2]));
+        const b = worldToPlane(mapping, new THREE.Vector3(seg[i + 3], seg[i + 4], seg[i + 5]));
+        segs.push([a, b]);
+        pts.push(a, b);
+      }
     }
-    if (coords.length === 0) return;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(coords), 3));
-    // A mid-body cut lies INSIDE the solid, so with depth-testing the body's
-    // near half hides it. Draw it on top (depthTest off + high renderOrder),
-    // like the op-selection highlight, so the outline is always visible.
-    const material = new THREE.LineBasicMaterial({ color: SECTION_COLOR, depthTest: false });
-    const lines = new THREE.LineSegments(geometry, material);
-    lines.renderOrder = 998;
-    group.add(lines);
-  }, [sketchMode?.basis.key, bodies, bodyStyles]);
+    sectionSegRef.current = segs;
+    sectionPtsRef.current = pts;
+  }, [sketchMode?.basis.key, bodies, bodyStyles, sectionView]);
 
   // Rebuild the op-selection highlight (F3): selected profile loops + axis,
   // drawn amber over everything while an Extrude/Revolve dialog is open.

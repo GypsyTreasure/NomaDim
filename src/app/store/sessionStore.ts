@@ -71,7 +71,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
   helpOpen: false,
 
   enterSketch: (sketchId) => {
-    set({ activeSketchId: sketchId, activeTool: 'line', selectedEntityIds: [] });
+    // Start in Select/navigate mode (activeTool null), not a drawing tool, so
+    // the first drag pans/orbits the view instead of laying down stray lines.
+    set({ activeSketchId: sketchId, activeTool: null, selectedEntityIds: [] });
   },
   exitSketch: () => {
     set({ activeSketchId: null, activeTool: null, selectedEntityIds: [] });

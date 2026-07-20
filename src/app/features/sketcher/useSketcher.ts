@@ -137,6 +137,9 @@ export interface SketcherApi {
   readonly deleteSelection: () => void;
   /** True when one or more sketch entities are selected. */
   readonly hasSelection: boolean;
+  /** Intersect view (#1): clip the near half of bodies + show the plane section. */
+  readonly intersect: boolean;
+  readonly toggleIntersect: () => void;
 }
 
 export function useSketcher(): SketcherApi {
@@ -160,9 +163,9 @@ export function useSketcher(): SketcherApi {
   }, []);
 
   const [toolState, setToolState] = useState<ToolState>(() => initialToolState('line'));
-  const [inputState, setInputState] = useState<NumericInputState>(() =>
-    initialInputState(fieldsForToolWithStart('line'))
-  );
+  // Sketch entry starts in Select (activeTool null, #2), so the HUD begins
+  // empty; picking a tool loads its fields.
+  const [inputState, setInputState] = useState<NumericInputState>(() => initialInputState([]));
   const inputStateRef = useRef(inputState);
   useEffect(() => {
     inputStateRef.current = inputState;
@@ -191,6 +194,8 @@ export function useSketcher(): SketcherApi {
   useEffect(() => {
     dimensionKindRef.current = dimensionKind;
   }, [dimensionKind]);
+  // Intersect view (#1): clip the near body half + show the plane section.
+  const [intersect, setIntersect] = useState(false);
   const [dimFirst, setDimFirst] = useState<PointId | null>(null);
   const dimFirstRef = useRef(dimFirst);
   useEffect(() => {
@@ -256,6 +261,18 @@ export function useSketcher(): SketcherApi {
           payload: { sketchId: current.id, ...plan.payload },
         });
       }
+      // Single-shot workflow (#3a): after a shape commits, return to Select so
+      // the tool doesn't stay armed. The Line tool is the exception — it chains
+      // as the continuous free-shape tool for irregular polygons.
+      if (step.commit !== null && step.state.tool !== 'line') {
+        useSessionStore.getState().setActiveTool(null);
+        setToolState((prev) => ({
+          ...initialToolState('line'),
+          constructionMode: prev.constructionMode,
+        }));
+        setInputState(initialInputState([]));
+        return;
+      }
       setToolState(step.state);
       // Fields track the tool's chain state (chained Line gains angleRel);
       // each step starts the next entry fresh, matching the machine's Enter reset.
@@ -269,6 +286,8 @@ export function useSketcher(): SketcherApi {
   // --- Numeric HUD input (shared by the global keydown handler AND the DOM
   // <input> fields, so a mobile soft keyboard drives the same machine) -------
   const submitInput = useCallback(() => {
+    // Select/navigate mode (no active tool): Enter must not commit geometry.
+    if (useSessionStore.getState().activeTool === null) return;
     const before = inputStateRef.current;
     const transition = reduceInput(before, { type: 'enter' });
     setInputState(transition.state);
@@ -406,16 +425,18 @@ export function useSketcher(): SketcherApi {
     setDrag(null);
   }, [liveSketch]);
 
+  // Selecting a tool (or null = Select/navigate) loads its numeric fields, or
+  // clears the HUD + disarms the machine so a click/drag navigates rather than
+  // drawing (#2). Chaining (applyStep) mutates toolState without going through
+  // here, so the free-shape Line keeps its anchor between segments.
   const setTool = useCallback((tool: SketchToolId | null) => {
     useSessionStore.getState().setActiveTool(tool);
-    setDimFirst(null); // leaving/entering a tool cancels a half-placed dimension
-    if (tool) {
-      setToolState((prev) => ({
-        ...initialToolState(tool),
-        constructionMode: prev.constructionMode,
-      }));
-      setInputState(initialInputState(fieldsForToolWithStart(tool, false)));
-    }
+    setDimFirst(null); // switching tools cancels a half-placed dimension
+    setToolState((prev) => ({
+      ...initialToolState(tool ?? 'line'),
+      constructionMode: prev.constructionMode,
+    }));
+    setInputState(initialInputState(tool ? fieldsForToolWithStart(tool, false) : []));
   }, []);
 
   const setDimensionKind = useCallback((kind: DimensionToolKind) => {
@@ -488,6 +509,10 @@ export function useSketcher(): SketcherApi {
         finishRef.current();
         return;
       }
+      if (event.key === 'j' || event.key === 'J') {
+        setIntersect((v) => !v); // Intersect view toggle (#1, ADR-0032)
+        return;
+      }
       if (event.key === 's' || event.key === 'S') {
         setTool(null); // Select
         return;
@@ -538,6 +563,10 @@ export function useSketcher(): SketcherApi {
     setToolState((s) => setConstructionMode(s, !s.constructionMode));
   }, []);
 
+  const toggleIntersect = useCallback(() => {
+    setIntersect((v) => !v);
+  }, []);
+
   const deleteSelection = useCallback(() => {
     const current = liveSketch();
     const session = useSessionStore.getState();
@@ -578,8 +607,10 @@ export function useSketcher(): SketcherApi {
       setPickingFace(false);
       setFaceError(null);
       setLastFinish(null);
+      // Start in Select/navigate, not a drawing tool (#2): the HUD stays empty
+      // until the user picks a tool, so the first drag navigates.
       setToolState(initialToolState('line'));
-      setInputState(initialInputState(fieldsForToolWithStart('line', false)));
+      setInputState(initialInputState([]));
     }
   }, []);
 
@@ -708,6 +739,8 @@ export function useSketcher(): SketcherApi {
     toggleConstruction,
     deleteSelection,
     hasSelection: selectedEntityIds.length > 0,
+    intersect,
+    toggleIntersect,
     newSketch,
     choosePlane,
     cancelPlaneChoice,

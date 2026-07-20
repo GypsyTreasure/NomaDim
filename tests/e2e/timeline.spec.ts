@@ -13,9 +13,8 @@ test('sketch → extrude → edit sketch entity regenerates the solid', async ({
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
-  // A single Ø20 circle at the origin — one profile.
+  // A single Ø20 circle at the origin — one profile (sketch starts in Select, #2).
   await page.keyboard.press('c');
   await expect(page.getByTestId('hud-field-diameter')).toBeVisible();
   await page.keyboard.type('20');
@@ -43,7 +42,6 @@ test('sketch → extrude → edit sketch entity regenerates the solid', async ({
     .getByRole('button')
     .first()
     .click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await expect(page.getByTestId('hud-field-diameter')).toBeVisible();
   await page.keyboard.type('40');

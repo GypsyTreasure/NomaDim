@@ -84,6 +84,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'D', desc: 'help.tool.dimension' },
       { keys: 'X', desc: 'help.construction' },
       { keys: 'Q', desc: 'help.snap' },
+      { keys: 'J', desc: 'help.intersect' },
     ],
   },
   {

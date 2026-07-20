@@ -86,7 +86,12 @@ export function createLighting(): THREE.Group {
 }
 
 /** Builds a shaded body mesh from a worker-tessellated MeshTransfer (R5 Transferable buffers). */
-export function createBodyMesh(mesh: MeshTransfer, color?: string, selected = false): THREE.Mesh {
+export function createBodyMesh(
+  mesh: MeshTransfer,
+  color?: string,
+  selected = false,
+  clippingPlanes?: THREE.Plane[]
+): THREE.Mesh {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
@@ -99,6 +104,11 @@ export function createBodyMesh(mesh: MeshTransfer, color?: string, selected = fa
     color: new THREE.Color(color ?? BODY_COLOR),
     // Selection highlight (F8 tree ⇄ viewport sync): a subtle self-glow.
     emissive: new THREE.Color(selected ? 0x2fa78d : 0x000000),
+    // Intersect view (#1): clip the near half so the section cut is exposed;
+    // `side` double so the newly-open interior is shaded rather than see-through.
+    ...(clippingPlanes && clippingPlanes.length > 0
+      ? { clippingPlanes, side: THREE.DoubleSide }
+      : {}),
   });
   const object = new THREE.Mesh(geometry, material);
   object.name = `Body:${mesh.bodyId}`;

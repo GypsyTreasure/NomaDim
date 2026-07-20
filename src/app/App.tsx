@@ -185,6 +185,7 @@ export function App(): React.JSX.Element {
             projectionLabels={projectionLabels}
             bodies={bodies}
             sketchMode={sketcher.viewportSketchMode}
+            sectionView={sketcher.intersect}
             edgePick={edgePick}
             measure={measure.measureProps}
             bodyStyles={bodyStyles}

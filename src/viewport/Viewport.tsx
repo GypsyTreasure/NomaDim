@@ -769,8 +769,13 @@ export function Viewport({
     if (coords.length === 0) return;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(coords), 3));
-    const material = new THREE.LineBasicMaterial({ color: SECTION_COLOR });
-    group.add(new THREE.LineSegments(geometry, material));
+    // A mid-body cut lies INSIDE the solid, so with depth-testing the body's
+    // near half hides it. Draw it on top (depthTest off + high renderOrder),
+    // like the op-selection highlight, so the outline is always visible.
+    const material = new THREE.LineBasicMaterial({ color: SECTION_COLOR, depthTest: false });
+    const lines = new THREE.LineSegments(geometry, material);
+    lines.renderOrder = 998;
+    group.add(lines);
   }, [sketchMode?.basis.key, bodies, bodyStyles]);
 
   // Rebuild the op-selection highlight (F3): selected profile loops + axis,

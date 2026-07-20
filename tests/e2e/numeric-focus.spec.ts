@@ -9,9 +9,10 @@ test('clicking a numeric field focuses it, then typing fills that field', async 
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
-  // The Line tool is active on entry: fields are Length + Angle.
+  // Sketch starts in Select (#2); pick Line — its fields are Length + Angle.
+  await page.keyboard.press('l');
+  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   const angle = page.getByTestId('hud-field-angleAbs');
   await expect(angle).toBeVisible();
 

@@ -79,6 +79,16 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
 
   return (
     <div className={styles.toolbar}>
+      {/* Finish leads the toolbar (#3b) as the primary exit action. */}
+      <button
+        type="button"
+        className={`${styles.button ?? ''} ${styles.primaryAction ?? ''}`}
+        title="F"
+        data-testid="finish-sketch"
+        onClick={sketcher.finishSketch}
+      >
+        {t('sketch.finish')}
+      </button>
       <button
         type="button"
         className={buttonClass(sketcher.tool === null)}
@@ -159,6 +169,16 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       </button>
       <button
         type="button"
+        className={buttonClass(sketcher.intersect)}
+        title={`${t('sketch.intersect')} (J)`}
+        data-testid="sketch-intersect"
+        aria-pressed={sketcher.intersect}
+        onClick={sketcher.toggleIntersect}
+      >
+        {t('sketch.intersect')}
+      </button>
+      <button
+        type="button"
         className={styles.button}
         title={t('sketch.delete')}
         data-testid="sketch-delete"
@@ -166,9 +186,6 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
         onClick={sketcher.deleteSelection}
       >
         {t('sketch.delete')}
-      </button>
-      <button type="button" className={styles.button} title="F" onClick={sketcher.finishSketch}>
-        {t('sketch.finish')}
       </button>
     </div>
   );

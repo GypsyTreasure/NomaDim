@@ -82,7 +82,8 @@ export function drawSketchOverlay(
   // teal so they read as reference axes, not drawn geometry.
   for (const entity of state.entities) {
     const selected = state.selectedEntityIds.has(entity.entityId);
-    ctx.lineWidth = selected ? 3 : 1.5;
+    // Fatter strokes so sketch geometry reads clearly, incl. on a phone (#4).
+    ctx.lineWidth = selected ? 4 : 2.75;
     ctx.strokeStyle = selected
       ? COLOR_SELECTED
       : entity.axis
@@ -166,8 +167,8 @@ export function drawSketchOverlay(
 
   // Tool preview.
   ctx.strokeStyle = COLOR_PREVIEW;
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([5, 3]);
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([6, 4]);
   for (const curve of state.previewCurves) {
     const screen = project(curve);
     if (curve.kind === 'circle') screen.push(screen[0] ?? { x: 0, y: 0 });

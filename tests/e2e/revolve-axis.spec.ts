@@ -11,10 +11,10 @@ test('draw an axis line and revolve a profile around it', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // Axis tool: a vertical centerline through the origin (keyboard: length 40, 90°).
   await page.getByRole('button', { name: 'Axis', exact: true }).click();
+  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.type('40');
   await page.keyboard.press('Tab');
   await page.keyboard.type('90');

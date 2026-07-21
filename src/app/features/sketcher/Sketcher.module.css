@@ -217,6 +217,34 @@
   opacity: 0.8;
 }
 
+/* Commit button — the touch affordance for Enter (the iOS decimal keypad has
+   no Return key). Filled teal so it reads as the primary "apply" action. */
+.hudCommit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-h);
+  height: var(--control-h);
+  padding: 0 calc(var(--grid-unit) * 0.75);
+  background-color: var(--color-primary);
+  color: var(--color-canvas);
+  border: var(--border-width) solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+
+.hudCommit:hover {
+  filter: brightness(1.08);
+}
+
+@media (pointer: coarse) {
+  .hudCommit {
+    min-width: var(--control-h-touch);
+    height: var(--control-h-touch);
+  }
+}
+
 .hudInput {
   width: 56px;
   padding: 0;

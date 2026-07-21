@@ -77,6 +77,23 @@ export function NumericHud({
           </label>
         );
       })}
+      {/* Explicit commit button (ADR-0054): the iOS `decimal` soft keypad has no
+          Return key, so typed values could never be applied on a phone. This is
+          the touch affordance for Enter. `onPointerDown`/`preventDefault` keeps
+          the focused field from blurring before the commit. */}
+      <button
+        type="button"
+        className={styles.hudCommit}
+        data-testid="hud-commit"
+        aria-label={t('sketch.hud.apply')}
+        title={t('sketch.hud.apply')}
+        onPointerDown={(e) => {
+          e.preventDefault();
+        }}
+        onClick={() => onSubmit?.()}
+      >
+        ✓
+      </button>
     </div>
   );
 }

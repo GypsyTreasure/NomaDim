@@ -214,6 +214,8 @@ export const en = {
   'sketch.properties.angle': 'Angle',
   'sketch.properties.width': 'Width',
   'sketch.properties.height': 'Height',
+  'sketch.properties.centerX': 'Center X',
+  'sketch.properties.centerY': 'Center Y',
   'sketch.properties.segments': 'Segments',
   'sketch.properties.construction': 'Construction',
   'sketch.align.horizontal': 'Horizontal',

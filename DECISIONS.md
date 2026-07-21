@@ -440,3 +440,15 @@ Format: `ADR-NNNN · date · title` → Context / Decision / Consequences. Appen
 **Decision:** Add an explicit **commit button (✓)** to the `NumericHud`, next to the fields, that calls the same `submitInput` as Enter — the touch affordance for a keyboard-only action (same pattern as the mobile Delete / Undo-Redo buttons, ADR-0049). `onPointerDown`+`preventDefault` keeps the focused field from blurring before the click, and the value is already in state via `onChange`, so the commit reads the current typed values. Filled teal so it reads as the primary "apply".
 
 **Consequences:** Phone users can now type a value and apply it (single-shot tools commit and return to Select; Line chains to the next segment). Physical-keyboard Enter and the global keydown path are unchanged. Covered by `numeric-commit` e2e: a closed 40mm square drawn by committing each segment with the **button** (not Enter) — it only closes if the typed length/angle drove the geometry. Full gate green.
+
+## ADR-0055 · 2026-07-21 · Whole-shape Properties are editable, like during creation
+**Context:** With the Select tool the Properties panel summarized the whole shape but its Width / Height / segment fields were **read-only** — you could see the shape's size but not change it. The user asked that these be editable "like during creating of the shape", so selecting a rectangle and typing a new Width resizes it in place.
+
+**Decision:** `ShapeSummary` now renders Width / Height / **Centre X** / **Centre Y** as editable `NumberField`s over the shape's unique pool points (a shared corner counts once). Editing bakes new coordinates through **one `MoveSketchPoints` command** — the single write path, undoable — never a new mutation route:
+- **Width / Height** scale every point about the shape's bounding-box **centre** (`x := cx + (x−cx)·w/width`), so the shape grows/shrinks symmetrically and a zero-extent axis is refused (can't scale from nothing).
+- **Centre X / Y** translate every point by the delta, repositioning the whole shape.
+- **Segments** stays read-only — it's a count of the constituent entities, not a dimension (rectangles remain four lines; no grouping, per ADR-0052).
+
+Solver-free (ADR-0002): this bakes coordinates, it does not add a constraint. Scaling about the centre (not a corner) matches Fusion's resize-in-place feel for a bounding-box edit.
+
+**Consequences:** A selected shape is now fully editable from Properties — resize by Width/Height, reposition by Centre — with the same command path and undo as per-point Change edits. The bounding box is recomputed from the live points each render, so consecutive edits compose. Covered by a `properties` e2e (`whole-shape Width is editable and resizes the shape`) alongside the existing Select-summary / Change-single / H-V-align test. Full gate green.

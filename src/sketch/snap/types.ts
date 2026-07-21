@@ -59,6 +59,12 @@ export interface SnapContext {
   readonly anchor?: Vec2;
   /** Entities to ignore (the one being dragged / currently drawn). */
   readonly excludeEntityIds?: ReadonlySet<EntityId>;
+  /**
+   * Extra plane-space points to snap to that are NOT sketch geometry — the
+   * body cross-section / intersection outline shown by the Intersect view (#5).
+   * Snapping to one places a free point there (no shared topology).
+   */
+  readonly extraSnapPoints?: readonly Vec2[];
   /** Per-kind toggles (sketch toolbar); absent = enabled. `Ctrl` disables all in the caller. */
   readonly disabledKinds?: ReadonlySet<SnapKind>;
 }

@@ -28,7 +28,6 @@ test('menu actions respond to their keyboard shortcuts', async ({ page }) => {
   // In a sketch, tool hotkeys switch the active tool (Axis = I).
   await page.keyboard.press('n');
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('i');
   await expect(page.getByRole('button', { name: 'Axis' })).toHaveClass(/buttonActive/);
 });

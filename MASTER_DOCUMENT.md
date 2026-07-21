@@ -79,15 +79,15 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 
 **Tool workflow (ADR-0051):** entering a sketch starts in **Select/navigate** (no tool armed), so the first drag looks around instead of drawing. Shape tools (Circle, Rectangle, Arc, Polygon, Point, Axis) are **single-shot** — draw one, optionally type exact parameters, and the tool returns to Select. **Line** is the exception: it's the continuous **free-shape** tool (chained connected segments, for irregular polygons) and stays armed until `Esc`. **Finish Sketch** leads the toolbar as the primary exit action.
 
-**Intersect view (ADR-0051, toggle `J`):** the **Intersect** button clips away the near half of every body at the sketch plane (exposing the cut) and draws the **section** — the outline where the plane meets each body — as a thick violet reference with dot pivot points at its vertices. It's **display-only** (never editable, never persisted), computed by slicing the tessellated body meshes on the main thread (no kernel round-trip), respects hidden bodies, and clears when the sketch closes or the toggle is turned off. **Sketch strokes** are drawn thick for legibility on any screen.
+**Intersect view (ADR-0051/0052, toggle `J`):** the **Intersect** button clips away the near half of every body at the sketch plane (exposing the cut) and draws the **section** — both where the plane cuts THROUGH a body and the boundary outline of any body face lying ON the plane (e.g. the face you're sketching on) — as a thick violet reference with dot pivot points at its vertices. It's **display-only** (never editable, never persisted), computed by slicing the tessellated body meshes on the main thread (no kernel round-trip), respects hidden bodies, and clears when the sketch closes or the toggle is turned off. **Sketch strokes** are drawn thick for legibility on any screen.
 
 **Snapping & guides (the precision system):**
-- Point snaps: endpoint, midpoint, center, quadrant, intersection, on-entity, grid.
+- Point snaps: endpoint, midpoint, center, quadrant, intersection, on-entity, grid, and — while the Intersect view is on — the body **section / intersection-outline** points (ADR-0053), so new geometry connects to existing bodies. Snap tolerance is generous for easy connection on touch; snapping to an existing point makes a shared pool point (real topology).
 - Inference guides: horizontal/vertical alignment to existing points, extension lines, parallel / perpendicular / tangent hints while drawing.
 - Visual language mirrors Fusion/Shapr3D: snap glyph at point, dashed guide lines. Snap toggles in sketch toolbar; `Ctrl` temporarily disables snapping.
 
-**Editing:**
-- Select entity → **properties panel** with exact fields (endpoint coordinates, length, angle, radius/diameter, center). Edits are commands (undoable) and re-run downstream regen.
+**Editing (ADR-0052):**
+- **Select** picks the **whole shape** a click lands on (all entities connected through shared points) → Properties shows a read-only summary (bounding-box Width/Height + segment count), matching "the shape as drawn". **Change** picks a **single** point/line → Properties shows its exact editable fields (endpoint coordinates, length, angle, radius/diameter, center) and, for a line, **Horizontal / Vertical** buttons that level or plumb it (a touch-friendly alternative to precise dragging). Edits are commands (undoable) and re-run downstream regen. On phones the Properties panel is compact.
 - Drag with full snapping; connected endpoints (coincident by construction, i.e. chained lines sharing a point ref) move together — shared points are real shared references, not merely coincident coordinates.
 - Delete with dependency check (profile used downstream → warning listing dependent ops).
 
@@ -98,7 +98,7 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 ### F3 — 3D operations (Fusion names)
 While an Extrude/Revolve dialog is open, the geometry it will act on is highlighted amber in the viewport — the selected profile loops (outer + holes) and, for Revolve, the chosen axis line — drawn over the solid so the selection is always visible. Fillet/Chamfer highlight hovered and picked edges.
 
-- **Extrude** (E): 1..n profiles → distance (one side / symmetric / two sides) or **Through All** (self-sizing, passes entirely through the target — the standard way to cut clean through a body), operation **New Body / Join / Cut / Intersect**. Taper: out of scope.
+- **Extrude** (E): 1..n profiles → distance (one side / symmetric / two sides) or **Through All** (self-sizing, passes entirely through the target — the standard way to cut clean through a body), operation **New Body / Join / Cut / Intersect** (choosing a boolean op auto-selects a target body so OK is immediately usable, ADR-0053). Taper: out of scope.
 - **Revolve**: profiles + axis — an **axis/centerline or any line of the same sketch** (drawn with the Axis tool, listed first and named "Axis N") or an always-available origin axis (X/Y/Z); cross-sketch axis references are not allowed (dependency containment) + angle (default 360°), same operation options.
 - Live ghost preview + direction arrows before confirm.
 

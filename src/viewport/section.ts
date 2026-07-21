@@ -1,8 +1,10 @@
 /**
- * Mesh ⨯ plane sectioning (#2): slice a body's triangle mesh with the active
- * sketch plane and return the cut outline as world-space segments. Used to draw
- * a DISPLAY-ONLY cross-section of existing bodies while sketching — a visual
- * guide to draw against, never editable geometry and never persisted.
+ * Mesh ⨯ plane sectioning (#1): slice a body's triangle mesh with the active
+ * sketch plane and return, as world-space segments, both (a) the CUT outline
+ * where the plane passes through the solid and (b) the boundary OUTLINE of any
+ * body face that lies ON the plane (e.g. the face you're sketching on). Used to
+ * draw a DISPLAY-ONLY reference while sketching — never editable, never
+ * persisted.
  *
  * Pure numeric geometry (no THREE, no DOM) so it unit-tests without a canvas
  * (R11 spirit). Works straight off the transferred typed arrays the viewport
@@ -10,6 +12,11 @@
  */
 
 export type Triple = readonly [number, number, number];
+
+/** Quantize a coordinate for edge-identity keys (~0.1 µm), robust to vertex duplication. */
+function coordKey(x: number, y: number, z: number): string {
+  return `${String(Math.round(x * 1e4))},${String(Math.round(y * 1e4))},${String(Math.round(z * 1e4))}`;
+}
 
 /**
  * Safety bound on emitted segments per slice. A cut only touches the band of
@@ -40,6 +47,29 @@ export function sliceMesh(
   const eps = 1e-7;
   const triCount = Math.floor(indices.length / 3);
 
+  // Coplanar-face edges, tallied by endpoint-pair key: an edge shared by two
+  // coplanar triangles (count 2) is interior; a count of 1 is the face
+  // boundary — that perimeter is the on-surface outline (#1).
+  const coEdges = new Map<
+    string,
+    { n: number; c: readonly [number, number, number, number, number, number] }
+  >();
+  const addCoEdge = (
+    x0: number,
+    y0: number,
+    z0: number,
+    x1: number,
+    y1: number,
+    z1: number
+  ): void => {
+    const k0 = coordKey(x0, y0, z0);
+    const k1 = coordKey(x1, y1, z1);
+    const key = k0 < k1 ? `${k0}|${k1}` : `${k1}|${k0}`;
+    const e = coEdges.get(key);
+    if (e) e.n += 1;
+    else coEdges.set(key, { n: 1, c: [x0, y0, z0, x1, y1, z1] });
+  };
+
   for (let t = 0; t < triCount; t += 1) {
     if (out.length >= MAX_SECTION_SEGMENTS * 6) break;
     const ia = indices[t * 3] ?? 0;
@@ -64,8 +94,12 @@ export function sliceMesh(
     if ((da > eps && db > eps && dc > eps) || (da < -eps && db < -eps && dc < -eps)) {
       continue;
     }
-    // Coplanar-ish triangle: skip (would smear a filled band, not an outline).
+    // Coplanar triangle (a face lying ON the plane): tally its edges so the
+    // face's boundary — not its filled interior — is emitted afterward (#1).
     if (Math.abs(da) <= eps && Math.abs(db) <= eps && Math.abs(dc) <= eps) {
+      addCoEdge(ax, ay, az, bx, by, bz);
+      addCoEdge(bx, by, bz, cx, cy, cz);
+      addCoEdge(cx, cy, cz, ax, ay, az);
       continue;
     }
 
@@ -100,5 +134,44 @@ export function sliceMesh(
     }
   }
 
+  // Emit the boundary of every coplanar face (edges used by a single coplanar
+  // triangle) — the outline of geometry that lies on the plane's surface (#1).
+  for (const e of coEdges.values()) {
+    if (out.length >= MAX_SECTION_SEGMENTS * 6) break;
+    if (e.n === 1) out.push(e.c[0], e.c[1], e.c[2], e.c[3], e.c[4], e.c[5]);
+  }
+
   return out;
+}
+
+/** Plane basis as plain triples (origin + in-plane U/V axes + normal). */
+export interface PlaneBasisLite {
+  readonly origin: Triple;
+  readonly uAxis: Triple;
+  readonly vAxis: Triple;
+  readonly normal: Triple;
+}
+
+/**
+ * The section's vertices projected into sketch-plane (u, v) coordinates — the
+ * snap targets for the Intersect outline (#5). Pure arithmetic (dot products),
+ * so it stays THREE-free and callable from the app layer's snap query.
+ */
+export function sectionPlanePoints(
+  positions: Float32Array,
+  indices: Uint32Array,
+  basis: PlaneBasisLite
+): { readonly x: number; readonly y: number }[] {
+  const world = sliceMesh(positions, indices, basis.origin, basis.normal);
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i + 2 < world.length; i += 3) {
+    const dx = (world[i] ?? 0) - basis.origin[0];
+    const dy = (world[i + 1] ?? 0) - basis.origin[1];
+    const dz = (world[i + 2] ?? 0) - basis.origin[2];
+    pts.push({
+      x: dx * basis.uAxis[0] + dy * basis.uAxis[1] + dz * basis.uAxis[2],
+      y: dx * basis.vAxis[0] + dy * basis.vAxis[1] + dz * basis.vAxis[2],
+    });
+  }
+  return pts;
 }

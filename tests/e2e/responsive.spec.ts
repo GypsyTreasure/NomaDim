@@ -20,7 +20,6 @@ test('iPhone-12 viewport: controls reachable, no horizontal page scroll', async 
   await expect(page.getByTestId('app-menu-toggle')).toBeVisible();
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // A tool near the end of the scrollable tool row is still reachable (Playwright
   // scrolls it into view), and typing works.

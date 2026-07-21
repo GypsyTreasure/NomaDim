@@ -13,6 +13,7 @@ export {
 export type { SketchOverlayState } from './sketchOverlay';
 export { VIEW_IDS, viewOrientation, type ViewId, type ViewOrientation } from './viewOrientation';
 export { type ProjectionMode } from './cameraRig';
+export { sectionPlanePoints } from './section';
 export {
   originPlaneBasis,
   planeMapping,

@@ -13,7 +13,6 @@ test('pick a body face and sketch + extrude on it', async ({ page }) => {
   // Build a 40×40×10 box centred on the origin (planar faces, easy to hit).
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.getByRole('button', { name: 'Rectangle (Center)', exact: true }).click();
   await page.getByTestId('sketch-overlay').click(); // centre at the origin
   await page.keyboard.type('40');
@@ -31,12 +30,9 @@ test('pick a body face and sketch + extrude on it', async ({ page }) => {
   await page.getByTestId('plane-choice-face').click();
   await expect(page.getByTestId('face-pick-hint')).toBeVisible();
   await page.getByTestId('sketch-overlay').click(); // hits the box → resolve a planar face
-  // The sketch environment opens on the resolved face.
-  await expect(page.getByTestId('numeric-hud')).toBeVisible({ timeout: 30_000 });
-
-  // Draw a circle on the face and extrude → a second body.
+  // The sketch environment opens on the resolved face (Select default) — pick Circle.
   await page.keyboard.press('c');
-  await expect(page.getByTestId('hud-field-diameter')).toBeVisible();
+  await expect(page.getByTestId('hud-field-diameter')).toBeVisible({ timeout: 30_000 });
   await page.keyboard.type('10');
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Finish Sketch' }).click();

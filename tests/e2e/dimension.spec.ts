@@ -15,7 +15,6 @@ test('the Dim tool is selectable, offers a kind chooser, is HUD-less and catalog
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // Select the Dim tool by its shortcut; its button reads active…
   await page.keyboard.press('d');

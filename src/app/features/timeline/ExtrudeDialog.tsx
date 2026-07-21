@@ -50,6 +50,19 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const profiles = useSketchProfiles(sketchId);
   useProfileHighlight(sketchId, selected, profiles);
 
+  const targets = targetOptions(document, liveBodyIds, prior?.bodyId);
+  // Choosing a boolean op auto-selects a target body so OK is immediately
+  // actionable — otherwise Cut/Join/Intersect look "dead" until you also pick a
+  // target (#6). Switching back to New Body clears it.
+  const chooseOperation = (op: BooleanOperation): void => {
+    setOperation(op);
+    if (op !== 'NewBody') {
+      if (targetBodyId === null && targets[0]) setTargetBodyId(targets[0].value);
+    } else {
+      setTargetBodyId(null);
+    }
+  };
+
   const toggle = (id: ProfileId): void => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -119,13 +132,13 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         labelKey="dialog.operation"
         value={operation}
         options={operationOptions()}
-        onChange={setOperation}
+        onChange={chooseOperation}
       />
       {needsTarget && (
         <SelectRow<BodyId>
           labelKey="dialog.target"
           value={targetBodyId ?? ('' as BodyId)}
-          options={targetOptions(document, liveBodyIds, prior?.bodyId)}
+          options={targets}
           onChange={setTargetBodyId}
         />
       )}

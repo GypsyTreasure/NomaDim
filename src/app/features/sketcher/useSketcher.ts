@@ -32,13 +32,14 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
-import { type SketchModeProps } from '../../../viewport';
+import { sectionPlanePoints, type SketchModeProps } from '../../../viewport';
 import { sketchPlaneBasis } from './planeBasis';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
-import { resolveSketchFace } from '../../store/kernelStore';
+import { resolveSketchFace, useKernelStore } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { t } from '../../i18n/t';
 import { GeometryPlan } from './geometryPlan';
+import { connectedEntityIds } from './shapeSelection';
 import {
   initialToolState,
   isChained,
@@ -65,8 +66,9 @@ function resolveDimensionKind(kind: DimensionToolKind, a: Vec2, b: Vec2): Sketch
   return Math.abs(b.x - a.x) >= Math.abs(b.y - a.y) ? 'horizontal' : 'vertical';
 }
 
-/** Snap tolerance in screen pixels — converted to mm per query (R11). */
-const SNAP_TOLERANCE_PX = 12;
+/** Snap tolerance in screen pixels — converted to mm per query (R11). Generous
+ * so connecting new geometry to existing points is easy, including on touch (#5). */
+const SNAP_TOLERANCE_PX = 16;
 const ANGULAR_TOLERANCE_RAD = 2 * DEG_TO_RAD;
 const GRID_SPACING_MM = 1;
 
@@ -150,6 +152,8 @@ export function useSketcher(): SketcherApi {
   const selectedEntityIds = useSessionStore((s) => s.selectedEntityIds);
 
   const sketch = activeSketchId ? (findSketch(document, activeSketchId) ?? null) : null;
+  const bodies = useKernelStore((s) => s.bodies);
+  const basis = sketch ? sketchPlaneBasis(sketch) : null;
 
   /**
    * Always reads the LIVE document: Zustand updates synchronously on
@@ -234,6 +238,22 @@ export function useSketcher(): SketcherApi {
     return out;
   }, [displaySketch, sketch]);
 
+  // Snap targets from the Intersect view's section / on-plane outline (#5): the
+  // body cross-section projected into plane coords, so new geometry connects to
+  // existing bodies. Only when Intersect is on; memoized off the cursor.
+  const sectionSnapPoints = useMemo<Vec2[]>(() => {
+    if (!intersect || !basis) return [];
+    const pts: Vec2[] = [];
+    for (const mesh of bodies) {
+      for (const p of sectionPlanePoints(mesh.positions, mesh.indices, basis)) {
+        pts.push(vec2(p.x, p.y));
+      }
+    }
+    return pts;
+    // basis identity is stable per plane; keying on its `key` avoids rebuilds.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intersect, bodies, basis?.key]);
+
   const snapResult: SnapResult = useMemo(() => {
     if (!sketch || !snapEnabled || ctrlHeld) return { snap: null, guides: [] };
     return snapEngine.query({
@@ -244,8 +264,9 @@ export function useSketcher(): SketcherApi {
       angularToleranceRad: ANGULAR_TOLERANCE_RAD,
       gridSpacingMm: GRID_SPACING_MM,
       anchor: toolState.chainAnchor?.p ?? toolState.clicks[toolState.clicks.length - 1]?.p,
+      extraSnapPoints: sectionSnapPoints,
     });
-  }, [sketch, evaluated, cursor, pxPerMm, snapEnabled, ctrlHeld, toolState]);
+  }, [sketch, evaluated, cursor, pxPerMm, snapEnabled, ctrlHeld, toolState, sectionSnapPoints]);
 
   const effectiveCursor = snapResult.snap?.point ?? cursor;
   const typedValues = useMemo(() => parsedValues(inputState), [inputState]);
@@ -331,8 +352,10 @@ export function useSketcher(): SketcherApi {
       if (!current) return;
       const tool = useSessionStore.getState().activeTool;
       if (!tool || tool === 'change') {
-        // Select / Change: a click that didn't grab a point picks the nearest
-        // entity within tolerance (Change then shows its points in Properties).
+        // A click that didn't grab a point picks the nearest entity within
+        // tolerance. Select (no tool) picks the WHOLE connected shape so
+        // Properties summarizes it as drawn; Change keeps the single entity for
+        // point/line editing (#3).
         const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
         let bestId: EntityId | null = null;
         let bestDist = tolMm;
@@ -343,7 +366,12 @@ export function useSketcher(): SketcherApi {
             bestId = entity.entityId;
           }
         }
-        useSessionStore.getState().setSelection(bestId ? [bestId] : []);
+        const selection = bestId
+          ? tool === 'change'
+            ? [bestId]
+            : connectedEntityIds(current, bestId)
+          : [];
+        useSessionStore.getState().setSelection(selection);
         return;
       }
       if (tool === 'dimension') {
@@ -689,7 +717,6 @@ export function useSketcher(): SketcherApi {
     return [...dimensionRenders, preview];
   })();
 
-  const basis = sketch ? sketchPlaneBasis(sketch) : null;
   // A typed start point arms the preview at those coordinates too (not just the commit).
   const typedStart = startPointOf(inputState);
   const previewToolState = typedStart ? withStartPoint(toolState, typedStart) : toolState;

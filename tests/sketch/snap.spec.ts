@@ -71,6 +71,14 @@ describe('SnapEngine point snaps', () => {
     expect(result.snap?.sourceRef).toEqual({ type: 'point', pointId: 'pd' });
   });
 
+  it('snaps to a section / intersection-outline point as a free point (#5)', () => {
+    // A point well away from sketch geometry, supplied by the Intersect view.
+    const result = engine.query(makeCtx(vec2(50.1, 50.1), { extraSnapPoints: [vec2(50, 50)] }));
+    expect(result.snap?.kind).toBe('endpoint');
+    expect(result.snap?.sourceRef).toEqual({ type: 'free' });
+    expect(result.snap && nearlyEqualVec(result.snap.point, vec2(50, 50))).toBe(true);
+  });
+
   it('quadrant snaps on the circle rim', () => {
     expect(snapKind(vec2(22.1, 5.05))).toBe('quadrant'); // east quadrant (22, 5)
   });

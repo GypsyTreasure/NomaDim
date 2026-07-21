@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { sliceMesh, MAX_SECTION_SEGMENTS, type Triple } from '../../src/viewport/section';
+import {
+  sliceMesh,
+  sectionPlanePoints,
+  MAX_SECTION_SEGMENTS,
+  type PlaneBasisLite,
+  type Triple,
+} from '../../src/viewport/section';
 
 const XY_ORIGIN: Triple = [0, 0, 0];
 const Z_NORMAL: Triple = [0, 0, 1];
@@ -36,10 +42,15 @@ describe('sliceMesh', () => {
     expect(sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL)).toHaveLength(0);
   });
 
-  it('skips a triangle lying in the plane (no filled band)', () => {
-    const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
-    const indices = new Uint32Array([0, 1, 2]);
-    expect(sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL)).toHaveLength(0);
+  it('outlines a coplanar face — its boundary, not a filled band (#1)', () => {
+    // A unit square on z=0 as two triangles sharing the diagonal (0,0)-(1,1).
+    // The diagonal is interior (used twice) → dropped; the 4 outer edges remain.
+    const positions = new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]);
+    const indices = new Uint32Array([0, 1, 2, 0, 2, 3]);
+    const seg = sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL);
+    expect(seg).toHaveLength(24); // 4 boundary edges × 2 points × 3 coords
+    // Every emitted point lies on z = 0.
+    for (let i = 2; i < seg.length; i += 3) expect(seg[i]).toBeCloseTo(0);
   });
 
   it('sections a two-triangle quad spanning the plane into two segments', () => {
@@ -83,5 +94,26 @@ describe('sliceMesh', () => {
     }
     const seg = sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL);
     expect(seg.length).toBeLessThanOrEqual(MAX_SECTION_SEGMENTS * 6);
+  });
+});
+
+describe('sectionPlanePoints (snap targets, #5)', () => {
+  it('projects the section vertices into plane (u, v) coordinates', () => {
+    // Triangle straddling z=0 → one segment at x=±0.5, z=0. On the XY plane
+    // (u=X, v=Y) that maps to (±0.5, 0).
+    const positions = new Float32Array([-1, 0, -1, 1, 0, -1, 0, 0, 1]);
+    const indices = new Uint32Array([0, 1, 2]);
+    const basis: PlaneBasisLite = {
+      origin: [0, 0, 0],
+      uAxis: [1, 0, 0],
+      vAxis: [0, 1, 0],
+      normal: [0, 0, 1],
+    };
+    const pts = sectionPlanePoints(positions, indices, basis);
+    expect(pts).toHaveLength(2);
+    for (const p of pts) expect(p.y).toBeCloseTo(0);
+    const xs = pts.map((p) => p.x).sort((a, b) => a - b);
+    expect(xs[0]).toBeCloseTo(-0.5);
+    expect(xs[1]).toBeCloseTo(0.5);
   });
 });

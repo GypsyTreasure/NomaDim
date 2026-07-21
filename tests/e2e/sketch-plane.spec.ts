@@ -17,7 +17,6 @@ test('choose a non-XY base plane, then sketch and extrude on it', async ({ page 
   // Pick the XZ plane → the sketch environment opens on it.
   await page.getByTestId('plane-choice-XZ').click();
   await expect(page.getByTestId('plane-picker')).toHaveCount(0);
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // Draw a circle and extrude → one solid body (the XZ placement reached the kernel).
   await page.keyboard.press('c');

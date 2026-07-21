@@ -188,10 +188,28 @@ export const gridProvider: SnapProvider = {
   },
 };
 
+/**
+ * Snap to the Intersect view's cross-section / on-plane outline points (#5),
+ * supplied by the caller as plane-space coordinates. Snapping to one places a
+ * free point there (the outline is a body reference, not sketch topology), so
+ * new geometry connects cleanly to existing bodies. Ranked as `endpoint`.
+ */
+export const sectionPointProvider: SnapProvider = {
+  name: 'section',
+  provide(ctx) {
+    const out: SnapCandidate[] = [];
+    for (const p of ctx.extraSnapPoints ?? []) {
+      if (within(ctx, p)) out.push(make(p, 'endpoint', { type: 'free' }));
+    }
+    return out;
+  },
+};
+
 /** Canonical provider order (highest-value kinds first; ties resolved by priority anyway). */
 export const DEFAULT_POINT_PROVIDERS: readonly SnapProvider[] = [
   originProvider,
   endpointProvider,
+  sectionPointProvider,
   intersectionProvider,
   midpointProvider,
   centerProvider,

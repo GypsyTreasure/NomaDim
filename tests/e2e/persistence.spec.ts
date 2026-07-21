@@ -14,7 +14,6 @@ test('the project survives a page reload (autosave restores it)', async ({ page 
   // Build one body.
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await expect(page.getByTestId('hud-field-diameter')).toBeVisible();
   await page.keyboard.type('20');
@@ -37,7 +36,6 @@ test('a returning sketch (no feature yet) is restored too', async ({ page }) => 
 
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await page.keyboard.type('20');
   await page.keyboard.press('Enter');

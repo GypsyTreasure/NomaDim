@@ -190,6 +190,7 @@ export const en = {
   'sketch.construction': 'Construction',
   'sketch.snap': 'Snap',
   'sketch.intersect': 'Intersect',
+  'sketch.hud.apply': 'Apply value',
   'sketch.field.length': 'Length',
   'sketch.field.angleAbs': 'Angle',
   'sketch.field.angleRel': 'Rel. Angle',

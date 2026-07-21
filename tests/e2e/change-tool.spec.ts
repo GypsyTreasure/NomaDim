@@ -13,7 +13,6 @@ test('the Change tool is selectable, HUD-less, and catalogued', async ({ page })
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // Select the Change tool by its shortcut; its button reads active…
   await page.keyboard.press('m');

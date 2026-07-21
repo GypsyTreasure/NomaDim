@@ -39,6 +39,7 @@ import { resolveSketchFace } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { t } from '../../i18n/t';
 import { GeometryPlan } from './geometryPlan';
+import { connectedEntityIds } from './shapeSelection';
 import {
   initialToolState,
   isChained,
@@ -331,8 +332,10 @@ export function useSketcher(): SketcherApi {
       if (!current) return;
       const tool = useSessionStore.getState().activeTool;
       if (!tool || tool === 'change') {
-        // Select / Change: a click that didn't grab a point picks the nearest
-        // entity within tolerance (Change then shows its points in Properties).
+        // A click that didn't grab a point picks the nearest entity within
+        // tolerance. Select (no tool) picks the WHOLE connected shape so
+        // Properties summarizes it as drawn; Change keeps the single entity for
+        // point/line editing (#3).
         const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
         let bestId: EntityId | null = null;
         let bestDist = tolMm;
@@ -343,7 +346,12 @@ export function useSketcher(): SketcherApi {
             bestId = entity.entityId;
           }
         }
-        useSessionStore.getState().setSelection(bestId ? [bestId] : []);
+        const selection = bestId
+          ? tool === 'change'
+            ? [bestId]
+            : connectedEntityIds(current, bestId)
+          : [];
+        useSessionStore.getState().setSelection(selection);
         return;
       }
       if (tool === 'dimension') {

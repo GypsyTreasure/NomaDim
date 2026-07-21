@@ -289,6 +289,20 @@
   gap: var(--grid-unit);
 }
 
+/* Horizontal / Vertical alignment buttons for a selected line (#2). */
+.alignRow {
+  display: flex;
+  gap: calc(var(--grid-unit) * 0.5);
+  margin-top: calc(var(--grid-unit) * 0.25);
+}
+
+.alignRow .button {
+  flex: 1 1 0;
+  min-height: var(--control-h);
+  padding: calc(var(--grid-unit) * 0.3) calc(var(--grid-unit) * 0.5);
+  font-size: var(--text-xs);
+}
+
 .propertyInput {
   width: 90px;
   padding: calc(var(--grid-unit) * 0.4) calc(var(--grid-unit) * 0.6);
@@ -332,12 +346,26 @@
     display: flex;
   }
 
+  /* Smaller on phones (#4): a compact panel pinned to the right, not full width. */
   .properties {
     top: auto;
     bottom: calc(var(--grid-unit) * 8);
-    left: var(--grid-unit);
     right: var(--grid-unit);
-    width: auto;
-    max-height: 40vh;
+    left: auto;
+    width: 168px;
+    max-width: 52vw;
+    max-height: 34vh;
+    gap: calc(var(--grid-unit) * 0.35);
+    padding: calc(var(--grid-unit) * 0.6);
+    font-size: var(--text-xs);
+  }
+
+  .propertiesTitle {
+    font-size: var(--text-sm);
+    margin-bottom: calc(var(--grid-unit) * 0.35);
+  }
+
+  .propertyInput {
+    width: 64px;
   }
 }

@@ -205,12 +205,18 @@ export const en = {
   'sketch.summary.withHoles': 'with holes:',
   'sketch.summary.open': 'open:',
   'sketch.properties.title': 'Properties',
+  'sketch.properties.shapeTitle': 'Shape',
   'sketch.properties.x': 'X',
   'sketch.properties.y': 'Y',
   'sketch.properties.radius': 'Radius',
   'sketch.properties.length': 'Length',
   'sketch.properties.angle': 'Angle',
+  'sketch.properties.width': 'Width',
+  'sketch.properties.height': 'Height',
+  'sketch.properties.segments': 'Segments',
   'sketch.properties.construction': 'Construction',
+  'sketch.align.horizontal': 'Horizontal',
+  'sketch.align.vertical': 'Vertical',
 } as const;
 
 export type TranslationKey = keyof typeof en;

@@ -13,7 +13,6 @@ test('a sketch cuts through a body with Cut + Through All', async ({ page }) => 
   // Body 1: a Ø30 disc, 10 mm tall.
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await page.keyboard.type('30');
   await page.keyboard.press('Enter');

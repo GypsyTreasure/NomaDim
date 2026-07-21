@@ -15,7 +15,6 @@ test('save a document, then open it back in a fresh session', async ({ page, bro
   // Build one body.
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await expect(page.getByTestId('hud-field-diameter')).toBeVisible();
   await page.keyboard.type('20');

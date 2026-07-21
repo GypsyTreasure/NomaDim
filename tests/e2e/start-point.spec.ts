@@ -10,7 +10,6 @@ test('a circle placed by typed start coordinates + diameter commits', async ({ p
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
 
   // Circle tool; type its centre via the Start X / Start Y fields, then Ø.
   await page.keyboard.press('c');

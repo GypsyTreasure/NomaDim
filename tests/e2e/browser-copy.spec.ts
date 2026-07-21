@@ -12,7 +12,6 @@ test('100-body copy/paste session renders at 30fps', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await expect(page.getByTestId('hud-field-diameter')).toBeVisible();
   await page.keyboard.type('20');

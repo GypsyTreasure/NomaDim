@@ -36,10 +36,15 @@ describe('sliceMesh', () => {
     expect(sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL)).toHaveLength(0);
   });
 
-  it('skips a triangle lying in the plane (no filled band)', () => {
-    const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
-    const indices = new Uint32Array([0, 1, 2]);
-    expect(sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL)).toHaveLength(0);
+  it('outlines a coplanar face — its boundary, not a filled band (#1)', () => {
+    // A unit square on z=0 as two triangles sharing the diagonal (0,0)-(1,1).
+    // The diagonal is interior (used twice) → dropped; the 4 outer edges remain.
+    const positions = new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]);
+    const indices = new Uint32Array([0, 1, 2, 0, 2, 3]);
+    const seg = sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL);
+    expect(seg).toHaveLength(24); // 4 boundary edges × 2 points × 3 coords
+    // Every emitted point lies on z = 0.
+    for (let i = 2; i < seg.length; i += 3) expect(seg[i]).toBeCloseTo(0);
   });
 
   it('sections a two-triangle quad spanning the plane into two segments', () => {

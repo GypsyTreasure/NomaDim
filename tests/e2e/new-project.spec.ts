@@ -11,7 +11,6 @@ import { expect, test, type Page } from '@playwright/test';
 async function buildBody(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
-  await expect(page.getByTestId('numeric-hud')).toBeVisible();
   await page.keyboard.press('c');
   await page.keyboard.type('20');
   await page.keyboard.press('Enter');

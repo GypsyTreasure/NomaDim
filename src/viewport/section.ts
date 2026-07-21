@@ -143,3 +143,35 @@ export function sliceMesh(
 
   return out;
 }
+
+/** Plane basis as plain triples (origin + in-plane U/V axes + normal). */
+export interface PlaneBasisLite {
+  readonly origin: Triple;
+  readonly uAxis: Triple;
+  readonly vAxis: Triple;
+  readonly normal: Triple;
+}
+
+/**
+ * The section's vertices projected into sketch-plane (u, v) coordinates — the
+ * snap targets for the Intersect outline (#5). Pure arithmetic (dot products),
+ * so it stays THREE-free and callable from the app layer's snap query.
+ */
+export function sectionPlanePoints(
+  positions: Float32Array,
+  indices: Uint32Array,
+  basis: PlaneBasisLite
+): { readonly x: number; readonly y: number }[] {
+  const world = sliceMesh(positions, indices, basis.origin, basis.normal);
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i + 2 < world.length; i += 3) {
+    const dx = (world[i] ?? 0) - basis.origin[0];
+    const dy = (world[i + 1] ?? 0) - basis.origin[1];
+    const dz = (world[i + 2] ?? 0) - basis.origin[2];
+    pts.push({
+      x: dx * basis.uAxis[0] + dy * basis.uAxis[1] + dz * basis.uAxis[2],
+      y: dx * basis.vAxis[0] + dy * basis.vAxis[1] + dz * basis.vAxis[2],
+    });
+  }
+  return pts;
+}

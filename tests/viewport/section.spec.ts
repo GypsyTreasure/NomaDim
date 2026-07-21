@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { sliceMesh, MAX_SECTION_SEGMENTS, type Triple } from '../../src/viewport/section';
+import {
+  sliceMesh,
+  sectionPlanePoints,
+  MAX_SECTION_SEGMENTS,
+  type PlaneBasisLite,
+  type Triple,
+} from '../../src/viewport/section';
 
 const XY_ORIGIN: Triple = [0, 0, 0];
 const Z_NORMAL: Triple = [0, 0, 1];
@@ -88,5 +94,26 @@ describe('sliceMesh', () => {
     }
     const seg = sliceMesh(positions, indices, XY_ORIGIN, Z_NORMAL);
     expect(seg.length).toBeLessThanOrEqual(MAX_SECTION_SEGMENTS * 6);
+  });
+});
+
+describe('sectionPlanePoints (snap targets, #5)', () => {
+  it('projects the section vertices into plane (u, v) coordinates', () => {
+    // Triangle straddling z=0 → one segment at x=±0.5, z=0. On the XY plane
+    // (u=X, v=Y) that maps to (±0.5, 0).
+    const positions = new Float32Array([-1, 0, -1, 1, 0, -1, 0, 0, 1]);
+    const indices = new Uint32Array([0, 1, 2]);
+    const basis: PlaneBasisLite = {
+      origin: [0, 0, 0],
+      uAxis: [1, 0, 0],
+      vAxis: [0, 1, 0],
+      normal: [0, 0, 1],
+    };
+    const pts = sectionPlanePoints(positions, indices, basis);
+    expect(pts).toHaveLength(2);
+    for (const p of pts) expect(p.y).toBeCloseTo(0);
+    const xs = pts.map((p) => p.x).sort((a, b) => a - b);
+    expect(xs[0]).toBeCloseTo(-0.5);
+    expect(xs[1]).toBeCloseTo(0.5);
   });
 });

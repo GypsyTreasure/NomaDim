@@ -423,3 +423,13 @@ Format: `ADR-NNNN · date · title` → Context / Decision / Consequences. Appen
 - **Smaller Properties on phones (#4):** narrower fixed width, tighter type/padding, lower max-height.
 
 **Consequences:** Selecting shows "the shape as drawn"; Change stays element-level for edits and alignment. The section now draws both the through-cut and the on-plane face outline. `connectedEntityIds`/`entityPointIds` and the extended `sliceMesh` are unit-tested; a `properties` e2e covers Select-summary vs Change-single + the align buttons. This also repaired e2e specs that still asserted the Line tool was auto-armed on sketch entry — a stale assumption after ADR-0051's Select default that the unit+build CI gate hadn't caught. Full gate green (231 unit; e2e green run-alone).
+
+## ADR-0053 · 2026-07-20 · Snap to shape + intersection points; auto-select a boolean target in Extrude/Revolve
+**Context:** Two more asks. (5) Connecting new geometry to existing shapes was fiddly, and the Intersect outline wasn't snappable. (6) In the Extrude dialog, choosing **Cut** appeared "dead" — OK never enabled — so cutting felt impossible, even though the Combine op booleans work.
+
+**Decision:**
+- **Auto-select a boolean target (#6).** In the Extrude and Revolve dialogs, picking a target-requiring operation (Cut/Join/Intersect) now defaults the Target Body to the first available body, so OK is immediately actionable; switching back to New Body clears it. The op was never broken — it just silently required a manual target selection the user couldn't see mattered.
+- **Bigger snap tolerance (#5a):** `SNAP_TOLERANCE_PX` 12 → 16, so connecting to existing points (endpoints become shared pool points = real topology) is easy, including on touch.
+- **Snap to the Intersect outline (#5b):** the SnapEngine gains `extraSnapPoints` (plane-space) and a `sectionPointProvider` that snaps to them as **free** points (endpoint-ranked). The app supplies them from the Intersect view's section: a THREE-free `sectionPlanePoints` slices the tessellated body meshes and projects the vertices into plane (u, v) via dot products, memoized off the plane id + bodies (not the cursor). So while Intersect is on you can draw geometry that lands exactly on a body's cross-section / on-plane outline. The engine stays unit-pure — the app feeds it points; no sketch↔body coupling inside the sketch layer.
+
+**Consequences:** Cutting during extrude works out of the box; new geometry connects to existing shapes and to the body section without pixel-hunting. `sectionPointProvider`, `sectionPlanePoints`, and the boolean auto-select are unit/e2e-tested (`extrude-cut` e2e; snap + section unit tests). Full gate green (233 unit; e2e green run-alone).

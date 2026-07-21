@@ -71,6 +71,17 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     parsedAxis.kind === 'entity' ? parsedAxis.entityId : null
   );
 
+  const targets = targetOptions(document, liveBodyIds, prior?.bodyId);
+  // Auto-select a target body for a boolean op so OK is immediately actionable (#6).
+  const chooseOperation = (op: BooleanOperation): void => {
+    setOperation(op);
+    if (op !== 'NewBody') {
+      if (targetBodyId === null && targets[0]) setTargetBodyId(targets[0].value);
+    } else {
+      setTargetBodyId(null);
+    }
+  };
+
   // Axis (centerline) lines are offered first and named "Axis N"; plain lines
   // remain valid revolve axes but sit after the origin axes.
   const axisOptions = useMemo<readonly SelectOption<string>[]>(() => {
@@ -156,13 +167,13 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         labelKey="dialog.operation"
         value={operation}
         options={operationOptions()}
-        onChange={setOperation}
+        onChange={chooseOperation}
       />
       {needsTarget && (
         <SelectRow<BodyId>
           labelKey="dialog.target"
           value={targetBodyId ?? ('' as BodyId)}
-          options={targetOptions(document, liveBodyIds, prior?.bodyId)}
+          options={targets}
           onChange={setTargetBodyId}
         />
       )}

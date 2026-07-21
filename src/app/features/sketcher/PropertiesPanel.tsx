@@ -93,7 +93,12 @@ function PointFields({
   );
 }
 
-/** Read-only summary of a multi-entity shape (Select picks the whole shape, #3). */
+/**
+ * Editable whole-shape properties (Select picks the whole shape, #3). Width /
+ * Height / centre are editable like during creation: editing scales or
+ * translates every pool point of the connected shape via one MoveSketchPoints
+ * command (undoable, single write path). Scaling is about the shape's centre.
+ */
 function ShapeSummary({
   sketch,
   entityIds,
@@ -101,27 +106,55 @@ function ShapeSummary({
   sketch: Sketch;
   entityIds: readonly EntityId[];
 }): React.JSX.Element {
-  const pts = entityIds
-    .map((id) => getEntity(sketch, id))
-    .filter((e): e is NonNullable<typeof e> => e !== undefined)
-    .flatMap((e) => entityPointIds(e))
-    .map((pid) => getPoint(sketch, pid))
-    .filter((p): p is NonNullable<typeof p> => p !== undefined);
-  const xs = pts.map((p) => p.x);
-  const ys = pts.map((p) => p.y);
-  const width = xs.length ? Math.max(...xs) - Math.min(...xs) : 0;
-  const height = ys.length ? Math.max(...ys) - Math.min(...ys) : 0;
+  // Unique pool points of the whole shape (a shared corner appears once).
+  const points = new Map<PointId, { x: number; y: number }>();
+  for (const id of entityIds) {
+    const entity = getEntity(sketch, id);
+    if (!entity) continue;
+    for (const pid of entityPointIds(entity)) {
+      const p = getPoint(sketch, pid);
+      if (p) points.set(pid, { x: p.x, y: p.y });
+    }
+  }
+  const xs = [...points.values()].map((p) => p.x);
+  const ys = [...points.values()].map((p) => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const width = xs.length ? maxX - minX : 0;
+  const height = ys.length ? maxY - minY : 0;
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  const apply = (fn: (p: { x: number; y: number }) => { x: number; y: number }): void => {
+    const moves = [...points].map(([pointId, p]) => ({ pointId, ...fn(p) }));
+    commandBus.dispatch({ type: 'MoveSketchPoints', payload: { sketchId: sketch.id, moves } });
+  };
+  const setWidth = (w: number): void => {
+    if (!(width > 0) || !(w > 0)) return; // can't scale a zero-width shape
+    const s = w / width;
+    apply((p) => ({ x: cx + (p.x - cx) * s, y: p.y }));
+  };
+  const setHeight = (h: number): void => {
+    if (!(height > 0) || !(h > 0)) return;
+    const s = h / height;
+    apply((p) => ({ x: p.x, y: cy + (p.y - cy) * s }));
+  };
+  const setCenterX = (x: number): void => {
+    apply((p) => ({ x: p.x + (x - cx), y: p.y }));
+  };
+  const setCenterY = (y: number): void => {
+    apply((p) => ({ x: p.x, y: p.y + (y - cy) }));
+  };
+
   return (
     <div className={styles.properties} data-testid="properties-panel">
       <h2 className={styles.propertiesTitle}>{t('sketch.properties.shapeTitle')}</h2>
-      <div className={styles.propertyRow}>
-        {t('sketch.properties.width')}
-        <span>{width.toFixed(3)}</span>
-      </div>
-      <div className={styles.propertyRow}>
-        {t('sketch.properties.height')}
-        <span>{height.toFixed(3)}</span>
-      </div>
+      <NumberField label={t('sketch.properties.width')} value={width} onCommit={setWidth} />
+      <NumberField label={t('sketch.properties.height')} value={height} onCommit={setHeight} />
+      <NumberField label={t('sketch.properties.centerX')} value={cx} onCommit={setCenterX} />
+      <NumberField label={t('sketch.properties.centerY')} value={cy} onCommit={setCenterY} />
       <div className={styles.propertyRow}>
         {t('sketch.properties.segments')}
         <span>{entityIds.length}</span>

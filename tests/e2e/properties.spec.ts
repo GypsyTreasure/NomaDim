@@ -39,3 +39,24 @@ test('Select summarizes the whole shape; Change edits one line with H/V align', 
   await page.getByTestId('align-horizontal').click();
   await expect(panel).toBeVisible();
 });
+
+test('whole-shape Width is editable and resizes the shape', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
+  await page.waitForTimeout(1400);
+
+  await page.keyboard.press('r');
+  await page.mouse.click(500, 300);
+  await page.mouse.click(700, 420);
+  await page.mouse.click(600, 300); // Select the whole rectangle
+
+  const panel = page.getByTestId('properties-panel');
+  await expect(panel).toContainText('Width');
+  // Set Width → the shape scales to that width; the field reflects it.
+  await page.getByLabel('Width').fill('80');
+  await page.getByLabel('Width').press('Enter');
+  await expect
+    .poll(async () => Number(await page.getByLabel('Width').inputValue()))
+    .toBeCloseTo(80, 1);
+});

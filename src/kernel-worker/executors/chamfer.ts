@@ -1,6 +1,7 @@
 import type { ChamferOp } from '../../document';
 import { resolveEdges } from '../edgeFingerprint';
 import { trackShapeAllocation } from '../handleCounter';
+import { healInvalidSolid } from '../healShape';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -28,10 +29,15 @@ export function executeChamfer(ctx: ExecCtx, op: ChamferOp): void {
     progress.delete();
     if (!result || result.IsNull()) {
       result?.delete();
-      throw new KernelExecError('CHAMFER_FAILED', `Chamfer ${op.id} failed`);
+      throw new KernelExecError(
+        'CHAMFER_FAILED',
+        `Chamfer ${op.id} failed — the distance may be too large for one of the selected edges`
+      );
     }
+    // Heal an invalid face so it still meshes/exports (no see-through hole).
+    const healed = healInvalidSolid(oc, result);
     trackShapeAllocation();
-    bodies.set(op.bodyId, result);
+    bodies.set(op.bodyId, healed);
   } finally {
     for (const edge of edges) edge.delete();
   }

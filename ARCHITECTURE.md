@@ -179,8 +179,10 @@ worker on regen(g, k, plan):
       → downstream ops whose input bodies are absent enter 'skipped' state (grey chip)
       continue
     executors[plan[i].type].execute(ctx, plan[i])
-    on error → respond {error, opId}; ops depending on the failed op's outputs → skipped;
-               map keeps last good states; stop
+    on error → respond {error, opId}; the op's target keeps its last good state;
+               later ops are NOT force-stopped — they run on that state, and only
+               skip if a body they consume is genuinely absent (ADR-0057). So one
+               failed feature no longer nukes the rest of the timeline.
     cacheDelta(i); check generation, abort if stale
   tessellate changed bodies (viewport quality) → transfer meshes + evaluated body list
 ```

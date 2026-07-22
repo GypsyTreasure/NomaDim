@@ -1,6 +1,7 @@
 import type { TopoDS_Shape } from 'opencascade.js';
 import type { CombineOp, CombineOperation } from '../../document';
 import { trackShapeAllocation } from '../handleCounter';
+import { healInvalidSolid } from '../healShape';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -55,8 +56,11 @@ export function executeCombine(ctx: ExecCtx, op: CombineOp): void {
     result = next;
   }
 
+  // Heal an invalid face so it still meshes/exports (no see-through hole). Only
+  // when a boolean actually ran — otherwise `result` is the shared target shape.
+  const healed = result === target ? result : healInvalidSolid(ctx.oc, result);
   trackShapeAllocation();
-  bodies.set(op.targetBodyId, result);
+  bodies.set(op.targetBodyId, healed);
   if (!op.keepTools) {
     for (const id of op.toolBodyIds) bodies.delete(id);
   }

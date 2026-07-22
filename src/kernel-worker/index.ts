@@ -95,8 +95,6 @@ async function handleRegen(
   cache.freeFrom(start);
   bodies = cache.restoreTo(start);
 
-  let failed = false;
-
   for (let i = start; i < plan.ops.length; i += 1) {
     if (generation < latestGeneration) {
       respond({ id, kind: 'error', error: { code: 'STALE_GENERATION', message: 'superseded' } });
@@ -106,10 +104,6 @@ async function handleRegen(
     if (!planOp) continue;
     const op = planOp.op;
 
-    if (failed) {
-      cache.record(i, emptyDelta(), { opId: op.id, status: 'skipped' });
-      continue;
-    }
     if (op.suppressed) {
       // Body-producing op: its bodyId simply never enters the map.
       // Body-modifying op: target keeps prior state. Both = empty delta (§9).
@@ -134,7 +128,11 @@ async function handleRegen(
       );
       cache.record(i, diffDelta(before, bodies), { opId: op.id, status: 'ok' });
     } catch (error) {
-      // Failed op: map keeps last good states; downstream ops → skipped (§9).
+      // Failed op: its target keeps its last good state (restored). Later ops
+      // are NOT force-skipped — they run on that state and are skipped only if a
+      // body they consume is genuinely absent (the check above). So one bad
+      // feature (e.g. a chamfer whose distance is too large) no longer nukes the
+      // rest of the timeline; independent downstream features still compute (§9).
       bodies = cache.restoreTo(i);
       cache.record(i, emptyDelta(), {
         opId: op.id,
@@ -142,7 +140,6 @@ async function handleRegen(
         code: error instanceof KernelExecError ? error.code : 'KERNEL_ERROR',
         message: error instanceof Error ? error.message : String(error),
       });
-      failed = true;
     }
 
     respond({ id, kind: 'progress', opIndex: i });

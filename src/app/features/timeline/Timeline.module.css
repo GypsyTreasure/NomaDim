@@ -276,3 +276,14 @@
     height: var(--control-h-touch);
   }
 }
+
+/* Non-manifold warning in the STL export dialog (F6, #8). */
+.stlWarning {
+  margin: 0;
+  padding: calc(var(--grid-unit) * 0.5);
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  background-color: var(--color-panel-input);
+  border-left: 3px solid var(--color-error);
+  border-radius: var(--radius-sm);
+}

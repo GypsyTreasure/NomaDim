@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
-import { createId, type BodyId, type EntityId, type ProfileId, type SketchId } from '../../../core';
+import {
+  createId,
+  type BodyId,
+  type EntityId,
+  type OpId,
+  type ProfileId,
+  type SketchId,
+} from '../../../core';
 import {
   findSketch,
   type BooleanOperation,
@@ -25,6 +32,7 @@ import {
   useProfileHighlight,
   useSketchProfiles,
 } from './dialogData';
+import { usePreview } from './usePreview';
 import { t } from '../../i18n/t';
 
 /** Encodes a revolve axis as a stable select value ("origin:X" / "entity:<id>"). */
@@ -121,6 +129,26 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     !(Math.abs(angleDeg) > 0) ||
     Math.abs(angleDeg) > 360 ||
     (needsTarget && targetBodyId === null);
+
+  // Live ghost preview (F3): a valid draft revolve (creating, not editing).
+  const previewSketchId = prior || okDisabled ? null : sketchId;
+  const draft: RevolveOp | null =
+    previewSketchId === null
+      ? null
+      : {
+          type: 'Revolve',
+          id: 'preview-op' as OpId,
+          name: 'preview',
+          suppressed: false,
+          sketchId: previewSketchId,
+          profileIds: [...selected],
+          axis: parsedAxis,
+          angleDeg,
+          operation,
+          targetBodyId: needsTarget ? targetBodyId : null,
+          bodyId: 'preview-body' as BodyId,
+        };
+  usePreview(draft);
 
   const submit = (): void => {
     if (sketchId === null) return;

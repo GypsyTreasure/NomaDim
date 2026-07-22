@@ -115,6 +115,33 @@ export function createBodyMesh(
   return object;
 }
 
+const GHOST_COLOR = 0xffa62b; // amber — matches the op-selection highlight (F3)
+
+/**
+ * A translucent "ghost" of a body a pending op would produce (F3 live preview).
+ * Amber, semi-transparent, double-sided with depth-write off so it reads as a
+ * preview floating over the real geometry rather than a solid body.
+ */
+export function createGhostMesh(mesh: MeshTransfer): THREE.Mesh {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
+  geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+  const material = new THREE.MeshLambertMaterial({
+    color: new THREE.Color(GHOST_COLOR),
+    emissive: new THREE.Color(GHOST_COLOR),
+    emissiveIntensity: 0.25,
+    transparent: true,
+    opacity: 0.45,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const object = new THREE.Mesh(geometry, material);
+  object.name = 'PreviewGhost';
+  object.renderOrder = 998; // over solids, under the op-highlight lines (999)
+  return object;
+}
+
 /**
  * Frees GPU buffers for every disposable object under `root` (ARCHITECTURE
  * R8 discipline extends to viewport resources, not just OCCT handles).

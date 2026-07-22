@@ -1,4 +1,5 @@
 import type { BodyId } from '../../../core';
+import { edgeFingerprintKey } from '../../../kernel';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
@@ -24,7 +25,9 @@ export function EdgePickControls({
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const edgePicking = useSessionStore((s) => s.edgePicking);
   const setEdgePicking = useSessionStore((s) => s.setEdgePicking);
-  const pickedCount = useSessionStore((s) => s.pickedEdges.length);
+  const pickedEdges = useSessionStore((s) => s.pickedEdges);
+  const toggleEdge = useSessionStore((s) => s.toggleEdge);
+  const setPickedEdges = useSessionStore((s) => s.setPickedEdges);
 
   return (
     <>
@@ -45,10 +48,43 @@ export function EdgePickControls({
           data-testid="edge-pick-toggle"
         >
           {edgePicking
-            ? t('dialog.edges.pick')
-            : `${String(pickedCount)} ${t('dialog.edges.count')}`}
+            ? t('dialog.edges.done')
+            : `${String(pickedEdges.length)} ${t('dialog.edges.count')}`}
         </button>
       </div>
+      {/* Editable list of picked edges (#7): each can be removed individually so
+          a mis-pick doesn't force starting the selection over. */}
+      {pickedEdges.length > 0 && (
+        <ul className={styles.edgeList} data-testid="edge-list">
+          {pickedEdges.map((edge, i) => (
+            <li key={edgeFingerprintKey(edge)} className={styles.edgeListItem}>
+              <span>{`${t('dialog.edges.item')} ${String(i + 1)}`}</span>
+              <button
+                type="button"
+                className={styles.edgeListRemove}
+                title={t('dialog.edges.remove')}
+                aria-label={t('dialog.edges.remove')}
+                onClick={() => {
+                  toggleEdge(edge); // present → removed
+                }}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+          <li className={styles.edgeListClear}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => {
+                setPickedEdges([]);
+              }}
+            >
+              {t('dialog.edges.clear')}
+            </button>
+          </li>
+        </ul>
+      )}
     </>
   );
 }

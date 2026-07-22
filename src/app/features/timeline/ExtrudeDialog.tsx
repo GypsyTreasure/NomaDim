@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { createId, type BodyId, type ProfileId, type SketchId } from '../../../core';
+import { createId, type BodyId, type OpId, type ProfileId, type SketchId } from '../../../core';
 import type { BooleanOperation, ExtrudeDirection, ExtrudeOp } from '../../../document';
+import { usePreview } from './usePreview';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import type { OpDialogProps } from './dialogTypes';
@@ -80,6 +81,28 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     (!throughAll && (!Number.isFinite(distanceMm) || distanceMm === 0)) ||
     (direction === 'two-sides' && !(distance2Mm > 0)) ||
     (needsTarget && targetBodyId === null);
+
+  // Live ghost preview (F3): while creating (not editing), feed a draft op with
+  // stable sentinel ids to the preview pipeline whenever the params are valid.
+  const previewSketchId = prior || okDisabled ? null : sketchId;
+  const draft: ExtrudeOp | null =
+    previewSketchId === null
+      ? null
+      : {
+          type: 'Extrude',
+          id: 'preview-op' as OpId,
+          name: 'preview',
+          suppressed: false,
+          sketchId: previewSketchId,
+          profileIds: [...selected],
+          distanceMm,
+          direction,
+          distance2Mm,
+          operation,
+          targetBodyId: needsTarget ? targetBodyId : null,
+          bodyId: 'preview-body' as BodyId,
+        };
+  usePreview(draft);
 
   const submit = (): void => {
     if (sketchId === null) return;

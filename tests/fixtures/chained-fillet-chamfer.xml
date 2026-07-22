@@ -1,0 +1,70 @@
+<nomadim version="1.0" units="mm">
+  <sketches>
+    <sketch id="OebfZDyy" plane="XY" name="Sketch1">
+      <points>
+        <point id="00DZ0KGX" x="-60" y="-131.53894605788568"/>
+        <point id="bbpb7WKp" x="50" y="-131.53894605788568"/>
+        <point id="hsGOcJQN" x="50" y="3"/>
+        <point id="k9vQBf2p" x="-60" y="3"/>
+        <point id="z9j64BRN" x="50" y="45"/>
+      </points>
+      <entities>
+        <line id="4OEQ8tR1" start="bbpb7WKp" end="00DZ0KGX" construction="false"/>
+        <line id="HrPQMeCS" start="00DZ0KGX" end="k9vQBf2p" construction="false"/>
+        <circle id="d4icTgPJ" center="z9j64BRN" r="40" construction="false"/>
+        <line id="llFSnFjS" start="hsGOcJQN" end="bbpb7WKp" construction="false"/>
+        <line id="uwSAlgKD" start="k9vQBf2p" end="hsGOcJQN" construction="false"/>
+      </entities>
+      <constraints/>
+      <dimensions/>
+    </sketch>
+    <sketch id="VYSsVzRE" plane="face" name="Sketch2">
+      <faceRef fingerprint="face:50,-64.26947302894284,0:-1,0,0:1345.3894605788569"/>
+      <planeSnapshot ox="50" oy="-64.26947302894284" oz="0" xx="0" xy="1" xz="0" yx="0" yy="0" yz="-1"/>
+      <points>
+        <point id="YIYylBsx" x="-67.26946740074466" y="5"/>
+        <point id="mJ0RW4IY" x="67.26947302894284" y="5"/>
+        <point id="mSZIKwV2" x="67.26947302894284" y="-5"/>
+      </points>
+      <entities>
+        <line id="F84ybCsq" start="mJ0RW4IY" end="YIYylBsx" construction="false"/>
+        <line id="NRlVEVQ1" start="mSZIKwV2" end="mJ0RW4IY" construction="false"/>
+        <line id="nO9tJJLT" start="YIYylBsx" end="mSZIKwV2" construction="false"/>
+      </entities>
+      <constraints/>
+      <dimensions/>
+    </sketch>
+  </sketches>
+  <timeline rollback="8">
+    <sketchOp index="0" id="XjER90qJ" name="Sketch1" suppressed="false" sketch="OebfZDyy"/>
+    <extrude index="1" id="SJTqDMxz" name="Extrude1" suppressed="false" sketch="OebfZDyy" distance="10" direction="symmetric" distance2="10" operation="NewBody" target="" body="x5Cy85Uk">
+      <profile ref="OebfZDyy:p-53b1f63a"/>
+      <profile ref="OebfZDyy:p-ba2a325e"/>
+    </extrude>
+    <sketchOp index="2" id="snXqlTXe" name="Sketch2" suppressed="false" sketch="VYSsVzRE"/>
+    <extrude index="3" id="dnHEqhZq" name="Extrude2" suppressed="false" sketch="VYSsVzRE" distance="10" direction="one-side" distance2="10" operation="Cut" target="x5Cy85Uk" body="oJsCjsVx">
+      <profile ref="VYSsVzRE:p-22d46208"/>
+    </extrude>
+    <fillet index="4" id="WVAa0TBz" name="Fillet1" suppressed="false" body="x5Cy85Uk" radius="2">
+      <edge mx="40" my="-64.26947021484375" mz="-5" dx="0" dy="1" dz="0" kinds="torus,torus" tol="5"/>
+    </fillet>
+    <fillet index="5" id="spe5ah3N" name="Fillet2" suppressed="false" body="x5Cy85Uk" radius="2">
+      <edge mx="50" my="-64.26947021484375" mz="0" dx="0" dy="0.9972490731114688" dz="0.07412345228277231" kinds="torus,torus" tol="5"/>
+    </fillet>
+    <chamfer index="6" id="q6VY9W60" name="Chamfer1" suppressed="false" body="x5Cy85Uk" distance="2">
+      <edge mx="-11.000000000000007" my="3" mz="-5" dx="1" dy="0" dz="0" kinds="torus,torus" tol="5"/>
+    </chamfer>
+    <fillet index="7" id="WRY9Mgmb" name="Fillet3" suppressed="false" body="x5Cy85Uk" radius="2">
+      <edge mx="-11.000000000000007" my="3" mz="-5" dx="1" dy="0" dz="0" kinds="torus,torus" tol="5"/>
+      <edge mx="-60" my="3" mz="0" dx="0" dy="0" dz="1" kinds="torus,torus" tol="5"/>
+      <edge mx="-60" my="-64.26947302894284" mz="-5" dx="0" dy="1" dz="0" kinds="torus,torus" tol="5"/>
+    </fillet>
+  </timeline>
+  <bodies>
+    <body id="x5Cy85Uk" name="x5Cy85Uk" color="#1A6B5A" visible="true"/>
+  </bodies>
+  <sketchMeta>
+    <sketch id="OebfZDyy" visible="false"/>
+    <sketch id="VYSsVzRE" visible="false"/>
+  </sketchMeta>
+</nomadim>

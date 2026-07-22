@@ -2,6 +2,7 @@ import type { TopoDS_Shape } from 'opencascade.js';
 import type { BodyId } from '../../core';
 import type { BooleanOperation } from '../../document';
 import { trackShapeAllocation } from '../handleCounter';
+import { healInvalidSolid } from '../healShape';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -20,8 +21,11 @@ export function applyBooleanResult(
   const { oc, bodies } = ctx;
 
   if (operation === 'NewBody') {
+    // Heal an invalid face so the body still meshes/exports (no see-through
+    // hole), matching the Fillet/Chamfer/Combine path (ADR-0057).
+    const healed = healInvalidSolid(oc, tool);
     trackShapeAllocation();
-    bodies.set(bodyId, tool);
+    bodies.set(bodyId, healed);
     return;
   }
 
@@ -46,11 +50,15 @@ export function applyBooleanResult(
 
   if (!result || result.IsNull()) {
     result?.delete();
-    throw new KernelExecError('BOOLEAN_FAILED', `${operation} failed`);
+    throw new KernelExecError(
+      'BOOLEAN_FAILED',
+      `The ${operation} operation failed — the bodies may not overlap.`
+    );
   }
   // The previous target shape stays alive — it is owned by the delta of the
   // op that produced it (replay-from-k needs it); the delta cache disposes
   // it when invalidated. Only the map reference moves here.
+  const healed = healInvalidSolid(oc, result);
   trackShapeAllocation();
-  bodies.set(targetBodyId, result);
+  bodies.set(targetBodyId, healed);
 }

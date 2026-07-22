@@ -33,7 +33,7 @@ test('finishing: fillet dialog opens with edge picking once a body exists', asyn
   const toggle = page.getByTestId('edge-pick-toggle');
   await expect(toggle).toBeVisible();
   await toggle.click();
-  await expect(toggle).toHaveText('Pick edges in the viewport');
+  await expect(toggle).toHaveText('Done picking');
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toHaveCount(0);
 });

@@ -8,6 +8,7 @@ import type {
   KernelResponse,
   MeshTransfer,
   OpStatusReport,
+  PlanOp,
   RegenPlan,
   ReqId,
 } from '../kernel/protocol';
@@ -16,7 +17,7 @@ import { tessellateShape } from './tessellate';
 import { tessellateBodyEdges } from './edgeFingerprint';
 import { resolveSketchFace } from './faceResolve';
 import { exportShapeToStl } from './stl';
-import { getLiveShapeCount } from './handleCounter';
+import { getLiveShapeCount, trackShapeDisposal } from './handleCounter';
 import { ShapeCache, diffDelta, emptyDelta, snapshotRefs } from './bodyState';
 import { OP_EXECUTORS } from './executors/registry';
 import { KernelExecError, type BodyStateMap } from './executors/types';
@@ -173,6 +174,50 @@ async function handleRegen(
   );
 }
 
+/**
+ * F3 live ghost preview: run a prospective op against a throwaway COPY of the
+ * live body map and tessellate whichever bodies it changed, WITHOUT recording
+ * anything in the persistent cache. Every shape the executor creates here is
+ * freed before returning (it is owned by nothing else), so the R8 handle count
+ * is unchanged. A failing op (bad params, too-large radius) yields no preview.
+ */
+function previewOp(oc: OpenCascadeInstance, planOp: PlanOp): MeshTransfer[] {
+  const previewBodies: BodyStateMap = new Map(bodies);
+  const before = snapshotRefs(previewBodies);
+  const meshes: MeshTransfer[] = [];
+  try {
+    OP_EXECUTORS[planOp.op.type](
+      { oc, bodies: previewBodies, profiles: new Map(planOp.profiles.map((p) => [p.id, p])) },
+      planOp
+    );
+    const changed = diffDelta(before, previewBodies).changed;
+    for (const [bodyId, shape] of changed) {
+      meshes.push(
+        tessellateShape(oc, bodyId, shape, {
+          linearDeflectionMm: VIEWPORT_LINEAR_DEFLECTION_MM,
+          angularDeflectionDeg: VIEWPORT_ANGULAR_DEFLECTION_DEG,
+        })
+      );
+    }
+    // Free the shapes the preview op created — the persistent cache never owns
+    // them. The prior shapes it may have replaced stay owned by `bodies`.
+    for (const shape of changed.values()) {
+      shape.delete();
+      trackShapeDisposal();
+    }
+  } catch {
+    // No preview for an op that would error — the toast/red-chip path covers
+    // the real attempt. Free any shapes that reached the copy before the throw
+    // so the handle count stays balanced (they are owned by nothing else).
+    for (const shape of diffDelta(before, previewBodies).changed.values()) {
+      shape.delete();
+      trackShapeDisposal();
+    }
+    return [];
+  }
+  return meshes;
+}
+
 function collectShapes(bodyIds: readonly BodyId[]): TopoDS_Shape[] {
   const shapes: TopoDS_Shape[] = [];
   for (const bodyId of bodyIds) {
@@ -243,6 +288,17 @@ async function handleRequest(request: KernelRequest): Promise<void> {
           },
           [stl]
         );
+        return;
+      }
+      case 'preview': {
+        const oc = await ensureOcct();
+        const meshes = previewOp(oc, request.planOp);
+        const transfer = meshes.flatMap((m) => [
+          m.positions.buffer,
+          m.normals.buffer,
+          m.indices.buffer,
+        ]);
+        respond({ id: request.id, kind: 'preview', meshes }, transfer);
         return;
       }
       case 'dispose': {

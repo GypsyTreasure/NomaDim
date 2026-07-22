@@ -138,6 +138,7 @@ export type KernelRequest =
       angularDeflectionDeg: number;
     }
   | { id: ReqId; kind: 'dispose'; bodyIds: BodyId[] }
+  | { id: ReqId; kind: 'preview'; planOp: PlanOp }
   | { id: ReqId; kind: 'stats' };
 
 export type KernelOkResult =
@@ -161,4 +162,7 @@ export type KernelResponse =
     }
   | { id: ReqId; kind: 'bodyEdges'; bodyEdges: BodyEdges[] }
   | { id: ReqId; kind: 'faceResolved'; face: FacePlaneResult | null }
+  /** F3 live ghost preview: meshes of the bodies a prospective op would change
+   * (empty if it would fail). Never touches the persistent BodyStateMap. */
+  | { id: ReqId; kind: 'preview'; meshes: MeshTransfer[] }
   | { id: ReqId; kind: 'error'; error: KernelErrorPayload };

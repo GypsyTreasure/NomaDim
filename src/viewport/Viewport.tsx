@@ -12,6 +12,7 @@ import {
 } from '../kernel';
 import {
   createBodyMesh,
+  createGhostMesh,
   createGrid,
   createLighting,
   createOriginPlanes,
@@ -136,6 +137,8 @@ export interface ViewportProps {
   /** Whether the floating view bar is shown (collapsed behind the View menu). */
   viewBarOpen?: boolean;
   bodies: MeshTransfer[];
+  /** Translucent ghost meshes of a pending op's result (F3 live preview). */
+  previewBodies?: MeshTransfer[];
   /** Non-null while a sketch is being edited; camera animates normal-to-plane. */
   sketchMode: SketchModeProps | null;
   /** Intersect view (#1): clip the near half of bodies + draw the plane section. */
@@ -178,6 +181,7 @@ export function Viewport({
   projectionLabels,
   viewBarOpen = true,
   bodies,
+  previewBodies,
   sketchMode,
   sectionView = false,
   edgePick = null,
@@ -196,6 +200,7 @@ export function Viewport({
   const projectionRequestRef = useRef<(() => void) | null>(null);
   const [projectionMode, setProjectionMode] = useState<ProjectionMode>('perspective');
   const bodyGroupRef = useRef<THREE.Group | null>(null);
+  const previewGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
   const sectionGroupRef = useRef<THREE.Group | null>(null);
@@ -279,6 +284,9 @@ export function Viewport({
     const bodyGroup = new THREE.Group();
     bodyGroup.name = 'Bodies';
     bodyGroupRef.current = bodyGroup;
+    const previewGroup = new THREE.Group();
+    previewGroup.name = 'PreviewGhosts';
+    previewGroupRef.current = previewGroup;
     const edgeGroup = new THREE.Group();
     edgeGroup.name = 'Edges';
     edgeGroup.visible = false;
@@ -300,6 +308,7 @@ export function Viewport({
       originPlanes.YZ,
       lighting,
       bodyGroup,
+      previewGroup,
       edgeGroup,
       sketchGroup,
       sectionGroup,
@@ -701,6 +710,7 @@ export function Viewport({
       host.removeChild(renderer.domElement);
       disposeSceneObjects(scene);
       bodyGroupRef.current = null;
+      previewGroupRef.current = null;
       edgeGroupRef.current = null;
       sketchGroupRef.current = null;
       sectionGroupRef.current = null;
@@ -736,6 +746,15 @@ export function Viewport({
       );
     }
   }, [bodies, bodyStyles, sketchMode, sectionView]);
+
+  // Rebuild the translucent ghost of a pending op's result (F3 live preview).
+  useEffect(() => {
+    const group = previewGroupRef.current;
+    if (!group) return;
+    disposeSceneObjects(group);
+    group.clear();
+    for (const mesh of previewBodies ?? []) group.add(createGhostMesh(mesh));
+  }, [previewBodies]);
 
   // Apply origin plane visibility (F8 Origin section).
   useEffect(() => {

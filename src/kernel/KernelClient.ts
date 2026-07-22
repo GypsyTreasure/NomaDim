@@ -7,6 +7,7 @@ import type {
   MeshQuality,
   MeshTransfer,
   OpStatusReport,
+  PlanOp,
   RegenPlan,
   ReqId,
 } from './protocol';
@@ -124,6 +125,16 @@ export class KernelClient {
       return { stl: response.result.stl, fileName: response.result.fileName };
     }
     throw new InternalError('Unexpected response to "exportStl" request');
+  }
+
+  /** F3 live ghost preview: meshes of the bodies a prospective op would change
+   * (empty if it would fail). Never mutates the persistent BodyStateMap. */
+  async preview(planOp: PlanOp): Promise<MeshTransfer[]> {
+    const response = await this.send({ id: this.nextId(), kind: 'preview', planOp });
+    if (response.kind === 'preview') {
+      return response.meshes;
+    }
+    throw new InternalError('Unexpected response to "preview" request');
   }
 
   async disposeBodies(bodyIds: BodyId[]): Promise<void> {

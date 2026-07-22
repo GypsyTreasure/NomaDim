@@ -15,6 +15,9 @@ export function executeFillet(ctx: ExecCtx, op: FilletOp): void {
   const { oc, bodies } = ctx;
   const shape = bodies.get(op.bodyId);
   if (!shape) throw new KernelExecError('TARGET_MISSING', `Fillet target ${op.bodyId} missing`);
+  if (op.edges.length === 0) {
+    throw new KernelExecError('FILLET_FAILED', `Fillet ${op.id} has no edges`);
+  }
 
   const edges = resolveEdges(oc, shape, op.edges);
   try {

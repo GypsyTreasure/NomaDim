@@ -34,8 +34,17 @@ export function triangulationOf(
 /**
  * BRepMesh_IncrementalMesh + per-face triangulation extraction into
  * Transferable typed arrays (ARCHITECTURE §6 R5). Applies each face's
- * TopLoc_Location transform to nodes/normals and flips triangle winding for
- * reversed faces, matching standard OCCT tessellation practice.
+ * TopLoc_Location transform to nodes/normals and, for a REVERSED face, both
+ * flips triangle winding AND negates the normal so it points outward.
+ *
+ * `Poly_Triangulation::ComputeNormals` returns normals following the
+ * underlying surface's natural (FORWARD) orientation — it does not account for
+ * the face's orientation within the shell. A REVERSED face therefore has its
+ * material on the opposite side, so its outward normal is the negation of the
+ * stored one. Booleans, fillets and chamfers routinely emit REVERSED faces
+ * (empirically 3 of 7 on a single-edge filleted box); without the negation
+ * those faces are lit from the inside (dark / see-through — "fake walls") and,
+ * in the double-sided Intersect view, the interior shades as a solid wall.
  */
 export function tessellateShape(
   oc: OpenCascadeInstance,
@@ -75,12 +84,15 @@ export function tessellateShape(
         enumMember(face.Orientation_1()).value ===
         enumMember(oc.TopAbs_Orientation.TopAbs_REVERSED).value;
 
+      const normalSign = isReversed ? -1 : 1;
       const nbNodes = int(triangulation.NbNodes());
       for (let i = 1; i <= nbNodes; i += 1) {
         const point = triangulation.Node(i).Transformed(transform);
         positions.push(point.X(), point.Y(), point.Z());
         const normal = triangulation.Normal_1(i).Transformed(transform);
-        normals.push(normal.X(), normal.Y(), normal.Z());
+        // Reversed face → its outward normal is the negation of the stored
+        // (surface-natural) one; keep it consistent with the flipped winding.
+        normals.push(normalSign * normal.X(), normalSign * normal.Y(), normalSign * normal.Z());
       }
 
       const nbTriangles = int(triangulation.NbTriangles());

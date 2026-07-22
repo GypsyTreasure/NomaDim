@@ -196,6 +196,24 @@ describe('edge fingerprint resolve-at-regen (acceptance)', () => {
     freeBodies(edited);
   });
 
+  it('will not resolve two fingerprints onto the same live edge', () => {
+    // Two identical fingerprints must not both claim the one nearest edge
+    // (that would silently drop one and double-add the other to the maker).
+    // Greedy claiming takes it once; the second finds no unused edge in
+    // tolerance (the other top-X edge is 20 mm away) and errors.
+    const bodies: BodyStateMap = new Map();
+    makeBox(bodies, 'B', 20, 20);
+    const box = bodies.get(bid('B'));
+    if (!box) return;
+    const fp = topXEdgeFingerprint(box);
+    expect(() => resolveEdges(oc, box, [fp, fp])).toThrow(KernelExecError);
+    // A single copy still resolves fine.
+    const one = resolveEdges(oc, box, [fp]);
+    expect(one).toHaveLength(1);
+    for (const e of one) e.delete();
+    freeBodies(bodies);
+  });
+
   it('errors gracefully when the edge moves out of tolerance', () => {
     const original: BodyStateMap = new Map();
     makeBox(original, 'B', 20, 20);

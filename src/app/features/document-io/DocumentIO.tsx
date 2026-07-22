@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
+import { pushToast } from '../../store/toastStore';
 import { downloadDocument, loadDocumentText } from './documentIO';
 import styles from '../timeline/Timeline.module.css';
 
@@ -44,7 +45,7 @@ export function DocumentIO(): React.JSX.Element {
     if (!file) return;
     void file.text().then((text) => {
       const error = loadDocumentText(text);
-      if (error !== null) window.alert(`${t('io.loadError')} ${error}`);
+      if (error !== null) pushToast(`${t('io.loadError')} ${error}`, 'error');
     });
   };
 

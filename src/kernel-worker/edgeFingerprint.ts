@@ -224,7 +224,10 @@ export function resolveEdges(
         }
       }
       if (bestIndex < 0 || bestDist > fp.tolMm) {
-        throw new KernelExecError('EDGE_UNRESOLVED', 'An edge fingerprint could not be resolved');
+        throw new KernelExecError(
+          'EDGE_UNRESOLVED',
+          'An edge could not be located on the current body — re-pick it.'
+        );
       }
       claimed.add(bestIndex);
       resolved.push(oc.TopoDS.Edge_1(map.FindKey(bestIndex)));

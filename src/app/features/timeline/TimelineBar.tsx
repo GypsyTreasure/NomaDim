@@ -33,9 +33,16 @@ function OpChip({
   active: boolean;
   timeline: TimelineApi;
 }): React.JSX.Element {
-  const status = chipStatus(op, timeline.statuses.get(op.id)?.status);
+  const report = timeline.statuses.get(op.id);
+  const status = chipStatus(op, report?.status);
   const feature = OP_FEATURES[op.type];
   const chipClass = `${styles.chip ?? ''} ${active ? '' : (styles.chipRolledBack ?? '')}`;
+  // On error, the chip tooltip carries the reason so hovering a red chip
+  // explains the failure (pairs with the toast, §7).
+  const nameTitle =
+    status === 'error' && report?.message
+      ? `${t('timeline.status.error')}: ${report.message}`
+      : t(feature.labelKey);
   return (
     <div className={chipClass} data-status={status} data-testid="timeline-chip">
       <button
@@ -44,7 +51,7 @@ function OpChip({
         onClick={() => {
           timeline.openEdit(op);
         }}
-        title={t(feature.labelKey)}
+        title={nameTitle}
       >
         {op.name}
       </button>

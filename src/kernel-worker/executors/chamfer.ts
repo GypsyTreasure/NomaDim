@@ -14,7 +14,7 @@ export function executeChamfer(ctx: ExecCtx, op: ChamferOp): void {
   const shape = bodies.get(op.bodyId);
   if (!shape) throw new KernelExecError('TARGET_MISSING', `Chamfer target ${op.bodyId} missing`);
   if (op.edges.length === 0) {
-    throw new KernelExecError('CHAMFER_FAILED', `Chamfer ${op.id} has no edges`);
+    throw new KernelExecError('CHAMFER_FAILED', 'Select at least one edge to chamfer.');
   }
 
   const edges = resolveEdges(oc, shape, op.edges);
@@ -31,7 +31,7 @@ export function executeChamfer(ctx: ExecCtx, op: ChamferOp): void {
       result?.delete();
       throw new KernelExecError(
         'CHAMFER_FAILED',
-        `Chamfer ${op.id} failed — the distance may be too large for one of the selected edges`
+        'The distance may be too large for one of the selected edges.'
       );
     }
     // Heal an invalid face so it still meshes/exports (no see-through hole).

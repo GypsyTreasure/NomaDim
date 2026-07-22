@@ -25,8 +25,11 @@ import { useMeasure } from './features/measure/useMeasure';
 import { DocumentIO } from './features/document-io/DocumentIO';
 import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
 import { OnboardingHint } from './features/onboarding/OnboardingHint';
+import { Toaster } from './features/toast/Toaster';
+import { useOpErrorToasts } from './features/toast/useOpErrorToasts';
 import { useModelingShortcuts } from './features/shortcuts/useModelingShortcuts';
 import { loadDocumentText } from './features/document-io/documentIO';
+import { pushToast } from './store/toastStore';
 import { restorePersistedDocument, startAutosave } from './features/persistence/autosave';
 import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
@@ -49,6 +52,8 @@ export function App(): React.JSX.Element {
   const bodyEdges = useKernelStore((s) => s.bodyEdges);
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const kernelError = useKernelStore((s) => s.error);
+  const kernelReady = useKernelStore((s) => s.ready);
+  useOpErrorToasts(); // §7: failed op → toast (the red chip is the other half)
 
   const edgePicking = useSessionStore((s) => s.edgePicking);
   const edgePickBodyId = useSessionStore((s) => s.edgePickBodyId);
@@ -157,6 +162,14 @@ export function App(): React.JSX.Element {
 
   return (
     <div className={styles.shell}>
+      {!kernelReady && !kernelError && (
+        <div className={styles.kernelLoading} data-testid="kernel-loading" role="status">
+          <span className={styles.kernelLoadingLabel}>{t('kernel.loading')}</span>
+          <div className={styles.kernelLoadingTrack}>
+            <div className={styles.kernelLoadingBar} />
+          </div>
+        </div>
+      )}
       <header className={styles.header}>
         <h1 className={styles.title}>
           <Logo />
@@ -175,7 +188,7 @@ export function App(): React.JSX.Element {
             if (!file) return;
             void file.text().then((text) => {
               const error = loadDocumentText(text);
-              if (error !== null) window.alert(`${t('io.loadError')} ${error}`);
+              if (error !== null) pushToast(`${t('io.loadError')} ${error}`, 'error');
             });
           }}
         >
@@ -365,6 +378,7 @@ export function App(): React.JSX.Element {
           )}
         </div>
       </main>
+      <Toaster />
     </div>
   );
 }

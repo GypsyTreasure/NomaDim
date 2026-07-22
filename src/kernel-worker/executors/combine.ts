@@ -31,7 +31,10 @@ function booleanShape(
   progress.delete();
   if (!result || result.IsNull()) {
     result?.delete();
-    throw new KernelExecError('COMBINE_FAILED', `Combine ${operation} failed`);
+    throw new KernelExecError(
+      'COMBINE_FAILED',
+      `The ${operation} operation failed — the bodies may not overlap.`
+    );
   }
   return result;
 }

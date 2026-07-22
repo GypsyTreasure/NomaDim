@@ -220,6 +220,9 @@ export const en = {
   'sketch.properties.construction': 'Construction',
   'sketch.align.horizontal': 'Horizontal',
   'sketch.align.vertical': 'Vertical',
+  'toast.dismiss': 'Dismiss',
+  'toast.opFailed': 'Operation failed',
+  'kernel.loading': 'Loading 3D kernel…',
 } as const;
 
 export type TranslationKey = keyof typeof en;

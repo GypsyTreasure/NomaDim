@@ -195,11 +195,18 @@ export function resolveEdges(
   }
 
   const resolved: TopoDS_Edge[] = [];
+  // Each live edge resolves at most one fingerprint. Two nearby fingerprints of
+  // the same face-kind signature (common on complex bodies — parallel fillet
+  // edges, boolean seams) would otherwise both grab the single nearest edge,
+  // silently dropping the other and double-adding one edge to the maker (an
+  // OCCT failure). Claiming edges greedily by nearest-unused avoids both.
+  const claimed = new Set<number>();
   try {
     for (const fp of fingerprints) {
       let bestIndex = -1;
       let bestDist = Number.POSITIVE_INFINITY;
       for (const cand of candidates) {
+        if (claimed.has(cand.index)) continue;
         if (!kindsEqual(cand.kinds, fp.adjFaceKinds)) continue;
         const dot =
           cand.geom.direction[0] * fp.direction[0] +
@@ -219,6 +226,7 @@ export function resolveEdges(
       if (bestIndex < 0 || bestDist > fp.tolMm) {
         throw new KernelExecError('EDGE_UNRESOLVED', 'An edge fingerprint could not be resolved');
       }
+      claimed.add(bestIndex);
       resolved.push(oc.TopoDS.Edge_1(map.FindKey(bestIndex)));
     }
   } catch (error) {

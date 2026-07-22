@@ -12,6 +12,9 @@ export function executeChamfer(ctx: ExecCtx, op: ChamferOp): void {
   const { oc, bodies } = ctx;
   const shape = bodies.get(op.bodyId);
   if (!shape) throw new KernelExecError('TARGET_MISSING', `Chamfer target ${op.bodyId} missing`);
+  if (op.edges.length === 0) {
+    throw new KernelExecError('CHAMFER_FAILED', `Chamfer ${op.id} has no edges`);
+  }
 
   const edges = resolveEdges(oc, shape, op.edges);
   try {

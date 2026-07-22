@@ -13,6 +13,7 @@ export {
 export type {
   MeshQuality,
   MeshTransfer,
+  MeshStat,
   KernelErrorPayload,
   OpStatusReport,
   OpRunStatus,

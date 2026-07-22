@@ -5,6 +5,7 @@ import type {
   KernelRequest,
   KernelResponse,
   MeshQuality,
+  MeshStat,
   MeshTransfer,
   OpStatusReport,
   PlanOp,
@@ -117,6 +118,15 @@ export class KernelClient {
       return response.meshes;
     }
     throw new InternalError('Unexpected response to "tessellate" request');
+  }
+
+  /** F6 STL dialog: per-body triangle count at `quality` + validity flags. */
+  async meshStats(bodyIds: BodyId[], quality: MeshQuality): Promise<MeshStat[]> {
+    const response = await this.send({ id: this.nextId(), kind: 'meshStats', bodyIds, quality });
+    if (response.kind === 'meshStats') {
+      return response.stats;
+    }
+    throw new InternalError('Unexpected response to "meshStats" request');
   }
 
   async exportStl(request: StlExportRequest): Promise<StlExportResult> {

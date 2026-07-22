@@ -26,6 +26,14 @@ export interface MeshTransfer {
   indices: Uint32Array;
 }
 
+/** Per-body export stats for the F6 STL dialog: triangle count at the chosen
+ * deflection + a validity flag (BRepCheck) so a non-manifold body is flagged. */
+export interface MeshStat {
+  readonly bodyId: BodyId;
+  readonly triangleCount: number;
+  readonly valid: boolean;
+}
+
 export interface KernelErrorPayload {
   code: string;
   message: string;
@@ -139,6 +147,7 @@ export type KernelRequest =
     }
   | { id: ReqId; kind: 'dispose'; bodyIds: BodyId[] }
   | { id: ReqId; kind: 'preview'; planOp: PlanOp }
+  | { id: ReqId; kind: 'meshStats'; bodyIds: BodyId[]; quality: MeshQuality }
   | { id: ReqId; kind: 'stats' };
 
 export type KernelOkResult =
@@ -165,4 +174,5 @@ export type KernelResponse =
   /** F3 live ghost preview: meshes of the bodies a prospective op would change
    * (empty if it would fail). Never touches the persistent BodyStateMap. */
   | { id: ReqId; kind: 'preview'; meshes: MeshTransfer[] }
+  | { id: ReqId; kind: 'meshStats'; stats: MeshStat[] }
   | { id: ReqId; kind: 'error'; error: KernelErrorPayload };

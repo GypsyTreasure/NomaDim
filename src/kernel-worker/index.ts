@@ -6,6 +6,8 @@ import type {
   BodyEdges,
   KernelRequest,
   KernelResponse,
+  MeshQuality,
+  MeshStat,
   MeshTransfer,
   OpStatusReport,
   PlanOp,
@@ -14,6 +16,7 @@ import type {
 } from '../kernel/protocol';
 import { loadOcct } from './occt';
 import { tessellateShape } from './tessellate';
+import { shapeMeshStat } from './meshStats';
 import { tessellateBodyEdges } from './edgeFingerprint';
 import { resolveSketchFace } from './faceResolve';
 import { exportShapeToStl } from './stl';
@@ -218,6 +221,27 @@ function previewOp(oc: OpenCascadeInstance, planOp: PlanOp): MeshTransfer[] {
   return meshes;
 }
 
+/**
+ * F6 STL dialog: per-body triangle count + watertightness at the chosen export
+ * deflection, so the dialog shows a live count and warns about a body that would
+ * export a non-manifold (unprintable) mesh. Per-shape computation is the pure,
+ * unit-tested `shapeMeshStat`.
+ */
+function meshStatsFor(
+  oc: OpenCascadeInstance,
+  bodyIds: readonly BodyId[],
+  quality: MeshQuality
+): MeshStat[] {
+  const out: MeshStat[] = [];
+  for (const bodyId of bodyIds) {
+    const shape = bodies.get(bodyId);
+    if (!shape) continue;
+    const stat = shapeMeshStat(oc, shape, quality);
+    out.push({ bodyId, triangleCount: stat.triangleCount, valid: stat.watertight });
+  }
+  return out;
+}
+
 function collectShapes(bodyIds: readonly BodyId[]): TopoDS_Shape[] {
   const shapes: TopoDS_Shape[] = [];
   for (const bodyId of bodyIds) {
@@ -288,6 +312,15 @@ async function handleRequest(request: KernelRequest): Promise<void> {
           },
           [stl]
         );
+        return;
+      }
+      case 'meshStats': {
+        const oc = await ensureOcct();
+        respond({
+          id: request.id,
+          kind: 'meshStats',
+          stats: meshStatsFor(oc, request.bodyIds, request.quality),
+        });
         return;
       }
       case 'preview': {

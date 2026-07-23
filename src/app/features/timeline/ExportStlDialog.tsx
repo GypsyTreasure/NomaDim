@@ -10,15 +10,16 @@ import { DialogFrame, NumberRow, SelectRow, type SelectOption } from './dialogSh
 import styles from './Timeline.module.css';
 
 /**
- * STL export dialog (F6): body scope, binary/ASCII, linear + angular deflection
- * with Low/Medium/High presets, a live triangle-count preview at the chosen
- * quality, and a non-manifold warning — all before download. The mesh stats
- * come from the kernel `meshStats` request (recomputed, debounced, as the scope
- * or deflection changes); export reuses the existing `exportStl` request.
+ * Export dialog (F6 + roadmap P1): body scope and a format — STL (binary/ASCII,
+ * a printable mesh) or STEP (an exact B-rep for round-tripping to other CAD).
+ * For the mesh formats it adds linear + angular deflection with Low/Medium/High
+ * presets, a live triangle-count preview, and a non-manifold warning. STEP is
+ * exact, so those mesh controls are hidden. Mesh stats come from the kernel
+ * `meshStats` request (debounced); export routes to `exportStl` / `exportStep`.
  */
 
 type Scope = 'selected' | 'visible' | 'all';
-type Format = 'binary' | 'ascii';
+type Format = 'binary' | 'ascii' | 'step';
 type QualityKey = 'low' | 'medium' | 'high' | 'custom';
 
 interface QualityPreset {
@@ -40,6 +41,7 @@ const SCOPE_OPTIONS: readonly SelectOption<Scope>[] = [
 const FORMAT_OPTIONS: readonly SelectOption<Format>[] = [
   { value: 'binary', label: t('stl.format.binary') },
   { value: 'ascii', label: t('stl.format.ascii') },
+  { value: 'step', label: t('stl.format.step') },
 ];
 const QUALITY_OPTIONS: readonly SelectOption<QualityKey>[] = [
   { value: 'low', label: t('stl.quality.low') },
@@ -56,7 +58,7 @@ function matchPreset(linearMm: number, angularDeg: number): QualityKey {
 }
 
 function downloadBlob(data: ArrayBuffer, fileName: string): void {
-  const blob = new Blob([data], { type: 'application/sla' });
+  const blob = new Blob([data], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -86,16 +88,17 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
     return liveBodyIds.filter((id) => !hidden.has(id));
   }, [scope, liveBodyIds, selectedBodyId, bodyMeta]);
 
+  const isMesh = format !== 'step';
   const idsKey = bodyIds.join(',');
 
-  // Live triangle-count + validity preview (debounced) at the chosen quality.
-  // All state writes happen inside the deferred callback (never synchronously in
-  // the effect body) so re-renders don't cascade.
+  // Live triangle-count + validity preview (debounced) at the chosen quality —
+  // mesh formats only (STEP is exact). All state writes happen inside the
+  // deferred callback (never synchronously in the effect body).
   useEffect(() => {
     let cancelled = false;
     const handle = window.setTimeout(() => {
       const client = getKernelClient();
-      if (!client || bodyIds.length === 0) {
+      if (!client || bodyIds.length === 0 || !isMesh) {
         setStats([]);
         return;
       }
@@ -118,7 +121,7 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [idsKey, linearMm, angularDeg, bodyIds]);
+  }, [idsKey, linearMm, angularDeg, bodyIds, isMesh]);
 
   const triangleTotal = stats?.reduce((sum, s) => sum + s.triangleCount, 0) ?? null;
   const anyNonManifold = stats?.some((s) => !s.valid) ?? false;
@@ -130,11 +133,24 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
     setAngularDeg(PRESETS[key].angularDeg);
   };
 
-  const okDisabled = bodyIds.length === 0 || !(linearMm > 0) || !(angularDeg > 0);
+  const okDisabled = bodyIds.length === 0 || (isMesh && (!(linearMm > 0) || !(angularDeg > 0)));
 
   const submit = (): void => {
     const client = getKernelClient();
     if (!client || bodyIds.length === 0) return;
+    const onError = (error: unknown): void => {
+      pushToast(
+        `${t('stl.exportError')} ${error instanceof Error ? error.message : String(error)}`,
+        'error'
+      );
+    };
+    if (format === 'step') {
+      void client.exportStep([...bodyIds]).then((result) => {
+        downloadBlob(result.data, result.fileName);
+        onClose();
+      }, onError);
+      return;
+    }
     void client
       .exportStl({
         bodyIds: [...bodyIds],
@@ -142,18 +158,10 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
         linearDeflectionMm: linearMm,
         angularDeflectionDeg: angularDeg,
       })
-      .then(
-        (result) => {
-          downloadBlob(result.stl, result.fileName);
-          onClose();
-        },
-        (error: unknown) => {
-          pushToast(
-            `${t('stl.exportError')} ${error instanceof Error ? error.message : String(error)}`,
-            'error'
-          );
-        }
-      );
+      .then((result) => {
+        downloadBlob(result.stl, result.fileName);
+        onClose();
+      }, onError);
   };
 
   return (
@@ -170,28 +178,32 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
         options={FORMAT_OPTIONS}
         onChange={setFormat}
       />
-      <SelectRow<QualityKey>
-        labelKey="stl.quality"
-        value={qualityKey}
-        options={QUALITY_OPTIONS}
-        onChange={applyQuality}
-      />
-      <NumberRow labelKey="stl.linear" value={linearMm} onChange={setLinearMm} />
-      <NumberRow labelKey="stl.angular" value={angularDeg} onChange={setAngularDeg} />
-      <div className={styles.field}>
-        <span>{t('stl.triangles')}</span>
-        <span data-testid="stl-triangle-count">
-          {bodyIds.length === 0
-            ? t('stl.empty')
-            : triangleTotal === null
-              ? '…'
-              : triangleTotal.toLocaleString()}
-        </span>
-      </div>
-      {anyNonManifold && (
-        <p className={styles.stlWarning} data-testid="stl-warning">
-          {t('stl.nonManifold')}
-        </p>
+      {isMesh && (
+        <>
+          <SelectRow<QualityKey>
+            labelKey="stl.quality"
+            value={qualityKey}
+            options={QUALITY_OPTIONS}
+            onChange={applyQuality}
+          />
+          <NumberRow labelKey="stl.linear" value={linearMm} onChange={setLinearMm} />
+          <NumberRow labelKey="stl.angular" value={angularDeg} onChange={setAngularDeg} />
+          <div className={styles.field}>
+            <span>{t('stl.triangles')}</span>
+            <span data-testid="stl-triangle-count">
+              {bodyIds.length === 0
+                ? t('stl.empty')
+                : triangleTotal === null
+                  ? '…'
+                  : triangleTotal.toLocaleString()}
+            </span>
+          </div>
+          {anyNonManifold && (
+            <p className={styles.stlWarning} data-testid="stl-warning">
+              {t('stl.nonManifold')}
+            </p>
+          )}
+        </>
       )}
     </DialogFrame>
   );

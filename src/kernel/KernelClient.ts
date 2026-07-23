@@ -147,6 +147,15 @@ export class KernelClient {
     throw new InternalError('Unexpected response to "exportStl" request');
   }
 
+  /** Export the given bodies to a single STEP file (roadmap P1). */
+  async exportStep(bodyIds: BodyId[]): Promise<{ data: ArrayBuffer; fileName: string }> {
+    const response = await this.send({ id: this.nextId(), kind: 'exportStep', bodyIds });
+    if (response.kind === 'ok' && response.result.of === 'exportStep') {
+      return { data: response.result.step, fileName: response.result.fileName };
+    }
+    throw new InternalError('Unexpected response to "exportStep" request');
+  }
+
   /** F3 live ghost preview: meshes of the bodies a prospective op would change
    * (empty if it would fail). Never mutates the persistent BodyStateMap. */
   async preview(planOp: PlanOp): Promise<MeshTransfer[]> {

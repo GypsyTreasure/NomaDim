@@ -11,6 +11,20 @@ import { healInvalidSolid } from './healShape';
 
 const STEP_PATH = '/import.step';
 const BREP_PATH = '/import.brep';
+const STEP_OUT_PATH = '/export.step';
+
+/**
+ * Minimal typed view of the STEP writer (not on the generated instance type) —
+ * an `unknown` cast to a named shape, never `any` (same gap as ADR-0011).
+ */
+interface StepWriterApi {
+  readonly STEPControl_Writer_1: new () => {
+    Transfer(shape: TopoDS_Shape, mode: unknown, compound: boolean, progress: unknown): unknown;
+    Write(file: string): unknown;
+    delete(): void;
+  };
+  readonly STEPControl_StepModelType: { readonly STEPControl_AsIs: unknown };
+}
 
 /** Parse STEP bytes → the imported solid as a base64 BREP payload. Throws on a
  * malformed/empty file. All OCCT temporaries + FS files are cleaned up. */
@@ -35,6 +49,40 @@ export function readStepToBrepBase64(oc: OpenCascadeInstance, bytes: ArrayBuffer
     reader.delete();
     try {
       oc.FS.unlink(STEP_PATH);
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+/**
+ * STEP export (roadmap P1): writes the given solids to a single STEP file and
+ * returns its bytes as a fresh ArrayBuffer (Transferable). Multiple bodies are
+ * combined into a compound first — STEP preserves them as separate solids. The
+ * FS scratch file is removed.
+ */
+export function writeStepBytes(
+  oc: OpenCascadeInstance,
+  shapes: readonly TopoDS_Shape[]
+): ArrayBuffer {
+  const writerApi = oc as unknown as StepWriterApi;
+  const writer = new writerApi.STEPControl_Writer_1();
+  const asIs = writerApi.STEPControl_StepModelType.STEPControl_AsIs;
+  const compound = new oc.TopoDS_Compound();
+  const builder = new oc.BRep_Builder();
+  builder.MakeCompound(compound);
+  for (const shape of shapes) builder.Add(compound, shape);
+  try {
+    writer.Transfer(compound, asIs, true, new oc.Message_ProgressRange_1());
+    writer.Write(STEP_OUT_PATH);
+    const bytes = oc.FS.readFile(STEP_OUT_PATH);
+    return bytes.slice().buffer;
+  } finally {
+    writer.delete();
+    builder.delete();
+    compound.delete();
+    try {
+      oc.FS.unlink(STEP_OUT_PATH);
     } catch {
       /* already gone */
     }

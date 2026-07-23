@@ -144,11 +144,12 @@
    dialog panel itself captures clicks. Anchored top-right to leave the model
    centre pickable. */
 .dialogBackdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  z-index: 50;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   padding: var(--grid-unit);
   pointer-events: none;
 }
@@ -160,7 +161,7 @@
   gap: var(--grid-unit);
   width: 320px;
   max-width: calc(100vw - 2 * var(--grid-unit));
-  max-height: 80%;
+  max-height: 85vh;
   overflow-y: auto;
   padding: calc(var(--grid-unit) * 1.25);
   background-color: var(--color-panel-bg);

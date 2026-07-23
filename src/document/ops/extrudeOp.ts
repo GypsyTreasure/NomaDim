@@ -54,8 +54,11 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
     if (op.direction === 'two-sides' && !(op.distance2Mm > 0)) {
       return err(new ValidationError(`Extrude "${op.id}" needs a positive second distance`));
     }
-    const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyId);
-    if (targetError) return err(targetError);
+    // A surface extrude is always a new body — no boolean target to validate.
+    if (!op.asSurface) {
+      const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyId);
+      if (targetError) return err(targetError);
+    }
     if (op.wallThicknessMm < 0 || !Number.isFinite(op.wallThicknessMm)) {
       return err(new ValidationError(`Extrude "${op.id}" has an invalid wall thickness`));
     }
@@ -76,6 +79,7 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
         operation: op.operation,
         target: op.targetBodyId ?? '',
         wall: op.wallThicknessMm,
+        surface: op.asSurface,
         body: op.bodyId,
       },
       children: op.profileIds.map((profileId) => ({ tag: 'profile', attrs: { ref: profileId } })),
@@ -127,6 +131,8 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
       targetBodyId: target === '' ? null : (target as BodyId),
       // Optional (#7): pre-thin-wall documents default to a solid (0).
       wallThicknessMm: numAttr(raw, 'wall') ?? 0,
+      // Optional (ADR-0072): pre-surface documents default to a solid.
+      asSurface: boolAttr(raw, 'surface') ?? false,
       bodyId: body as BodyId,
     });
   },

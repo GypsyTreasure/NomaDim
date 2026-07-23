@@ -24,6 +24,9 @@ export interface MeshTransfer {
   positions: Float32Array;
   normals: Float32Array;
   indices: Uint32Array;
+  /** True for a zero-thickness surface body (a shell with no enclosed solid,
+   * ADR-0072) — the viewport renders it double-sided so it never culls edge-on. */
+  open?: boolean;
 }
 
 /** Per-body export stats for the F6 STL dialog: triangle count at the chosen

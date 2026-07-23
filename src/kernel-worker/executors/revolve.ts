@@ -5,6 +5,7 @@ import type { PlanProfile, WorldAxis } from '../../kernel/protocol';
 import { buildProfileFace } from '../profileFace';
 import { applyBooleanResult } from './booleanApply';
 import { applyThinWall } from './hollow';
+import { revolShell, storeSurfaceBody } from './surface';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -56,6 +57,22 @@ function revolveProfile(
 export function executeRevolve(ctx: ExecCtx, op: RevolveOp, axis: WorldAxis | undefined): void {
   if (!axis) {
     throw new KernelExecError('AXIS_MISSING', 'Revolve axis could not be resolved');
+  }
+
+  // Surface (zero-thickness) revolve (ADR-0072): revolve the profile wires into
+  // an open shell of revolution instead of a solid; always a new body.
+  if (op.asSurface) {
+    const ax1 = makeAxis(ctx, axis, op.angleDeg < 0);
+    const angleRad = Math.min(Math.abs(op.angleDeg), 360) * DEG_TO_RAD;
+    const fullTurn = Math.abs(angleRad - 2 * Math.PI) < 1e-12;
+    try {
+      storeSurfaceBody(ctx, op.bodyId, op.profileIds, (profile) =>
+        revolShell(ctx.oc, profile, ax1, angleRad, fullTurn)
+      );
+    } finally {
+      ax1.delete();
+    }
+    return;
   }
 
   let tool: TopoDS_Shape | null = null;

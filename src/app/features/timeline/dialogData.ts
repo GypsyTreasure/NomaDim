@@ -129,6 +129,18 @@ export function sketchOptions(document: DocumentState): readonly SelectOption<Sk
   return document.sketches.map((sketch) => ({ value: sketch.id, label: sketch.name }));
 }
 
+/** Extrude/Revolve result kind (ADR-0072): a plain solid, a hollowed thin wall
+ * (#7), or a zero-thickness surface body. */
+export type BodyType = 'solid' | 'thin' | 'surface';
+export const BODY_TYPE_OPTIONS: readonly SelectOption<BodyType>[] = [
+  { value: 'solid', label: t('dialog.bodyType.solid') },
+  { value: 'thin', label: t('dialog.bodyType.thin') },
+  { value: 'surface', label: t('dialog.bodyType.surface') },
+];
+export function initialBodyType(asSurface: boolean, wallMm: number): BodyType {
+  return asSurface ? 'surface' : wallMm > 0 ? 'thin' : 'solid';
+}
+
 const OPERATION_LABELS: Record<BooleanOperation, string> = {
   NewBody: t('dialog.operation.NewBody'),
   Join: t('dialog.operation.Join'),

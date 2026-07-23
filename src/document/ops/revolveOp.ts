@@ -63,8 +63,10 @@ export const revolveOpDefinition: OpDefinition<RevolveOp> = {
         );
       }
     }
-    const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyId);
-    if (targetError) return err(targetError);
+    if (!op.asSurface) {
+      const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyId);
+      if (targetError) return err(targetError);
+    }
     if (op.wallThicknessMm < 0 || !Number.isFinite(op.wallThicknessMm)) {
       return err(new ValidationError(`Revolve "${op.id}" has an invalid wall thickness`));
     }
@@ -84,6 +86,7 @@ export const revolveOpDefinition: OpDefinition<RevolveOp> = {
         operation: op.operation,
         target: op.targetBodyId ?? '',
         wall: op.wallThicknessMm,
+        surface: op.asSurface,
         body: op.bodyId,
       },
       children: op.profileIds.map((profileId) => ({ tag: 'profile', attrs: { ref: profileId } })),
@@ -131,6 +134,7 @@ export const revolveOpDefinition: OpDefinition<RevolveOp> = {
       operation,
       targetBodyId: target === '' ? null : (target as BodyId),
       wallThicknessMm: numAttr(raw, 'wall') ?? 0,
+      asSurface: boolAttr(raw, 'surface') ?? false,
       bodyId: body as BodyId,
     });
   },

@@ -43,6 +43,7 @@ function extrudeOp(overrides: Partial<ExtrudeOp> = {}): ExtrudeOp {
     operation: 'NewBody',
     targetBodyId: null,
     wallThicknessMm: 0,
+    asSurface: false,
     bodyId: body('b1'),
     ...overrides,
   };
@@ -61,6 +62,7 @@ function revolveOp(overrides: Partial<RevolveOp> = {}): RevolveOp {
     operation: 'Cut',
     targetBodyId: body('b1'),
     wallThicknessMm: 0,
+    asSurface: false,
     bodyId: body('b2'),
     ...overrides,
   };
@@ -356,6 +358,30 @@ describe('timeline XML round-trip', () => {
       rollbackIndex: 4,
     };
     const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
+  it('round-trips a surface extrude + surface revolve (asSurface, ADR-0072)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({ id: op('e1'), bodyId: body('b1'), asSurface: true }),
+        revolveOp({
+          id: op('r1'),
+          bodyId: body('b2'),
+          axis: { kind: 'origin', axis: 'Z' },
+          operation: 'NewBody',
+          targetBodyId: null,
+          suppressed: false,
+          asSurface: true,
+        }),
+      ],
+      rollbackIndex: 3,
+    };
+    const xml = timelineToXml(data);
+    expect(xml).toContain('surface="true"');
     const parsed = timelineFromXml(xml);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value).toEqual(data);

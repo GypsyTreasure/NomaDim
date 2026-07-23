@@ -5,6 +5,7 @@ import type { PlanProfile } from '../../kernel/protocol';
 import { buildProfileFace, planeNormal } from '../profileFace';
 import { applyBooleanResult } from './booleanApply';
 import { applyThinWall } from './hollow';
+import { prismShell, storeSurfaceBody } from './surface';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -71,6 +72,16 @@ function prismForProfile(ctx: ExecCtx, op: ExtrudeOp, profile: PlanProfile): Top
 }
 
 export function executeExtrude(ctx: ExecCtx, op: ExtrudeOp): void {
+  // Surface (zero-thickness) extrude (ADR-0072): sweep the profile wires into an
+  // open shell instead of a solid; always a new body (no boolean/thin-wall).
+  if (op.asSurface) {
+    const [shift, length] = extrudeRange(op);
+    storeSurfaceBody(ctx, op.bodyId, op.profileIds, (profile) =>
+      prismShell(ctx.oc, profile, shift, length)
+    );
+    return;
+  }
+
   let tool: TopoDS_Shape | null = null;
   for (const profileId of op.profileIds) {
     const profile = ctx.profiles.get(profileId);

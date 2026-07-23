@@ -29,6 +29,7 @@ function extrudeProducing(id: string, bodyId: string): ExtrudeOp {
     operation: 'NewBody',
     targetBodyId: null,
     wallThicknessMm: 0,
+    asSurface: false,
     bodyId: bid(bodyId),
   };
 }

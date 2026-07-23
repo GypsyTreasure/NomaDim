@@ -31,6 +31,9 @@ import {
   targetOptions,
   useProfileHighlight,
   useSketchProfiles,
+  BODY_TYPE_OPTIONS,
+  initialBodyType,
+  type BodyType,
 } from './dialogData';
 import { usePreview } from './usePreview';
 import { t } from '../../i18n/t';
@@ -70,6 +73,12 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [operation, setOperation] = useState<BooleanOperation>(prior?.operation ?? 'NewBody');
   const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
   const [wallThicknessMm, setWallThicknessMm] = useState(prior?.wallThicknessMm ?? 0);
+  const [bodyType, setBodyType] = useState<BodyType>(
+    initialBodyType(prior?.asSurface ?? false, prior?.wallThicknessMm ?? 0)
+  );
+  const asSurface = bodyType === 'surface';
+  const effectiveWallMm = bodyType === 'thin' ? wallThicknessMm : 0;
+  const effectiveOperation: BooleanOperation = asSurface ? 'NewBody' : operation;
 
   const profiles = useSketchProfiles(sketchId);
   const parsedAxis = parseAxis(axis);
@@ -123,14 +132,14 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     });
   };
 
-  const needsTarget = operation !== 'NewBody';
+  const needsTarget = !asSurface && operation !== 'NewBody';
   const okDisabled =
     sketchId === null ||
     selected.size === 0 ||
     !(Math.abs(angleDeg) > 0) ||
     Math.abs(angleDeg) > 360 ||
     (needsTarget && targetBodyId === null) ||
-    wallThicknessMm < 0;
+    (bodyType === 'thin' && wallThicknessMm <= 0);
 
   // Live ghost preview (F3): a valid draft revolve (creating, not editing).
   const previewSketchId = prior || okDisabled ? null : sketchId;
@@ -146,9 +155,10 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           profileIds: [...selected],
           axis: parsedAxis,
           angleDeg,
-          operation,
+          operation: effectiveOperation,
           targetBodyId: needsTarget ? targetBodyId : null,
-          wallThicknessMm,
+          wallThicknessMm: effectiveWallMm,
+          asSurface,
           bodyId: 'preview-body' as BodyId,
         };
   usePreview(draft);
@@ -165,9 +175,10 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       profileIds: [...selected],
       axis: parseAxis(axis),
       angleDeg,
-      operation,
+      operation: effectiveOperation,
       targetBodyId: needsTarget ? targetBodyId : null,
-      wallThicknessMm,
+      wallThicknessMm: effectiveWallMm,
+      asSurface,
       bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
     };
     const result = commandBus.dispatch(
@@ -195,12 +206,27 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         options={axisOptions}
         onChange={setAxis}
       />
-      <SelectRow<BooleanOperation>
-        labelKey="dialog.operation"
-        value={operation}
-        options={operationOptions()}
-        onChange={chooseOperation}
+      <SelectRow<BodyType>
+        labelKey="dialog.bodyType"
+        value={bodyType}
+        options={BODY_TYPE_OPTIONS}
+        onChange={setBodyType}
       />
+      {bodyType === 'thin' && (
+        <NumberRow
+          labelKey="dialog.wallThickness"
+          value={wallThicknessMm}
+          onChange={setWallThicknessMm}
+        />
+      )}
+      {!asSurface && (
+        <SelectRow<BooleanOperation>
+          labelKey="dialog.operation"
+          value={operation}
+          options={operationOptions()}
+          onChange={chooseOperation}
+        />
+      )}
       {needsTarget && (
         <SelectRow<BodyId>
           labelKey="dialog.target"
@@ -209,11 +235,6 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           onChange={setTargetBodyId}
         />
       )}
-      <NumberRow
-        labelKey="dialog.wallThickness"
-        value={wallThicknessMm}
-        onChange={setWallThicknessMm}
-      />
     </DialogFrame>
   );
 }

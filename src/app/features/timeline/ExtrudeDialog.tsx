@@ -20,6 +20,9 @@ import {
   targetOptions,
   useProfileHighlight,
   useSketchProfiles,
+  BODY_TYPE_OPTIONS,
+  initialBodyType,
+  type BodyType,
 } from './dialogData';
 import { t } from '../../i18n/t';
 
@@ -48,6 +51,12 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [operation, setOperation] = useState<BooleanOperation>(prior?.operation ?? 'NewBody');
   const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
   const [wallThicknessMm, setWallThicknessMm] = useState(prior?.wallThicknessMm ?? 0);
+  const [bodyType, setBodyType] = useState<BodyType>(
+    initialBodyType(prior?.asSurface ?? false, prior?.wallThicknessMm ?? 0)
+  );
+  const asSurface = bodyType === 'surface';
+  const effectiveWallMm = bodyType === 'thin' ? wallThicknessMm : 0;
+  const effectiveOperation: BooleanOperation = asSurface ? 'NewBody' : operation;
 
   const profiles = useSketchProfiles(sketchId);
   useProfileHighlight(sketchId, selected, profiles);
@@ -74,7 +83,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     });
   };
 
-  const needsTarget = operation !== 'NewBody';
+  const needsTarget = !asSurface && operation !== 'NewBody';
   const throughAll = direction === 'all';
   const okDisabled =
     sketchId === null ||
@@ -82,7 +91,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     (!throughAll && (!Number.isFinite(distanceMm) || distanceMm === 0)) ||
     (direction === 'two-sides' && !(distance2Mm > 0)) ||
     (needsTarget && targetBodyId === null) ||
-    wallThicknessMm < 0;
+    (bodyType === 'thin' && wallThicknessMm <= 0);
 
   // Live ghost preview (F3): while creating (not editing), feed a draft op with
   // stable sentinel ids to the preview pipeline whenever the params are valid.
@@ -100,9 +109,10 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           distanceMm,
           direction,
           distance2Mm,
-          operation,
+          operation: effectiveOperation,
           targetBodyId: needsTarget ? targetBodyId : null,
-          wallThicknessMm,
+          wallThicknessMm: effectiveWallMm,
+          asSurface,
           bodyId: 'preview-body' as BodyId,
         };
   usePreview(draft);
@@ -120,9 +130,10 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       distanceMm,
       direction,
       distance2Mm,
-      operation,
+      operation: effectiveOperation,
       targetBodyId: needsTarget ? targetBodyId : null,
-      wallThicknessMm,
+      wallThicknessMm: effectiveWallMm,
+      asSurface,
       bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
     };
     const result = commandBus.dispatch(
@@ -155,12 +166,28 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       {direction === 'two-sides' && (
         <NumberRow labelKey="dialog.distance2" value={distance2Mm} onChange={setDistance2Mm} />
       )}
-      <SelectRow<BooleanOperation>
-        labelKey="dialog.operation"
-        value={operation}
-        options={operationOptions()}
-        onChange={chooseOperation}
+      <SelectRow<BodyType>
+        labelKey="dialog.bodyType"
+        value={bodyType}
+        options={BODY_TYPE_OPTIONS}
+        onChange={setBodyType}
       />
+      {bodyType === 'thin' && (
+        <NumberRow
+          labelKey="dialog.wallThickness"
+          value={wallThicknessMm}
+          onChange={setWallThicknessMm}
+        />
+      )}
+      {/* A surface body is always a new body — no boolean op/target. */}
+      {!asSurface && (
+        <SelectRow<BooleanOperation>
+          labelKey="dialog.operation"
+          value={operation}
+          options={operationOptions()}
+          onChange={chooseOperation}
+        />
+      )}
       {needsTarget && (
         <SelectRow<BodyId>
           labelKey="dialog.target"
@@ -169,11 +196,6 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           onChange={setTargetBodyId}
         />
       )}
-      <NumberRow
-        labelKey="dialog.wallThickness"
-        value={wallThicknessMm}
-        onChange={setWallThicknessMm}
-      />
     </DialogFrame>
   );
 }

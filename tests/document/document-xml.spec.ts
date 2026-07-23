@@ -81,6 +81,7 @@ const ops: TimelineOp[] = [
     operation: 'NewBody',
     targetBodyId: null,
     wallThicknessMm: 0,
+    asSurface: false,
     bodyId: body('b1'),
   },
   {
@@ -95,6 +96,7 @@ const ops: TimelineOp[] = [
     operation: 'NewBody',
     targetBodyId: null,
     wallThicknessMm: 0,
+    asSurface: false,
     bodyId: body('b2'),
   },
   {

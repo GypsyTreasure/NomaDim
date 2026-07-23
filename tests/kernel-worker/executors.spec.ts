@@ -6,6 +6,7 @@ import type { ExtrudeOp, RevolveOp } from '../../src/document';
 import type { PlanePlacement, PlanProfile, WorldAxis } from '../../src/kernel/protocol';
 import { executeExtrude } from '../../src/kernel-worker/executors/extrude';
 import { executeRevolve } from '../../src/kernel-worker/executors/revolve';
+import { tessellateShape } from '../../src/kernel-worker/tessellate';
 import type { BodyStateMap, ExecCtx } from '../../src/kernel-worker/executors/types';
 import { ShapeCache, diffDelta, snapshotRefs } from '../../src/kernel-worker/bodyState';
 import { getLiveShapeCount } from '../../src/kernel-worker/handleCounter';
@@ -59,6 +60,7 @@ function extrude(overrides: Partial<ExtrudeOp>): ExtrudeOp {
     operation: 'NewBody',
     targetBodyId: null,
     wallThicknessMm: 0,
+    asSurface: false,
     bodyId: bid('B'),
     ...overrides,
   };
@@ -162,6 +164,28 @@ describe('extrude executor', () => {
       expect(v).toBeLessThan(40 * 40 * 22); // less than a full solid block
     }
     cache.freeFrom(0);
+  });
+
+  it('surface extrude makes a zero-thickness shell (no solid, has area, #surface)', () => {
+    const bodies: BodyStateMap = new Map();
+    const profile = rectProfile('p', 0, 0, 20, 10);
+    executeExtrude(
+      ctxFor(bodies, [profile]),
+      extrude({ profileIds: [profile.id], distanceMm: 5, asSurface: true })
+    );
+    const shape = bodies.get(bid('B'));
+    expect(shape).toBeDefined();
+    if (shape) {
+      // No enclosed solid → tessellate flags it open (rendered double-sided),
+      // and it still produces triangles for the four swept walls.
+      const mesh = tessellateShape(oc, bid('B'), shape, {
+        linearDeflectionMm: 0.25,
+        angularDeflectionDeg: 20,
+      });
+      expect(mesh.open).toBe(true);
+      expect(mesh.indices.length).toBeGreaterThan(0);
+    }
+    freeBodies(bodies);
   });
 
   it('symmetric direction straddles the plane (same total volume)', () => {
@@ -293,6 +317,7 @@ describe('revolve executor', () => {
       operation: 'NewBody',
       targetBodyId: null,
       wallThicknessMm: 0,
+      asSurface: false,
       bodyId: bid('R'),
     };
     executeRevolve(ctxFor(bodies, [profile]), op, axis);

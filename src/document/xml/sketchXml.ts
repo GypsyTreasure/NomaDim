@@ -121,7 +121,14 @@ export function sketchElement(sketch: Sketch): XmlElement {
     tag: 'dimensions',
     children: [...sketch.dimensions].sort(byId).map((d) => ({
       tag: 'dimension',
-      attrs: { id: d.id, kind: d.kind, a: d.a, b: d.b, offset: d.offset },
+      attrs: {
+        id: d.id,
+        kind: d.kind,
+        a: d.a,
+        b: d.b,
+        offset: d.offset,
+        ...(d.entityId !== undefined ? { entity: d.entityId } : {}),
+      },
     })),
   });
 
@@ -267,6 +274,7 @@ function parseDimensions(dimsRaw: Raw): Result<SketchDimension[], ImportError> {
     const a = strAttr(raw, 'a');
     const b = strAttr(raw, 'b');
     const offset = numAttr(raw, 'offset');
+    const entity = strAttr(raw, 'entity');
     if (id === null || kind === null || a === null || b === null || offset === null) {
       return fail('malformed <dimension>');
     }
@@ -279,6 +287,7 @@ function parseDimensions(dimsRaw: Raw): Result<SketchDimension[], ImportError> {
       a: a as PointId,
       b: b as PointId,
       offset,
+      ...(entity !== null ? { entityId: entity as EntityId } : {}),
     });
   }
   dimensions.sort(byId);

@@ -18,6 +18,7 @@ import {
 import {
   detectProfiles,
   dimensionRender,
+  dimensionEndpoints,
   distanceToCurve,
   evaluateSketch,
   fieldsForToolWithStart,
@@ -229,11 +230,15 @@ export function useSketcher(): SketcherApi {
     const src = displaySketch ?? sketch;
     if (!src) return [];
     const byId = new Map(src.points.map((pt) => [pt.id, pt]));
+    const entById = new Map(src.entities.map((e) => [e.id, e]));
+    const pointPos = (id: PointId): Vec2 | undefined => {
+      const pt = byId.get(id);
+      return pt ? vec2(pt.x, pt.y) : undefined;
+    };
     const out: DimensionRender[] = [];
     for (const dim of src.dimensions) {
-      const a = byId.get(dim.a);
-      const b = byId.get(dim.b);
-      if (a && b) out.push(dimensionRender(dim, vec2(a.x, a.y), vec2(b.x, b.y)));
+      const ends = dimensionEndpoints(dim, pointPos, (id) => entById.get(id));
+      if (ends) out.push(dimensionRender(dim, ends[0], ends[1]));
     }
     return out;
   }, [displaySketch, sketch]);
@@ -378,8 +383,53 @@ export function useSketcher(): SketcherApi {
         // Reference dimensions annotate two existing pool points: each click must
         // land on a point (snap-assisted). First click arms; second commits.
         const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
-        const picked = nearestPointId(current.points, snapResult.snap?.point ?? p, tolMm);
-        if (!picked) return;
+        const dimTarget = snapResult.snap?.point ?? p;
+        const picked = nearestPointId(current.points, dimTarget, tolMm);
+        if (!picked) {
+          // No pool point under the cursor — a click on a circle/arc rim creates
+          // a radial (radius/diameter) dimension in one click (#1): a full circle
+          // has no rim pool point, so the rim endpoint is derived from the entity.
+          if (dimFirstRef.current) return;
+          let radialId: EntityId | null = null;
+          let bestRadial = tolMm;
+          for (const ev of evaluateSketch(current)) {
+            const ent = current.entities.find((e) => e.id === ev.entityId);
+            if (ent?.type !== 'circle' && ent?.type !== 'arc') continue;
+            const d = distanceToCurve(ev.curve, dimTarget);
+            if (d <= bestRadial) {
+              bestRadial = d;
+              radialId = ev.entityId;
+            }
+          }
+          const radialEntity = current.entities.find((e) => e.id === radialId);
+          if (!radialEntity || (radialEntity.type !== 'circle' && radialEntity.type !== 'arc')) {
+            return;
+          }
+          const chosen = dimensionKindRef.current;
+          const radialKind: SketchDimensionKind =
+            chosen === 'radius' || chosen === 'diameter'
+              ? chosen
+              : radialEntity.type === 'circle'
+                ? 'diameter'
+                : 'radius';
+          const existingRadial = new Set<string>(current.dimensions.map((d) => d.id));
+          commandBus.dispatch({
+            type: 'AddSketchDimension',
+            payload: {
+              sketchId: current.id,
+              dimension: {
+                id: createId<'DimensionId'>(existingRadial),
+                kind: radialKind,
+                a: radialEntity.center,
+                b: radialEntity.center,
+                offset: DEFAULT_DIMENSION_OFFSET_MM,
+                entityId: radialEntity.id,
+              },
+            },
+          });
+          setDimFirst(null);
+          return;
+        }
         const first = dimFirstRef.current;
         if (!first) {
           setDimFirst(picked);

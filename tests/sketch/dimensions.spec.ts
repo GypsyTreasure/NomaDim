@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { DimensionId, PointId } from '../../src/core/ids';
+import type { DimensionId, EntityId, PointId } from '../../src/core/ids';
 import { vec2 } from '../../src/core/math';
-import type { SketchDimension, SketchDimensionKind } from '../../src/document';
-import { dimensionLabel, dimensionMeasure, dimensionRender } from '../../src/sketch';
+import type { SketchDimension, SketchDimensionKind, SketchEntity } from '../../src/document';
+import {
+  dimensionEndpoints,
+  dimensionLabel,
+  dimensionMeasure,
+  dimensionRender,
+} from '../../src/sketch';
 
 const dim = (kind: SketchDimensionKind, offset = 10): SketchDimension => ({
   id: 'd0' as DimensionId,
@@ -43,6 +48,59 @@ describe('dimensionLabel', () => {
     expect(dimensionLabel('radius', vec2(0, 0), vec2(12, 0))).toBe('R12');
     expect(dimensionLabel('diameter', vec2(0, 0), vec2(12, 0))).toBe('⌀24');
     expect(dimensionLabel('angle', vec2(0, 0), vec2(1, 1))).toBe('45°');
+  });
+});
+
+describe('dimensionEndpoints (radial dims, #1)', () => {
+  const pt =
+    (map: Record<string, ReturnType<typeof vec2>>) =>
+    (id: PointId): ReturnType<typeof vec2> | undefined =>
+      map[id];
+
+  it('two-point dim resolves its pool points', () => {
+    const points = { a: vec2(1, 2), b: vec2(4, 6) };
+    const ends = dimensionEndpoints(dim('linear'), pt(points), () => undefined);
+    expect(ends).not.toBeNull();
+    expect(ends?.[0]).toEqual(vec2(1, 2));
+    expect(ends?.[1]).toEqual(vec2(4, 6));
+  });
+
+  it('circle radial dim synthesizes a rim point from the entity radius', () => {
+    const circle: SketchEntity = {
+      type: 'circle',
+      id: 'c1' as EntityId,
+      center: 'ctr' as PointId,
+      r: 7,
+      construction: false,
+    };
+    const radial: SketchDimension = {
+      id: 'd1' as DimensionId,
+      kind: 'diameter',
+      a: 'ctr' as PointId,
+      b: 'ctr' as PointId,
+      offset: 10,
+      entityId: 'c1' as EntityId,
+    };
+    const ends = dimensionEndpoints(radial, pt({ ctr: vec2(2, 3) }), (id) =>
+      id === circle.id ? circle : undefined
+    );
+    expect(ends).not.toBeNull();
+    expect(ends?.[0]).toEqual(vec2(2, 3)); // centre
+    expect(ends?.[1]).toEqual(vec2(9, 3)); // centre + radius along +X
+    // |a→b| = 7 → diameter reads ⌀14.
+    if (ends) expect(dimensionLabel('diameter', ends[0], ends[1])).toBe('⌀14');
+  });
+
+  it('returns null when the referenced entity is missing', () => {
+    const radial: SketchDimension = {
+      id: 'd2' as DimensionId,
+      kind: 'radius',
+      a: 'ctr' as PointId,
+      b: 'ctr' as PointId,
+      offset: 10,
+      entityId: 'gone' as EntityId,
+    };
+    expect(dimensionEndpoints(radial, pt({ ctr: vec2(0, 0) }), () => undefined)).toBeNull();
   });
 });
 

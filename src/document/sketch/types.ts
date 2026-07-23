@@ -104,6 +104,12 @@ export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef;
  * - `angle`      inclination of a→b from +X, degrees
  * - `radius`     distance |ab| shown as R (a = centre, b = on the circle)
  * - `diameter`   2·|ab| shown as ⌀ (a = centre, b = on the circle)
+ *
+ * A **radial dimension on a full circle** has no rim pool point to use as `b`
+ * (a circle stores centre + a radius number, not a rim point), so it carries an
+ * optional `entityId` (#1): the rim endpoint is then synthesized from that
+ * entity's live radius at measure time. `a` stays the centre point; `b` is set
+ * to the centre too (unused while `entityId` is present).
  */
 export type SketchDimensionKind =
   'linear' | 'horizontal' | 'vertical' | 'angle' | 'radius' | 'diameter';
@@ -115,6 +121,8 @@ export interface SketchDimension {
   readonly b: PointId;
   /** Perpendicular offset (mm) of the dimension line from the a→b span; sign = side. */
   readonly offset: number;
+  /** Radial dims on a circle/arc: the rim endpoint comes from this entity (#1). */
+  readonly entityId?: EntityId;
 }
 
 export interface Sketch {

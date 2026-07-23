@@ -10,9 +10,11 @@ import {
   scale,
   sub,
   vec2,
+  type EntityId,
+  type PointId,
   type Vec2,
 } from '../core';
-import type { SketchDimension, SketchDimensionKind } from '../document';
+import type { SketchDimension, SketchDimensionKind, SketchEntity } from '../document';
 
 /**
  * Reference-dimension geometry (solver-free, ADR-0002). Every value is
@@ -35,6 +37,38 @@ export interface DimensionRender {
 
 /** Fallback dimension-line offset (mm) when a dimension has none stored. */
 export const DEFAULT_DIMENSION_OFFSET_MM = 10;
+
+/**
+ * The two plane-space endpoints a dimension measures, resolved live (#1). For a
+ * two-point dimension these are the referenced pool points; for a radial
+ * dimension (`entityId` set) the first is the entity centre and the second is a
+ * rim point synthesized from the entity's current radius — a full circle has no
+ * rim pool point, so this is how radius/diameter dims annotate one. Pure: the
+ * caller supplies point/entity lookups (no DOM, unit-testable, R11).
+ */
+export function dimensionEndpoints(
+  dim: SketchDimension,
+  pointById: (id: PointId) => Vec2 | undefined,
+  entityById: (id: EntityId) => SketchEntity | undefined
+): readonly [Vec2, Vec2] | null {
+  if (dim.entityId !== undefined) {
+    const entity = entityById(dim.entityId);
+    if (!entity) return null;
+    if (entity.type === 'circle') {
+      const c = pointById(entity.center);
+      return c ? [c, vec2(c.x + entity.r, c.y)] : null;
+    }
+    if (entity.type === 'arc') {
+      const c = pointById(entity.center);
+      const rim = pointById(entity.start);
+      return c && rim ? [c, rim] : null;
+    }
+    return null;
+  }
+  const a = pointById(dim.a);
+  const b = pointById(dim.b);
+  return a && b ? [a, b] : null;
+}
 
 /**
  * The raw measured quantity: millimetres for length kinds, degrees for

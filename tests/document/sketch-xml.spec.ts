@@ -149,6 +149,35 @@ describe('sketch XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(original);
   });
 
+  it('round-trips a radial dimension carrying its entity ref (#1)', () => {
+    const did = (id: string): DimensionId => id as DimensionId;
+    const original: Sketch = {
+      id: 'skR' as SketchId,
+      name: 'RadialDim',
+      plane: { kind: 'origin', plane: 'XY' },
+      points: [{ id: pid('ctr'), x: 0, y: 0 }],
+      entities: [
+        { type: 'circle', id: 'c1' as EntityId, center: pid('ctr'), r: 5, construction: false },
+      ],
+      constraints: [],
+      dimensions: [
+        {
+          id: did('d1'),
+          kind: 'diameter',
+          a: pid('ctr'),
+          b: pid('ctr'),
+          offset: 0,
+          entityId: 'c1' as EntityId,
+        },
+      ],
+    };
+    const xml = sketchToXml(original);
+    expect(xml).toContain('entity="c1"');
+    const parsed = sketchFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(original);
+  });
+
   it('rejects a dimension referencing a missing point (validation on import)', () => {
     const xml = [
       '<sketch id="s" plane="XY" name="n">',

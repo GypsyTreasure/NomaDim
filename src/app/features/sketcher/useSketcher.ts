@@ -11,6 +11,7 @@ import {
 } from '../../../core';
 import {
   findSketch,
+  pointMap,
   type Sketch,
   type SketchDimensionKind,
   type SketchPlaneRef,
@@ -19,6 +20,8 @@ import {
   detectProfiles,
   dimensionRender,
   dimensionEndpoints,
+  mirrorEntities,
+  patternEntities,
   distanceToCurve,
   evaluateSketch,
   fieldsForToolWithStart,
@@ -107,6 +110,20 @@ export interface DatumPlaneSpec {
   readonly tiltAxis: 'X' | 'Y' | 'Z';
 }
 
+/** Which line the sketch Mirror reflects across (#2). */
+export type MirrorAxis = 'x' | 'y' | 'line';
+
+/** Sketch Pattern parameters from the toolbar form (#2). */
+export interface SketchPatternInput {
+  readonly kind: 'linear' | 'circular';
+  readonly count: number;
+  /** Linear: spacing (mm) along `dirAxis`. */
+  readonly spacingMm: number;
+  readonly dirAxis: 'x' | 'y';
+  /** Circular: total sweep (deg) about the sketch origin. */
+  readonly angleDeg: number;
+}
+
 export interface SketcherApi {
   readonly activeSketch: Sketch | null;
   readonly viewportSketchMode: SketchModeProps | null;
@@ -147,8 +164,14 @@ export interface SketcherApi {
   readonly finishSketch: () => void;
   /** Delete the currently selected sketch entities (touch affordance for the Delete key). */
   readonly deleteSelection: () => void;
+  /** Mirror the selected entities across the sketch X/Y axis or a selected line (#2). */
+  readonly mirrorSelection: (axis: MirrorAxis) => void;
+  /** Array the selected entities linearly or circularly (#2). */
+  readonly patternSelection: (spec: SketchPatternInput) => void;
   /** True when one or more sketch entities are selected. */
   readonly hasSelection: boolean;
+  /** True when exactly one selected entity is a line (enables Mirror-across-line). */
+  readonly mirrorLineAvailable: boolean;
   /** Intersect view (#1): clip the near half of bodies + show the plane section. */
   readonly intersect: boolean;
   readonly toggleIntersect: () => void;
@@ -665,6 +688,97 @@ export function useSketcher(): SketcherApi {
     session.setSelection([]);
   }, [liveSketch]);
 
+  // Sketch Mirror (#2): reflect the selected entities across the sketch X/Y
+  // axis, or across a single selected line (which itself stays put). New
+  // geometry is added via the same AddSketchGeometry path as drawing.
+  const mirrorSelection = useCallback(
+    (axis: MirrorAxis) => {
+      const current = liveSketch();
+      if (!current) return;
+      const selected = new Set(useSessionStore.getState().selectedEntityIds);
+      if (selected.size === 0) return;
+      let a = vec2(0, 0);
+      let b = axis === 'x' ? vec2(1, 0) : vec2(0, 1);
+      let targets = selected;
+      if (axis === 'line') {
+        const line = current.entities.find((e) => selected.has(e.id) && e.type === 'line');
+        if (line?.type !== 'line') return;
+        const pts = pointMap(current);
+        const p1 = pts.get(line.start);
+        const p2 = pts.get(line.end);
+        if (!p1 || !p2) return;
+        a = vec2(p1.x, p1.y);
+        b = vec2(p2.x, p2.y);
+        targets = new Set([...selected].filter((id) => id !== line.id));
+      }
+      if (targets.size === 0) return;
+      const delta = mirrorEntities(current, targets, a, b);
+      if (delta.entities.length === 0) return;
+      commandBus.dispatch({
+        type: 'AddSketchGeometry',
+        payload: { sketchId: current.id, points: delta.points, entities: delta.entities },
+      });
+    },
+    [liveSketch]
+  );
+
+  // Sketch Pattern (#2): linear (spacing along X/Y) or circular (about the
+  // sketch origin) array of the selected entities.
+  const patternSelection = useCallback(
+    (spec: SketchPatternInput) => {
+      const current = liveSketch();
+      if (!current) return;
+      const selected = new Set(useSessionStore.getState().selectedEntityIds);
+      if (selected.size === 0) return;
+      const delta = patternEntities(
+        current,
+        selected,
+        spec.kind === 'linear'
+          ? {
+              kind: 'linear',
+              count: spec.count,
+              dx: spec.dirAxis === 'x' ? spec.spacingMm : 0,
+              dy: spec.dirAxis === 'y' ? spec.spacingMm : 0,
+            }
+          : {
+              kind: 'circular',
+              count: spec.count,
+              center: vec2(0, 0),
+              totalAngleRad: spec.angleDeg * DEG_TO_RAD,
+            }
+      );
+      if (delta.entities.length === 0) return;
+      commandBus.dispatch({
+        type: 'AddSketchGeometry',
+        payload: { sketchId: current.id, points: delta.points, entities: delta.entities },
+      });
+    },
+    [liveSketch]
+  );
+
+  const mirrorLineAvailable =
+    sketch !== null &&
+    sketch.entities.filter((e) => selectedEntityIds.includes(e.id) && e.type === 'line').length ===
+      1;
+
+  // Sketch Mirror shortcut (master rule, ADR-0032): K mirrors the selection
+  // across a single selected line if one is picked, else the sketch X axis;
+  // Shift+K mirrors across the Y axis. A dedicated listener (defined after the
+  // callbacks) keeps the main keydown handler untouched.
+  useEffect(() => {
+    if (!sketch) return undefined;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'k') mirrorSelection(mirrorLineAvailable ? 'line' : 'x');
+      else if (e.key === 'K') mirrorSelection('y');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [sketch, mirrorSelection, mirrorLineAvailable]);
+
   // "New Sketch" first asks which plane to draw on (F2 plane selection);
   // the sketch is created once a plane is chosen.
   const newSketch = useCallback(() => {
@@ -857,5 +971,8 @@ export function useSketcher(): SketcherApi {
     cancelFacePick,
     pickFace,
     finishSketch,
+    mirrorSelection,
+    patternSelection,
+    mirrorLineAvailable,
   };
 }

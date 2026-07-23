@@ -3,6 +3,7 @@ import type { TranslationKey } from '../../i18n/en';
 import { t } from '../../i18n/t';
 import { useSessionStore } from '../../store/sessionStore';
 import type { DimensionToolKind, SketcherApi } from './useSketcher';
+import { SketchTransformControls } from './SketchTransformControls';
 import styles from './Sketcher.module.css';
 
 const TOOLS: readonly SketchToolId[] = [
@@ -187,6 +188,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       >
         {t('sketch.delete')}
       </button>
+      <SketchTransformControls sketcher={sketcher} />
     </div>
   );
 }

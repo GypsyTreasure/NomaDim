@@ -61,6 +61,16 @@ export function tessellateShape(
     false
   );
 
+  // A body with no enclosed TopoDS_Solid is a zero-thickness surface (ADR-0072)
+  // — flag it so the viewport renders it double-sided (never culled edge-on).
+  const solidExp = new oc.TopExp_Explorer_2(
+    shape,
+    enumArg(oc.TopAbs_ShapeEnum.TopAbs_SOLID),
+    enumArg(oc.TopAbs_ShapeEnum.TopAbs_SHAPE)
+  );
+  const open = !solidExp.More();
+  solidExp.delete();
+
   const positions: number[] = [];
   const normals: number[] = [];
   const indices: number[] = [];
@@ -122,5 +132,6 @@ export function tessellateShape(
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
     indices: new Uint32Array(indices),
+    open,
   };
 }

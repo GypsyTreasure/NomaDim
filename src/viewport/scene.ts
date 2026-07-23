@@ -104,11 +104,13 @@ export function createBodyMesh(
     color: new THREE.Color(color ?? BODY_COLOR),
     // Selection highlight (F8 tree ⇄ viewport sync): a subtle self-glow.
     emissive: new THREE.Color(selected ? 0x2fa78d : 0x000000),
-    // Intersect view (#1): clip the near half so the section cut is exposed;
-    // `side` double so the newly-open interior is shaded rather than see-through.
-    ...(clippingPlanes && clippingPlanes.length > 0
-      ? { clippingPlanes, side: THREE.DoubleSide }
+    // Double-side when clipped (Intersect view #1, so the newly-open interior
+    // shades rather than reading see-through) OR for a zero-thickness surface
+    // body (ADR-0072), which would otherwise vanish edge-on / from the back.
+    ...(mesh.open || (clippingPlanes && clippingPlanes.length > 0)
+      ? { side: THREE.DoubleSide }
       : {}),
+    ...(clippingPlanes && clippingPlanes.length > 0 ? { clippingPlanes } : {}),
   });
   const object = new THREE.Mesh(geometry, material);
   object.name = `Body:${mesh.bodyId}`;

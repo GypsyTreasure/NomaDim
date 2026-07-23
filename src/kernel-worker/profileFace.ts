@@ -2,6 +2,7 @@ import type {
   BRepBuilderAPI_MakeWire,
   OpenCascadeInstance,
   TopoDS_Face,
+  TopoDS_Shape,
   TopoDS_Wire,
   gp_Dir,
   gp_Pnt,
@@ -143,6 +144,31 @@ function buildWire(
   fixer.delete();
   rawWire.delete();
   return fixed;
+}
+
+/**
+ * All of a profile's loops (outer + inner) as a compound of closed wires (#surface,
+ * ADR-0072). Sweeping this compound (prism/revolve) yields a zero-thickness
+ * SHELL — the surface body — instead of the solid the face produces. Caller
+ * `.delete()`s the returned compound.
+ */
+export function buildProfileWireCompound(
+  oc: OpenCascadeInstance,
+  profile: PlanProfile
+): TopoDS_Shape {
+  const compound = new oc.TopoDS_Compound();
+  const builder = new oc.BRep_Builder();
+  builder.MakeCompound(compound);
+  const outer = buildWire(oc, profile.plane, profile.outer, profile.id);
+  builder.Add(compound, outer);
+  outer.delete();
+  for (const inner of profile.inner) {
+    const wire = buildWire(oc, profile.plane, inner, profile.id);
+    builder.Add(compound, wire);
+    wire.delete();
+  }
+  builder.delete();
+  return compound;
 }
 
 /** Full recipe: outer wire → face, inner wires added reversed (holes). */

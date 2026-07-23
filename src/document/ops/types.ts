@@ -61,6 +61,10 @@ export interface ExtrudeOp extends OpBase {
    * > 0 the extrusion is hollowed to this wall thickness before the boolean, so
    * a thin wall can still Join/Cut/Intersect an existing body. */
   readonly wallThicknessMm: number;
+  /** Zero-thickness SURFACE body (ADR-0072): sweep the profile wires into an
+   * open shell instead of a solid (Fusion "as Surface"). Overrides wall
+   * thickness + boolean — always a new body. */
+  readonly asSurface: boolean;
   /** Minted at creation (§8) — the produced body for NewBody, stable across regens. */
   readonly bodyId: BodyId;
 }
@@ -80,6 +84,9 @@ export interface RevolveOp extends OpBase {
   readonly targetBodyId: BodyId | null;
   /** Thin-wall (single-wall/shell) thickness (mm); 0 = a solid body (#7). */
   readonly wallThicknessMm: number;
+  /** Zero-thickness SURFACE body (ADR-0072): revolve the profile wires into an
+   * open shell instead of a solid. Overrides wall thickness + boolean. */
+  readonly asSurface: boolean;
   readonly bodyId: BodyId;
 }
 

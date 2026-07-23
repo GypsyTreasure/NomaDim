@@ -77,6 +77,7 @@ function extrudeOf(doc: DocumentState, sketchId: SketchId, id: string): ExtrudeO
     operation: 'NewBody',
     targetBodyId: null,
     wallThicknessMm: 0,
+    asSurface: false,
     bodyId: `${id}-body` as never,
   };
 }

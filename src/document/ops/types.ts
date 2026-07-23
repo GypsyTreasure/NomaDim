@@ -19,7 +19,8 @@ export type OpType =
   | 'Mirror'
   | 'Pattern'
   | 'Import'
-  | 'Shell';
+  | 'Shell'
+  | 'Move';
 
 /** Placement/array ops keep the source body (NewBody) or fuse into it (Join). */
 export type TransformOperation = 'NewBody' | 'Join';
@@ -210,6 +211,16 @@ export interface ShellOp extends OpBase {
   readonly openFace: ShellFace;
 }
 
+/** Move a body in place (#3): rigid transform (Euler XYZ rotation about the
+ * world origin, then translation, mm) applied to the body itself — same
+ * `bodyId`, no copy (contrast CopyBody). Modifies in place like Fillet/Shell. */
+export interface MoveOp extends OpBase {
+  readonly type: 'Move';
+  readonly bodyId: BodyId;
+  readonly translate: readonly [number, number, number];
+  readonly rotate: readonly [number, number, number];
+}
+
 export type TimelineOp =
   | SketchOp
   | ExtrudeOp
@@ -221,7 +232,8 @@ export type TimelineOp =
   | MirrorOp
   | PatternOp
   | ImportOp
-  | ShellOp;
+  | ShellOp
+  | MoveOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

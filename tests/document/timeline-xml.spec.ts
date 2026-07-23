@@ -359,6 +359,29 @@ describe('timeline XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(data);
   });
 
+  it('round-trips a Move op (in-place translate + rotate, #3)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({ id: op('e1'), bodyId: body('b1') }),
+        {
+          type: 'Move',
+          id: op('mv1'),
+          name: 'Move1',
+          suppressed: false,
+          bodyId: body('b1'),
+          translate: [12.5, -3, 4],
+          rotate: [0, 90, 45],
+        },
+      ],
+      rollbackIndex: 3,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
   it('round-trips an Import base body (base64 BREP payload)', () => {
     const data: TimelineData = {
       ops: [

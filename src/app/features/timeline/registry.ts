@@ -10,6 +10,7 @@ import { CopyBodyDialog } from './CopyBodyDialog';
 import { MirrorDialog } from './MirrorDialog';
 import { PatternDialog } from './PatternDialog';
 import { ShellDialog } from './ShellDialog';
+import { MoveDialog } from './MoveDialog';
 
 /**
  * App-side op feature registry (ARCHITECTURE §7, the third registry). One
@@ -60,6 +61,7 @@ const patternFeature: OpFeature = {
 // Import has no create-dialog — it is authored by the file-import flow, like Sketch.
 const importFeature: OpFeature = { type: 'Import', labelKey: 'op.import', dialog: null };
 const shellFeature: OpFeature = { type: 'Shell', labelKey: 'op.shell', dialog: ShellDialog };
+const moveFeature: OpFeature = { type: 'Move', labelKey: 'op.move', dialog: MoveDialog };
 
 export const OP_FEATURES: Record<OpType, OpFeature> = {
   Sketch: sketchFeature,
@@ -73,6 +75,7 @@ export const OP_FEATURES: Record<OpType, OpFeature> = {
   Pattern: patternFeature,
   Import: importFeature,
   Shell: shellFeature,
+  Move: moveFeature,
 };
 
 export const OP_FEATURE_TYPES: readonly OpType[] = Object.keys(OP_FEATURES) as OpType[];

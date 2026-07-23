@@ -11,6 +11,7 @@ import { mirrorOpDefinition } from './mirrorOp';
 import { patternOpDefinition } from './patternOp';
 import { importOpDefinition } from './importOp';
 import { shellOpDefinition } from './shellOp';
+import { moveOpDefinition } from './moveOp';
 
 /**
  * Document-side op registry (ARCHITECTURE §7). The XML codec, timeline UI,
@@ -30,6 +31,7 @@ export const OP_DEFINITIONS: Record<OpType, OpDefinition> = {
   Pattern: patternOpDefinition,
   Import: importOpDefinition,
   Shell: shellOpDefinition,
+  Move: moveOpDefinition,
 };
 
 export function opDefinition(op: TimelineOp): OpDefinition {

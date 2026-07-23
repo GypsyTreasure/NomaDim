@@ -137,6 +137,7 @@ export const OP_PLAN_RESOLVERS: Record<OpType, OpPlanResolver> = {
   Pattern: noInputsResolver,
   Import: noInputsResolver,
   Shell: noInputsResolver,
+  Move: noInputsResolver,
 };
 
 // --- Plan assembly ---------------------------------------------------------

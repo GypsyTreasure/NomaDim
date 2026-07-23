@@ -17,6 +17,7 @@ const OP_SHORTCUT: Partial<Record<OpType, string>> = {
   Mirror: 'I',
   Pattern: 'P',
   Shell: 'L',
+  Move: 'T',
 };
 
 /** Effective chip status (suppressed overrides the last run result). */

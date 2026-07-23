@@ -56,6 +56,9 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
     }
     const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyId);
     if (targetError) return err(targetError);
+    if (op.wallThicknessMm < 0 || !Number.isFinite(op.wallThicknessMm)) {
+      return err(new ValidationError(`Extrude "${op.id}" has an invalid wall thickness`));
+    }
     return ok(undefined);
   },
 
@@ -72,6 +75,7 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
         distance2: op.distance2Mm,
         operation: op.operation,
         target: op.targetBodyId ?? '',
+        wall: op.wallThicknessMm,
         body: op.bodyId,
       },
       children: op.profileIds.map((profileId) => ({ tag: 'profile', attrs: { ref: profileId } })),
@@ -121,6 +125,8 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
       distance2Mm: distance2,
       operation,
       targetBodyId: target === '' ? null : (target as BodyId),
+      // Optional (#7): pre-thin-wall documents default to a solid (0).
+      wallThicknessMm: numAttr(raw, 'wall') ?? 0,
       bodyId: body as BodyId,
     });
   },

@@ -2,10 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { OpenCascadeInstance, TopoDS_Shape } from 'opencascade.js';
 import initOpenCascade from 'opencascade.js/dist/node.js';
 import type { BodyId } from '../../src/core';
-import type { CopyBodyOp, MirrorOp, PatternOp } from '../../src/document';
+import type { CopyBodyOp, MirrorOp, MoveOp, PatternOp } from '../../src/document';
 import { executeCopyBody } from '../../src/kernel-worker/executors/copyBody';
 import { executeMirror } from '../../src/kernel-worker/executors/mirror';
 import { executePattern } from '../../src/kernel-worker/executors/pattern';
+import { executeMove } from '../../src/kernel-worker/executors/move';
 import { ShapeCache, diffDelta, snapshotRefs } from '../../src/kernel-worker/bodyState';
 import { trackShapeAllocation, getLiveShapeCount } from '../../src/kernel-worker/handleCounter';
 import type { BodyStateMap, ExecCtx } from '../../src/kernel-worker/executors/types';
@@ -125,6 +126,12 @@ describe('Pattern', () => {
       spacingMm: 20, // gaps → disjoint
       axis: 'X',
       angleDeg: 0,
+      count2: 1,
+      spacingMm2: 0,
+      axis2: 'Y',
+      count3: 1,
+      spacingMm3: 0,
+      axis3: 'Z',
       operation: 'Join',
       bodyId: bid('unused'),
     };
@@ -133,6 +140,80 @@ describe('Pattern', () => {
     record(cache, 1, before, bodies);
 
     expect(volOf(bodies, 'A')).toBeCloseTo(3000, 2);
+    cache.freeFrom(0);
+  });
+
+  it('linear 2-axis grid Join fills a count×count2 box (#4)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    seedBox(bodies, 'A', 0); // x ∈ [0,10]
+    record(cache, 0, new Map(), bodies);
+
+    const op: PatternOp = {
+      type: 'Pattern',
+      id: 'p2' as PatternOp['id'],
+      name: 'Pattern',
+      suppressed: false,
+      sourceBodyId: bid('A'),
+      kind: 'linear',
+      count: 2,
+      spacingMm: 20,
+      axis: 'X',
+      angleDeg: 0,
+      count2: 2,
+      spacingMm2: 20,
+      axis2: 'Y',
+      count3: 1,
+      spacingMm3: 0,
+      axis3: 'Z',
+      operation: 'Join',
+      bodyId: bid('unused'),
+    };
+    const before = snapshotRefs(bodies);
+    executePattern(ctx(bodies), op);
+    record(cache, 1, before, bodies);
+
+    // 2×2 disjoint cells of a 10³ box → four boxes → 4000.
+    expect(volOf(bodies, 'A')).toBeCloseTo(4000, 2);
+    cache.freeFrom(0);
+  });
+});
+
+describe('Move', () => {
+  it('moves a body in place, preserving volume and its id, shifting position', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    seedBox(bodies, 'A', 0); // x ∈ [0,10]
+    record(cache, 0, new Map(), bodies);
+
+    const comX = (id: string): number => {
+      const shape = bodies.get(bid(id));
+      expect(shape).toBeDefined();
+      if (!shape) return 0;
+      const g = new oc.GProp_GProps_1();
+      oc.BRepGProp.VolumeProperties_1(shape, g, false, false, false);
+      const x = g.CentreOfMass().X();
+      g.delete();
+      return x;
+    };
+    const beforeX = comX('A'); // 5
+
+    const op: MoveOp = {
+      type: 'Move',
+      id: 'mv1' as MoveOp['id'],
+      name: 'Move',
+      suppressed: false,
+      bodyId: bid('A'),
+      translate: [50, 0, 0],
+      rotate: [0, 0, 0],
+    };
+    const before = snapshotRefs(bodies);
+    executeMove(ctx(bodies), op);
+    record(cache, 1, before, bodies);
+
+    expect(volOf(bodies, 'A')).toBeCloseTo(1000, 2); // rigid move preserves volume
+    expect(comX('A')).toBeCloseTo(beforeX + 50, 2); // and shifts by the translation
+    expect([...bodies.keys()]).toEqual([bid('A')]); // in place: no new body id
     cache.freeFrom(0);
   });
 });

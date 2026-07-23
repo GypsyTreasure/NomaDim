@@ -16,6 +16,7 @@ export { type ProjectionMode } from './cameraRig';
 export { sectionPlanePoints } from './section';
 export {
   originPlaneBasis,
+  datumPlaneSnapshot,
   planeMapping,
   mappingFromBasis,
   type OriginPlaneId,

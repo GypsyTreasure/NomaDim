@@ -22,7 +22,7 @@ test('phone: New Sketch stays visible; the rest collapse behind a hamburger', as
   // Open the menu → the rest become reachable.
   await page.getByTestId('app-menu-toggle').click();
   await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Export STL' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Shortcuts' })).toBeVisible();
 
   // Tapping outside (the canvas) closes the menu.

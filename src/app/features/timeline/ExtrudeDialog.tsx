@@ -47,6 +47,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [distance2Mm, setDistance2Mm] = useState(prior?.distance2Mm ?? 10);
   const [operation, setOperation] = useState<BooleanOperation>(prior?.operation ?? 'NewBody');
   const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
+  const [wallThicknessMm, setWallThicknessMm] = useState(prior?.wallThicknessMm ?? 0);
 
   const profiles = useSketchProfiles(sketchId);
   useProfileHighlight(sketchId, selected, profiles);
@@ -80,7 +81,8 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     selected.size === 0 ||
     (!throughAll && (!Number.isFinite(distanceMm) || distanceMm === 0)) ||
     (direction === 'two-sides' && !(distance2Mm > 0)) ||
-    (needsTarget && targetBodyId === null);
+    (needsTarget && targetBodyId === null) ||
+    wallThicknessMm < 0;
 
   // Live ghost preview (F3): while creating (not editing), feed a draft op with
   // stable sentinel ids to the preview pipeline whenever the params are valid.
@@ -100,6 +102,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           distance2Mm,
           operation,
           targetBodyId: needsTarget ? targetBodyId : null,
+          wallThicknessMm,
           bodyId: 'preview-body' as BodyId,
         };
   usePreview(draft);
@@ -119,6 +122,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       distance2Mm,
       operation,
       targetBodyId: needsTarget ? targetBodyId : null,
+      wallThicknessMm,
       bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
     };
     const result = commandBus.dispatch(
@@ -165,6 +169,11 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           onChange={setTargetBodyId}
         />
       )}
+      <NumberRow
+        labelKey="dialog.wallThickness"
+        value={wallThicknessMm}
+        onChange={setWallThicknessMm}
+      />
     </DialogFrame>
   );
 }

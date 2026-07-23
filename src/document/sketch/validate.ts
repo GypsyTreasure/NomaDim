@@ -102,7 +102,9 @@ export function validateSketch(sketch: Sketch): Result<void, ValidationError> {
       return err(new ValidationError(`Duplicate dimension id "${dim.id}"`, 'dimensions'));
     }
     dimensionIds.add(dim.id);
-    if (dim.a === dim.b) {
+    // A radial dimension (entityId set) legitimately has a === b: both point at
+    // the entity centre, and the rim endpoint is derived from the entity (#1).
+    if (dim.entityId === undefined && dim.a === dim.b) {
       return err(
         new ValidationError(`Dimension "${dim.id}" references a single point twice`, 'dimensions')
       );
@@ -116,6 +118,14 @@ export function validateSketch(sketch: Sketch): Result<void, ValidationError> {
           )
         );
       }
+    }
+    if (dim.entityId !== undefined && !entityIds.has(dim.entityId)) {
+      return err(
+        new ValidationError(
+          `Dimension "${dim.id}" references missing entity "${dim.entityId}"`,
+          'dimensions'
+        )
+      );
     }
     if (!Number.isFinite(dim.offset)) {
       return err(new ValidationError(`Dimension "${dim.id}" has non-finite offset`, 'dimensions'));

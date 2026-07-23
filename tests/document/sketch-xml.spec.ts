@@ -92,6 +92,27 @@ describe('sketch XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(original);
   });
 
+  it('round-trips a datum-plane sketch (base + offset + tilt + snapshot, #5)', () => {
+    const original: Sketch = {
+      ...arcSketch(),
+      id: 'skDatum' as SketchId,
+      plane: {
+        kind: 'datum',
+        base: 'XY',
+        offsetMm: 15,
+        tiltDeg: 30,
+        tiltAxis: 'X',
+        planeSnapshot: { origin: [0, 0, 15], xAxis: [1, 0, 0], yAxis: [0, 0.866, 0.5] },
+      },
+    };
+    const xml = sketchToXml(original);
+    expect(xml).toContain('plane="datum"');
+    expect(xml).toContain('<datumRef');
+    const parsed = sketchFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(original);
+  });
+
   it('round-trips an axis (centerline) line, serializing axis="true"', () => {
     const original: Sketch = {
       id: 'skA' as SketchId,
@@ -144,6 +165,35 @@ describe('sketch XML round-trip', () => {
     };
     const xml = sketchToXml(original);
     expect(xml).toContain('<dimension id="d1" kind="linear" a="c" b="p" offset="8"/>');
+    const parsed = sketchFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(original);
+  });
+
+  it('round-trips a radial dimension carrying its entity ref (#1)', () => {
+    const did = (id: string): DimensionId => id as DimensionId;
+    const original: Sketch = {
+      id: 'skR' as SketchId,
+      name: 'RadialDim',
+      plane: { kind: 'origin', plane: 'XY' },
+      points: [{ id: pid('ctr'), x: 0, y: 0 }],
+      entities: [
+        { type: 'circle', id: 'c1' as EntityId, center: pid('ctr'), r: 5, construction: false },
+      ],
+      constraints: [],
+      dimensions: [
+        {
+          id: did('d1'),
+          kind: 'diameter',
+          a: pid('ctr'),
+          b: pid('ctr'),
+          offset: 0,
+          entityId: 'c1' as EntityId,
+        },
+      ],
+    };
+    const xml = sketchToXml(original);
+    expect(xml).toContain('entity="c1"');
     const parsed = sketchFromXml(xml);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value).toEqual(original);

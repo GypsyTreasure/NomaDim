@@ -45,6 +45,8 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'D', desc: 'help.copyOp' },
       { keys: 'I', desc: 'help.mirror' },
       { keys: 'P', desc: 'help.pattern' },
+      { keys: 'L', desc: 'help.shell' },
+      { keys: 'T', desc: 'help.move' },
     ],
   },
   {
@@ -87,6 +89,8 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'X', desc: 'help.construction' },
       { keys: 'Q', desc: 'help.snap' },
       { keys: 'J', desc: 'help.intersect' },
+      { keys: 'K', desc: 'help.sketchMirror' },
+      { keys: 'Shift+K', desc: 'help.sketchMirrorY' },
     ],
   },
   {

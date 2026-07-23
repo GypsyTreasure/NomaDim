@@ -57,6 +57,7 @@ function extrudeOp(bodyId: string, height: number): { op: ExtrudeOp; profile: Pl
       distance2Mm: 0,
       operation: 'NewBody',
       targetBodyId: null,
+      wallThicknessMm: 0,
       bodyId: bid(bodyId),
     },
   };

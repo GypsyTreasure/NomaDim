@@ -18,7 +18,9 @@ export type OpType =
   | 'CopyBody'
   | 'Mirror'
   | 'Pattern'
-  | 'Import';
+  | 'Import'
+  | 'Shell'
+  | 'Move';
 
 /** Placement/array ops keep the source body (NewBody) or fuse into it (Join). */
 export type TransformOperation = 'NewBody' | 'Join';
@@ -55,6 +57,10 @@ export interface ExtrudeOp extends OpBase {
   readonly operation: BooleanOperation;
   /** Target for Join/Cut/Intersect; ignored for NewBody. */
   readonly targetBodyId: BodyId | null;
+  /** Thin-wall (single-wall/shell) thickness (mm); 0 = a solid body (#7). When
+   * > 0 the extrusion is hollowed to this wall thickness before the boolean, so
+   * a thin wall can still Join/Cut/Intersect an existing body. */
+  readonly wallThicknessMm: number;
   /** Minted at creation (§8) — the produced body for NewBody, stable across regens. */
   readonly bodyId: BodyId;
 }
@@ -72,6 +78,8 @@ export interface RevolveOp extends OpBase {
   readonly angleDeg: number;
   readonly operation: BooleanOperation;
   readonly targetBodyId: BodyId | null;
+  /** Thin-wall (single-wall/shell) thickness (mm); 0 = a solid body (#7). */
+  readonly wallThicknessMm: number;
   readonly bodyId: BodyId;
 }
 
@@ -153,7 +161,13 @@ export type PatternKind = 'linear' | 'circular';
 
 /** Array a body linearly (along an axis) or circularly (about an axis). `count`
  * includes the source position; Join fuses the extra instances into the source,
- * NewBody collects them as a separate body (P1). */
+ * NewBody collects them as a separate body (P1).
+ *
+ * A **linear** pattern can array along up to THREE independent axes at once (a
+ * box/grid, request #4): direction 1 is `count`/`spacingMm`/`axis`; the optional
+ * directions 2 and 3 add `count{2,3}`/`spacingMm{2,3}`/`axis{2,3}`. A count of 1
+ * on a direction disables it, so a legacy single-axis pattern is exactly
+ * `count2 = count3 = 1` — old documents that omit the fields default to that. */
 export interface PatternOp extends OpBase {
   readonly type: 'Pattern';
   readonly sourceBodyId: BodyId;
@@ -165,6 +179,14 @@ export interface PatternOp extends OpBase {
   readonly axis: OriginAxis;
   /** Circular: total sweep angle (deg) across all instances. */
   readonly angleDeg: number;
+  /** Linear grid direction 2 (count 1 = unused). Ignored for circular. */
+  readonly count2: number;
+  readonly spacingMm2: number;
+  readonly axis2: OriginAxis;
+  /** Linear grid direction 3 (count 1 = unused). Ignored for circular. */
+  readonly count3: number;
+  readonly spacingMm3: number;
+  readonly axis3: OriginAxis;
   readonly operation: TransformOperation;
   readonly bodyId: BodyId;
 }
@@ -182,6 +204,29 @@ export interface ImportOp extends OpBase {
   readonly bodyId: BodyId;
 }
 
+/** Which face (by outward world direction) a Shell op leaves open — or none for
+ * a fully-closed hollow. Directional selection avoids a face-pick UI in v1. */
+export type ShellFace = 'none' | 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
+
+/** Hollow a body to a wall thickness (P2, ADR-0064), optionally opening one
+ * face. Modifies the target body in place (like Fillet/Chamfer). */
+export interface ShellOp extends OpBase {
+  readonly type: 'Shell';
+  readonly bodyId: BodyId;
+  readonly thicknessMm: number;
+  readonly openFace: ShellFace;
+}
+
+/** Move a body in place (#3): rigid transform (Euler XYZ rotation about the
+ * world origin, then translation, mm) applied to the body itself — same
+ * `bodyId`, no copy (contrast CopyBody). Modifies in place like Fillet/Shell. */
+export interface MoveOp extends OpBase {
+  readonly type: 'Move';
+  readonly bodyId: BodyId;
+  readonly translate: readonly [number, number, number];
+  readonly rotate: readonly [number, number, number];
+}
+
 export type TimelineOp =
   | SketchOp
   | ExtrudeOp
@@ -192,7 +237,9 @@ export type TimelineOp =
   | CopyBodyOp
   | MirrorOp
   | PatternOp
-  | ImportOp;
+  | ImportOp
+  | ShellOp
+  | MoveOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

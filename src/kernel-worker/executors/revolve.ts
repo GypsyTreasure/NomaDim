@@ -4,6 +4,7 @@ import type { RevolveOp } from '../../document';
 import type { PlanProfile, WorldAxis } from '../../kernel/protocol';
 import { buildProfileFace } from '../profileFace';
 import { applyBooleanResult } from './booleanApply';
+import { applyThinWall } from './hollow';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -88,5 +89,6 @@ export function executeRevolve(ctx: ExecCtx, op: RevolveOp, axis: WorldAxis | un
   if (!tool) {
     throw new KernelExecError('NO_PROFILES', 'Revolve selects no profiles');
   }
+  tool = applyThinWall(ctx.oc, tool, op.wallThicknessMm);
   applyBooleanResult(ctx, op.operation, op.bodyId, op.targetBodyId, tool);
 }

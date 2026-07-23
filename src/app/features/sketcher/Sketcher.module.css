@@ -168,7 +168,26 @@
 
 .planePickerRow {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: calc(var(--grid-unit) * 0.5);
+}
+
+/* Datum-plane sub-form fields (#5). */
+.field {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid-unit) * 0.5);
+  font-size: var(--text-sm);
+}
+
+.input {
+  width: 72px;
+  padding: calc(var(--grid-unit) * 0.4) calc(var(--grid-unit) * 0.6);
+  background-color: var(--color-canvas-bg);
+  color: var(--color-canvas-fg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .hud {

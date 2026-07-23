@@ -92,7 +92,29 @@ export interface FacePlaneRef {
   };
 }
 
-export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef;
+/**
+ * Datum (construction) plane (#5): a user-created plane offset along, and/or
+ * tilted about, a base origin plane's frame. Parametric (base/offset/tilt kept
+ * for display) with a precomputed `planeSnapshot` (origin + in-plane axes) so it
+ * reuses the same world-placement code path as a face plane. Independent of body
+ * geometry, so the snapshot is stable across regens.
+ */
+export interface DatumPlaneRef {
+  readonly kind: 'datum';
+  readonly base: 'XY' | 'XZ' | 'YZ';
+  /** Offset (mm) along the base plane's normal. */
+  readonly offsetMm: number;
+  /** Tilt (deg) of the sketch frame about `tiltAxis`. */
+  readonly tiltDeg: number;
+  readonly tiltAxis: 'X' | 'Y' | 'Z';
+  readonly planeSnapshot: {
+    readonly origin: readonly [number, number, number];
+    readonly xAxis: readonly [number, number, number];
+    readonly yAxis: readonly [number, number, number];
+  };
+}
+
+export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef | DatumPlaneRef;
 
 /**
  * Reference (associative) dimension between two pool points — solver-free
@@ -104,6 +126,12 @@ export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef;
  * - `angle`      inclination of a→b from +X, degrees
  * - `radius`     distance |ab| shown as R (a = centre, b = on the circle)
  * - `diameter`   2·|ab| shown as ⌀ (a = centre, b = on the circle)
+ *
+ * A **radial dimension on a full circle** has no rim pool point to use as `b`
+ * (a circle stores centre + a radius number, not a rim point), so it carries an
+ * optional `entityId` (#1): the rim endpoint is then synthesized from that
+ * entity's live radius at measure time. `a` stays the centre point; `b` is set
+ * to the centre too (unused while `entityId` is present).
  */
 export type SketchDimensionKind =
   'linear' | 'horizontal' | 'vertical' | 'angle' | 'radius' | 'diameter';
@@ -115,6 +143,8 @@ export interface SketchDimension {
   readonly b: PointId;
   /** Perpendicular offset (mm) of the dimension line from the a→b span; sign = side. */
   readonly offset: number;
+  /** Radial dims on a circle/arc: the rim endpoint comes from this entity (#1). */
+  readonly entityId?: EntityId;
 }
 
 export interface Sketch {

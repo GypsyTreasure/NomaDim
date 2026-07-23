@@ -63,6 +63,7 @@ function makeBox(bodies: BodyStateMap, id: string, size: number, height: number)
     distance2Mm: 0,
     operation: 'NewBody',
     targetBodyId: null,
+    wallThicknessMm: 0,
     bodyId: bid(id),
   };
   executeExtrude(ctxFor(bodies, [profile]), op);

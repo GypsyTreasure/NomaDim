@@ -11,6 +11,7 @@ import {
 } from '../../../core';
 import {
   findSketch,
+  pointMap,
   type Sketch,
   type SketchDimensionKind,
   type SketchPlaneRef,
@@ -18,6 +19,9 @@ import {
 import {
   detectProfiles,
   dimensionRender,
+  dimensionEndpoints,
+  mirrorEntities,
+  patternEntities,
   distanceToCurve,
   evaluateSketch,
   fieldsForToolWithStart,
@@ -32,7 +36,7 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
-import { sectionPlanePoints, type SketchModeProps } from '../../../viewport';
+import { datumPlaneSnapshot, sectionPlanePoints, type SketchModeProps } from '../../../viewport';
 import { sketchPlaneBasis } from './planeBasis';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { resolveSketchFace, useKernelStore } from '../../store/kernelStore';
@@ -98,6 +102,28 @@ export interface FinishSummary {
 /** Base plane a new sketch can be created on (F2 plane selection). */
 export type SketchPlaneChoice = 'XY' | 'XZ' | 'YZ';
 
+/** Parameters for a datum (construction) plane created at sketch time (#5). */
+export interface DatumPlaneSpec {
+  readonly base: 'XY' | 'XZ' | 'YZ';
+  readonly offsetMm: number;
+  readonly tiltDeg: number;
+  readonly tiltAxis: 'X' | 'Y' | 'Z';
+}
+
+/** Which line the sketch Mirror reflects across (#2). */
+export type MirrorAxis = 'x' | 'y' | 'line';
+
+/** Sketch Pattern parameters from the toolbar form (#2). */
+export interface SketchPatternInput {
+  readonly kind: 'linear' | 'circular';
+  readonly count: number;
+  /** Linear: spacing (mm) along `dirAxis`. */
+  readonly spacingMm: number;
+  readonly dirAxis: 'x' | 'y';
+  /** Circular: total sweep (deg) about the sketch origin. */
+  readonly angleDeg: number;
+}
+
 export interface SketcherApi {
   readonly activeSketch: Sketch | null;
   readonly viewportSketchMode: SketchModeProps | null;
@@ -130,6 +156,7 @@ export interface SketcherApi {
   readonly toggleConstruction: () => void;
   readonly newSketch: () => void;
   readonly choosePlane: (plane: SketchPlaneChoice) => void;
+  readonly chooseDatumPlane: (spec: DatumPlaneSpec) => void;
   readonly cancelPlaneChoice: () => void;
   readonly beginFacePick: () => void;
   readonly cancelFacePick: () => void;
@@ -137,8 +164,14 @@ export interface SketcherApi {
   readonly finishSketch: () => void;
   /** Delete the currently selected sketch entities (touch affordance for the Delete key). */
   readonly deleteSelection: () => void;
+  /** Mirror the selected entities across the sketch X/Y axis or a selected line (#2). */
+  readonly mirrorSelection: (axis: MirrorAxis) => void;
+  /** Array the selected entities linearly or circularly (#2). */
+  readonly patternSelection: (spec: SketchPatternInput) => void;
   /** True when one or more sketch entities are selected. */
   readonly hasSelection: boolean;
+  /** True when exactly one selected entity is a line (enables Mirror-across-line). */
+  readonly mirrorLineAvailable: boolean;
   /** Intersect view (#1): clip the near half of bodies + show the plane section. */
   readonly intersect: boolean;
   readonly toggleIntersect: () => void;
@@ -229,11 +262,15 @@ export function useSketcher(): SketcherApi {
     const src = displaySketch ?? sketch;
     if (!src) return [];
     const byId = new Map(src.points.map((pt) => [pt.id, pt]));
+    const entById = new Map(src.entities.map((e) => [e.id, e]));
+    const pointPos = (id: PointId): Vec2 | undefined => {
+      const pt = byId.get(id);
+      return pt ? vec2(pt.x, pt.y) : undefined;
+    };
     const out: DimensionRender[] = [];
     for (const dim of src.dimensions) {
-      const a = byId.get(dim.a);
-      const b = byId.get(dim.b);
-      if (a && b) out.push(dimensionRender(dim, vec2(a.x, a.y), vec2(b.x, b.y)));
+      const ends = dimensionEndpoints(dim, pointPos, (id) => entById.get(id));
+      if (ends) out.push(dimensionRender(dim, ends[0], ends[1]));
     }
     return out;
   }, [displaySketch, sketch]);
@@ -378,8 +415,53 @@ export function useSketcher(): SketcherApi {
         // Reference dimensions annotate two existing pool points: each click must
         // land on a point (snap-assisted). First click arms; second commits.
         const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
-        const picked = nearestPointId(current.points, snapResult.snap?.point ?? p, tolMm);
-        if (!picked) return;
+        const dimTarget = snapResult.snap?.point ?? p;
+        const picked = nearestPointId(current.points, dimTarget, tolMm);
+        if (!picked) {
+          // No pool point under the cursor — a click on a circle/arc rim creates
+          // a radial (radius/diameter) dimension in one click (#1): a full circle
+          // has no rim pool point, so the rim endpoint is derived from the entity.
+          if (dimFirstRef.current) return;
+          let radialId: EntityId | null = null;
+          let bestRadial = tolMm;
+          for (const ev of evaluateSketch(current)) {
+            const ent = current.entities.find((e) => e.id === ev.entityId);
+            if (ent?.type !== 'circle' && ent?.type !== 'arc') continue;
+            const d = distanceToCurve(ev.curve, dimTarget);
+            if (d <= bestRadial) {
+              bestRadial = d;
+              radialId = ev.entityId;
+            }
+          }
+          const radialEntity = current.entities.find((e) => e.id === radialId);
+          if (!radialEntity || (radialEntity.type !== 'circle' && radialEntity.type !== 'arc')) {
+            return;
+          }
+          const chosen = dimensionKindRef.current;
+          const radialKind: SketchDimensionKind =
+            chosen === 'radius' || chosen === 'diameter'
+              ? chosen
+              : radialEntity.type === 'circle'
+                ? 'diameter'
+                : 'radius';
+          const existingRadial = new Set<string>(current.dimensions.map((d) => d.id));
+          commandBus.dispatch({
+            type: 'AddSketchDimension',
+            payload: {
+              sketchId: current.id,
+              dimension: {
+                id: createId<'DimensionId'>(existingRadial),
+                kind: radialKind,
+                a: radialEntity.center,
+                b: radialEntity.center,
+                offset: DEFAULT_DIMENSION_OFFSET_MM,
+                entityId: radialEntity.id,
+              },
+            },
+          });
+          setDimFirst(null);
+          return;
+        }
         const first = dimFirstRef.current;
         if (!first) {
           setDimFirst(picked);
@@ -606,6 +688,97 @@ export function useSketcher(): SketcherApi {
     session.setSelection([]);
   }, [liveSketch]);
 
+  // Sketch Mirror (#2): reflect the selected entities across the sketch X/Y
+  // axis, or across a single selected line (which itself stays put). New
+  // geometry is added via the same AddSketchGeometry path as drawing.
+  const mirrorSelection = useCallback(
+    (axis: MirrorAxis) => {
+      const current = liveSketch();
+      if (!current) return;
+      const selected = new Set(useSessionStore.getState().selectedEntityIds);
+      if (selected.size === 0) return;
+      let a = vec2(0, 0);
+      let b = axis === 'x' ? vec2(1, 0) : vec2(0, 1);
+      let targets = selected;
+      if (axis === 'line') {
+        const line = current.entities.find((e) => selected.has(e.id) && e.type === 'line');
+        if (line?.type !== 'line') return;
+        const pts = pointMap(current);
+        const p1 = pts.get(line.start);
+        const p2 = pts.get(line.end);
+        if (!p1 || !p2) return;
+        a = vec2(p1.x, p1.y);
+        b = vec2(p2.x, p2.y);
+        targets = new Set([...selected].filter((id) => id !== line.id));
+      }
+      if (targets.size === 0) return;
+      const delta = mirrorEntities(current, targets, a, b);
+      if (delta.entities.length === 0) return;
+      commandBus.dispatch({
+        type: 'AddSketchGeometry',
+        payload: { sketchId: current.id, points: delta.points, entities: delta.entities },
+      });
+    },
+    [liveSketch]
+  );
+
+  // Sketch Pattern (#2): linear (spacing along X/Y) or circular (about the
+  // sketch origin) array of the selected entities.
+  const patternSelection = useCallback(
+    (spec: SketchPatternInput) => {
+      const current = liveSketch();
+      if (!current) return;
+      const selected = new Set(useSessionStore.getState().selectedEntityIds);
+      if (selected.size === 0) return;
+      const delta = patternEntities(
+        current,
+        selected,
+        spec.kind === 'linear'
+          ? {
+              kind: 'linear',
+              count: spec.count,
+              dx: spec.dirAxis === 'x' ? spec.spacingMm : 0,
+              dy: spec.dirAxis === 'y' ? spec.spacingMm : 0,
+            }
+          : {
+              kind: 'circular',
+              count: spec.count,
+              center: vec2(0, 0),
+              totalAngleRad: spec.angleDeg * DEG_TO_RAD,
+            }
+      );
+      if (delta.entities.length === 0) return;
+      commandBus.dispatch({
+        type: 'AddSketchGeometry',
+        payload: { sketchId: current.id, points: delta.points, entities: delta.entities },
+      });
+    },
+    [liveSketch]
+  );
+
+  const mirrorLineAvailable =
+    sketch !== null &&
+    sketch.entities.filter((e) => selectedEntityIds.includes(e.id) && e.type === 'line').length ===
+      1;
+
+  // Sketch Mirror shortcut (master rule, ADR-0032): K mirrors the selection
+  // across a single selected line if one is picked, else the sketch X axis;
+  // Shift+K mirrors across the Y axis. A dedicated listener (defined after the
+  // callbacks) keeps the main keydown handler untouched.
+  useEffect(() => {
+    if (!sketch) return undefined;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'k') mirrorSelection(mirrorLineAvailable ? 'line' : 'x');
+      else if (e.key === 'K') mirrorSelection('y');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [sketch, mirrorSelection, mirrorLineAvailable]);
+
   // "New Sketch" first asks which plane to draw on (F2 plane selection);
   // the sketch is created once a plane is chosen.
   const newSketch = useCallback(() => {
@@ -645,6 +818,28 @@ export function useSketcher(): SketcherApi {
   const choosePlane = useCallback(
     (plane: SketchPlaneChoice) => {
       createSketch({ kind: 'origin', plane });
+    },
+    [createSketch]
+  );
+
+  // Datum plane (#5): compute the world placement from base + offset + tilt and
+  // create the sketch on it (reuses the face-plane placement path downstream).
+  const chooseDatumPlane = useCallback(
+    (spec: DatumPlaneSpec) => {
+      const planeSnapshot = datumPlaneSnapshot(
+        spec.base,
+        spec.offsetMm,
+        spec.tiltDeg,
+        spec.tiltAxis
+      );
+      createSketch({
+        kind: 'datum',
+        base: spec.base,
+        offsetMm: spec.offsetMm,
+        tiltDeg: spec.tiltDeg,
+        tiltAxis: spec.tiltAxis,
+        planeSnapshot,
+      });
     },
     [createSketch]
   );
@@ -770,10 +965,14 @@ export function useSketcher(): SketcherApi {
     toggleIntersect,
     newSketch,
     choosePlane,
+    chooseDatumPlane,
     cancelPlaneChoice,
     beginFacePick,
     cancelFacePick,
     pickFace,
     finishSketch,
+    mirrorSelection,
+    patternSelection,
+    mirrorLineAvailable,
   };
 }

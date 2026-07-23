@@ -69,6 +69,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [axis, setAxis] = useState<string>(axisValue(prior?.axis ?? { kind: 'origin', axis: 'Y' }));
   const [operation, setOperation] = useState<BooleanOperation>(prior?.operation ?? 'NewBody');
   const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
+  const [wallThicknessMm, setWallThicknessMm] = useState(prior?.wallThicknessMm ?? 0);
 
   const profiles = useSketchProfiles(sketchId);
   const parsedAxis = parseAxis(axis);
@@ -128,7 +129,8 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     selected.size === 0 ||
     !(Math.abs(angleDeg) > 0) ||
     Math.abs(angleDeg) > 360 ||
-    (needsTarget && targetBodyId === null);
+    (needsTarget && targetBodyId === null) ||
+    wallThicknessMm < 0;
 
   // Live ghost preview (F3): a valid draft revolve (creating, not editing).
   const previewSketchId = prior || okDisabled ? null : sketchId;
@@ -146,6 +148,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           angleDeg,
           operation,
           targetBodyId: needsTarget ? targetBodyId : null,
+          wallThicknessMm,
           bodyId: 'preview-body' as BodyId,
         };
   usePreview(draft);
@@ -164,6 +167,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       angleDeg,
       operation,
       targetBodyId: needsTarget ? targetBodyId : null,
+      wallThicknessMm,
       bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
     };
     const result = commandBus.dispatch(
@@ -205,6 +209,11 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           onChange={setTargetBodyId}
         />
       )}
+      <NumberRow
+        labelKey="dialog.wallThickness"
+        value={wallThicknessMm}
+        onChange={setWallThicknessMm}
+      />
     </DialogFrame>
   );
 }

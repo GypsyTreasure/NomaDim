@@ -4,6 +4,7 @@ import type { ExtrudeOp } from '../../document';
 import type { PlanProfile } from '../../kernel/protocol';
 import { buildProfileFace, planeNormal } from '../profileFace';
 import { applyBooleanResult } from './booleanApply';
+import { applyThinWall } from './hollow';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -101,5 +102,6 @@ export function executeExtrude(ctx: ExecCtx, op: ExtrudeOp): void {
   if (!tool) {
     throw new KernelExecError('NO_PROFILES', 'Extrude selects no profiles');
   }
+  tool = applyThinWall(ctx.oc, tool, op.wallThicknessMm);
   applyBooleanResult(ctx, op.operation, op.bodyId, op.targetBodyId, tool);
 }

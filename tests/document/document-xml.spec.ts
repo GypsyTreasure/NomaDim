@@ -80,6 +80,7 @@ const ops: TimelineOp[] = [
     distance2Mm: 0,
     operation: 'NewBody',
     targetBodyId: null,
+    wallThicknessMm: 0,
     bodyId: body('b1'),
   },
   {
@@ -93,6 +94,7 @@ const ops: TimelineOp[] = [
     angleDeg: 360,
     operation: 'NewBody',
     targetBodyId: null,
+    wallThicknessMm: 0,
     bodyId: body('b2'),
   },
   {

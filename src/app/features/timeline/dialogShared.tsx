@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import type { ProfileId } from '../../../core';
 import type { SketchProfile } from '../../../sketch';
 import { t, type TranslationKey } from '../../i18n/t';
@@ -12,7 +13,10 @@ export function DialogFrame(props: {
   onCancel: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
-  return (
+  // Rendered through a portal to <body> so the dialog sizes against the whole
+  // viewport, not whatever small container hosts the button (e.g. the Export
+  // button lives in the compact actions menu, which clipped it to a few px).
+  return createPortal(
     <div className={styles.dialogBackdrop}>
       <div className={styles.dialog} role="dialog" aria-label={props.title}>
         <h2 className={styles.dialogTitle}>{props.title}</h2>
@@ -31,7 +35,8 @@ export function DialogFrame(props: {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -5,9 +5,11 @@ import { ExportStlDialog } from './ExportStlDialog';
 import styles from './Timeline.module.css';
 
 /**
- * Opens the STL export dialog (F6): body scope, format, deflection presets, a
- * live triangle-count preview and a non-manifold warning before download.
- * Ctrl+E opens it (master rule, ADR-0032).
+ * Opens the export dialog (F6): body scope and format — STL (binary/ASCII,
+ * with deflection presets, a live triangle-count preview and a non-manifold
+ * warning) or STEP (exact B-rep, ADR-0063). Labelled just "Export" so the STEP
+ * option is discoverable, not hidden behind an "STL" button. Ctrl+E opens it
+ * (master rule, ADR-0032).
  */
 export function ExportStlButton(): React.JSX.Element {
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);

@@ -86,6 +86,20 @@ export function axisRotationTrsf(
   return trsf;
 }
 
+/** Translation by an arbitrary world vector (mm). */
+export function vectorTranslationTrsf(
+  oc: OpenCascadeInstance,
+  dx: number,
+  dy: number,
+  dz: number
+): gp_Trsf {
+  const vec = new oc.gp_Vec_4(dx, dy, dz);
+  const trsf = new oc.gp_Trsf_1();
+  trsf.SetTranslation_1(vec);
+  vec.delete();
+  return trsf;
+}
+
 /** Translation along a world axis (for linear patterns). */
 export function axisTranslationTrsf(
   oc: OpenCascadeInstance,
@@ -94,11 +108,12 @@ export function axisTranslationTrsf(
 ): gp_Trsf {
   const [x, y, z] =
     axis === 'X' ? [distanceMm, 0, 0] : axis === 'Y' ? [0, distanceMm, 0] : [0, 0, distanceMm];
-  const vec = new oc.gp_Vec_4(x, y, z);
-  const trsf = new oc.gp_Trsf_1();
-  trsf.SetTranslation_1(vec);
-  vec.delete();
-  return trsf;
+  return vectorTranslationTrsf(oc, x, y, z);
+}
+
+/** World unit vector for an axis name. */
+export function axisUnit(axis: WorldAxisName): readonly [number, number, number] {
+  return axis === 'X' ? [1, 0, 0] : axis === 'Y' ? [0, 1, 0] : [0, 0, 1];
 }
 
 /** Independent transformed copy of `shape` (source preserved). Caller owns it. */

@@ -34,7 +34,8 @@ const ORIGIN_PLACEMENTS: Record<'XY' | 'XZ' | 'YZ', PlanePlacement> = {
 };
 
 export function placementForPlane(plane: SketchPlaneRef): PlanePlacement {
-  if (plane.kind === 'face') {
+  // Face and datum planes both carry an explicit placement snapshot (#5).
+  if (plane.kind !== 'origin') {
     const s = plane.planeSnapshot;
     return { origin: s.origin, xAxis: s.xAxis, yAxis: s.yAxis };
   }

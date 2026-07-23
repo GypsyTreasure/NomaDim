@@ -92,7 +92,29 @@ export interface FacePlaneRef {
   };
 }
 
-export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef;
+/**
+ * Datum (construction) plane (#5): a user-created plane offset along, and/or
+ * tilted about, a base origin plane's frame. Parametric (base/offset/tilt kept
+ * for display) with a precomputed `planeSnapshot` (origin + in-plane axes) so it
+ * reuses the same world-placement code path as a face plane. Independent of body
+ * geometry, so the snapshot is stable across regens.
+ */
+export interface DatumPlaneRef {
+  readonly kind: 'datum';
+  readonly base: 'XY' | 'XZ' | 'YZ';
+  /** Offset (mm) along the base plane's normal. */
+  readonly offsetMm: number;
+  /** Tilt (deg) of the sketch frame about `tiltAxis`. */
+  readonly tiltDeg: number;
+  readonly tiltAxis: 'X' | 'Y' | 'Z';
+  readonly planeSnapshot: {
+    readonly origin: readonly [number, number, number];
+    readonly xAxis: readonly [number, number, number];
+    readonly yAxis: readonly [number, number, number];
+  };
+}
+
+export type SketchPlaneRef = OriginPlaneRef | FacePlaneRef | DatumPlaneRef;
 
 /**
  * Reference (associative) dimension between two pool points — solver-free

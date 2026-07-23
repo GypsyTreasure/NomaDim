@@ -84,9 +84,21 @@ function entityToXml(entity: SketchEntity): XmlElement {
 export function sketchElement(sketch: Sketch): XmlElement {
   const children: XmlElement[] = [];
 
-  if (sketch.plane.kind === 'face') {
+  if (sketch.plane.kind === 'face' || sketch.plane.kind === 'datum') {
     const snap = sketch.plane.planeSnapshot;
-    children.push({ tag: 'faceRef', attrs: { fingerprint: sketch.plane.fingerprint } });
+    if (sketch.plane.kind === 'face') {
+      children.push({ tag: 'faceRef', attrs: { fingerprint: sketch.plane.fingerprint } });
+    } else {
+      children.push({
+        tag: 'datumRef',
+        attrs: {
+          base: sketch.plane.base,
+          offset: sketch.plane.offsetMm,
+          tilt: sketch.plane.tiltDeg,
+          tiltAxis: sketch.plane.tiltAxis,
+        },
+      });
+    }
     children.push({
       tag: 'planeSnapshot',
       attrs: {
@@ -136,7 +148,12 @@ export function sketchElement(sketch: Sketch): XmlElement {
     tag: 'sketch',
     attrs: {
       id: sketch.id,
-      plane: sketch.plane.kind === 'origin' ? sketch.plane.plane : 'face',
+      plane:
+        sketch.plane.kind === 'origin'
+          ? sketch.plane.plane
+          : sketch.plane.kind === 'datum'
+            ? 'datum'
+            : 'face',
       name: sketch.name,
     },
     children,
@@ -154,30 +171,63 @@ function fail(detail: string): Result<never, ImportError> {
   return err(new ImportError('Invalid sketch XML', undefined, detail));
 }
 
+function parseSnapshot(snap: Raw): {
+  origin: [number, number, number];
+  xAxis: [number, number, number];
+  yAxis: [number, number, number];
+} | null {
+  const nums = ['ox', 'oy', 'oz', 'xx', 'xy', 'xz', 'yx', 'yy', 'yz'].map((n) => numAttr(snap, n));
+  if (nums.some((n) => n === null)) return null;
+  const [ox, oy, oz, xx, xy, xz, yx, yy, yz] = nums as number[];
+  return {
+    origin: [ox ?? 0, oy ?? 0, oz ?? 0],
+    xAxis: [xx ?? 0, xy ?? 0, xz ?? 0],
+    yAxis: [yx ?? 0, yy ?? 0, yz ?? 0],
+  };
+}
+
 function parsePlane(raw: Raw, planeAttr: string): Result<SketchPlaneRef, ImportError> {
   if (planeAttr === 'XY' || planeAttr === 'XZ' || planeAttr === 'YZ') {
     return ok({ kind: 'origin', plane: planeAttr });
   }
+
+  if (planeAttr === 'datum') {
+    const datumRef = asRaw(raw.datumRef);
+    const snapRaw = asRaw(raw.planeSnapshot);
+    const base = datumRef ? strAttr(datumRef, 'base') : null;
+    const offset = datumRef ? numAttr(datumRef, 'offset') : null;
+    const tilt = datumRef ? numAttr(datumRef, 'tilt') : null;
+    const tiltAxis = datumRef ? strAttr(datumRef, 'tiltAxis') : null;
+    const snapshot = snapRaw ? parseSnapshot(snapRaw) : null;
+    if (
+      !snapshot ||
+      offset === null ||
+      tilt === null ||
+      (base !== 'XY' && base !== 'XZ' && base !== 'YZ') ||
+      (tiltAxis !== 'X' && tiltAxis !== 'Y' && tiltAxis !== 'Z')
+    ) {
+      return fail('datum sketch missing/invalid datumRef/planeSnapshot');
+    }
+    return ok({
+      kind: 'datum',
+      base,
+      offsetMm: offset,
+      tiltDeg: tilt,
+      tiltAxis,
+      planeSnapshot: snapshot,
+    });
+  }
+
   if (planeAttr !== 'face') return fail(`unknown plane "${planeAttr}"`);
 
   const faceRef = asRaw(raw.faceRef);
-  const snap = asRaw(raw.planeSnapshot);
+  const snapRaw = asRaw(raw.planeSnapshot);
   const fingerprint = faceRef ? strAttr(faceRef, 'fingerprint') : null;
-  if (!faceRef || !snap || fingerprint === null) {
+  const snapshot = snapRaw ? parseSnapshot(snapRaw) : null;
+  if (!faceRef || !snapshot || fingerprint === null) {
     return fail('face-based sketch missing faceRef/planeSnapshot');
   }
-  const nums = ['ox', 'oy', 'oz', 'xx', 'xy', 'xz', 'yx', 'yy', 'yz'].map((n) => numAttr(snap, n));
-  if (nums.some((n) => n === null)) return fail('planeSnapshot has invalid components');
-  const [ox, oy, oz, xx, xy, xz, yx, yy, yz] = nums as number[];
-  return ok({
-    kind: 'face',
-    fingerprint,
-    planeSnapshot: {
-      origin: [ox ?? 0, oy ?? 0, oz ?? 0],
-      xAxis: [xx ?? 0, xy ?? 0, xz ?? 0],
-      yAxis: [yx ?? 0, yy ?? 0, yz ?? 0],
-    },
-  });
+  return ok({ kind: 'face', fingerprint, planeSnapshot: snapshot });
 }
 
 function parseEntities(entitiesRaw: Raw): Result<SketchEntity[], ImportError> {

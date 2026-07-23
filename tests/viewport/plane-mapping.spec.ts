@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
+  datumPlaneSnapshot,
   mappingFromBasis,
   originPlaneBasis,
   planeToWorld,
@@ -14,6 +15,33 @@ import {
  * origin plane share the same projection math. Origin planes stay at (0,0,0)
  * — a zero-behavior-change generalization.
  */
+
+describe('datumPlaneSnapshot (#5)', () => {
+  const near = (a: readonly number[], b: readonly number[]): void => {
+    a.forEach((v, i) => {
+      expect(v).toBeCloseTo(b[i] ?? NaN, 6);
+    });
+  };
+
+  it('offsets the origin along the base normal, axes unchanged at zero tilt', () => {
+    const s = datumPlaneSnapshot('XY', 10, 0, 'X');
+    near(s.origin, [0, 0, 10]); // XY normal is +Z
+    near(s.xAxis, [1, 0, 0]);
+    near(s.yAxis, [0, 1, 0]);
+  });
+
+  it('tilts the in-plane frame about the chosen world axis', () => {
+    // XY plane tilted 90° about X: u stays +X, v (+Y) rotates to +Z.
+    const s = datumPlaneSnapshot('XY', 0, 90, 'X');
+    near(s.xAxis, [1, 0, 0]);
+    near(s.yAxis, [0, 0, 1]);
+  });
+
+  it('offset is along the un-tilted base normal', () => {
+    const s = datumPlaneSnapshot('XZ', 5, 0, 'X');
+    near(s.origin, [0, 5, 0]); // XZ normal is +Y
+  });
+});
 
 describe('plane mapping with origin offset', () => {
   it('origin planes sit at the world origin', () => {

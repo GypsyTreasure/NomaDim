@@ -63,7 +63,7 @@ Fillet/chamfer/boolean references use geometric fingerprints (edge midpoint + di
 
 ### F2 — Sketch environment (Option B: numeric input + snapping, no solver)
 
-**Entering a sketch:** pick origin plane (XY/XZ/YZ) or a planar face of a body; camera animates normal-to-plane; adaptive grid shown. Face-based sketches use a plane snapshot + face fingerprint re-resolved at regen (ARCHITECTURE §8); if the face disappears after an upstream edit, the sketch op errors and the user re-picks the plane.
+**Entering a sketch:** pick origin plane (XY/XZ/YZ), a **datum plane** (#5, ADR-0069 — an offset/tilted construction plane built from a base origin plane: base + offset-along-normal + tilt-about-a-world-axis, chosen in the "Datum plane…" sub-form), or a planar face of a body; camera animates normal-to-plane; adaptive grid shown. Face-based sketches use a plane snapshot + face fingerprint re-resolved at regen (ARCHITECTURE §8); if the face disappears after an upstream edit, the sketch op errors and the user re-picks the plane. A datum plane stores its parametric definition plus a computed placement snapshot, so it reuses the same world-placement path as a face plane and is stable across regens (independent of body geometry).
 
 **Entities:** Line, Axis (centerline), Rectangle (2-Point, Center), Circle (Center-Diameter), Arc (3-Point, Center-Point), Point, Polygon (n-sided). Construction-geometry toggle (X hotkey) per entity. Rectangle/Polygon decompose to line segments on commit (Fusion-like). Splines: out of scope v1.
 
@@ -238,6 +238,8 @@ nomadim/
 
 ## 11. Out of scope (v1) — explicit
 Constraint solver & driving dimensions (v2) · assemblies · joints · drawings · parameters table/expressions · splines · loft/sweep/hole/thread · variable fillets · timeline reordering · Project/Include into sketch · multi-document · touch UI · slicer integration · dark theme.
+
+*(Shipped since v1.1: Shell (ADR-0064), thin/single-wall Extrude & Revolve (ADR-0068), datum planes (ADR-0069).)*
 
 ## 12. Visual design (NomaDirection brand)
 Teal `#1A6B5A` (primary/active/selection @40% alpha), navy `#0D1B2A` (panels), cream canvas, 8-px grid. Typography **Barlow** (600 headings / 400 body), monospace for numeric fields. Icons: Lucide stroke, token-colored. Light theme only. All values as CSS custom properties in `app/ui-tokens/tokens.css`; hardcoded colors fail lint. The full graphic identity — logo/logotype, palette, typography, usage — is documented in **`BRAND.md`** (the "N" mark lives in `public/brand/` + `src/app/features/brand/Logo.tsx`); use those assets as the default for visual changes.

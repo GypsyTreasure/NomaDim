@@ -33,7 +33,7 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
-import { sectionPlanePoints, type SketchModeProps } from '../../../viewport';
+import { datumPlaneSnapshot, sectionPlanePoints, type SketchModeProps } from '../../../viewport';
 import { sketchPlaneBasis } from './planeBasis';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { resolveSketchFace, useKernelStore } from '../../store/kernelStore';
@@ -99,6 +99,14 @@ export interface FinishSummary {
 /** Base plane a new sketch can be created on (F2 plane selection). */
 export type SketchPlaneChoice = 'XY' | 'XZ' | 'YZ';
 
+/** Parameters for a datum (construction) plane created at sketch time (#5). */
+export interface DatumPlaneSpec {
+  readonly base: 'XY' | 'XZ' | 'YZ';
+  readonly offsetMm: number;
+  readonly tiltDeg: number;
+  readonly tiltAxis: 'X' | 'Y' | 'Z';
+}
+
 export interface SketcherApi {
   readonly activeSketch: Sketch | null;
   readonly viewportSketchMode: SketchModeProps | null;
@@ -131,6 +139,7 @@ export interface SketcherApi {
   readonly toggleConstruction: () => void;
   readonly newSketch: () => void;
   readonly choosePlane: (plane: SketchPlaneChoice) => void;
+  readonly chooseDatumPlane: (spec: DatumPlaneSpec) => void;
   readonly cancelPlaneChoice: () => void;
   readonly beginFacePick: () => void;
   readonly cancelFacePick: () => void;
@@ -699,6 +708,28 @@ export function useSketcher(): SketcherApi {
     [createSketch]
   );
 
+  // Datum plane (#5): compute the world placement from base + offset + tilt and
+  // create the sketch on it (reuses the face-plane placement path downstream).
+  const chooseDatumPlane = useCallback(
+    (spec: DatumPlaneSpec) => {
+      const planeSnapshot = datumPlaneSnapshot(
+        spec.base,
+        spec.offsetMm,
+        spec.tiltDeg,
+        spec.tiltAxis
+      );
+      createSketch({
+        kind: 'datum',
+        base: spec.base,
+        offsetMm: spec.offsetMm,
+        tiltDeg: spec.tiltDeg,
+        tiltAxis: spec.tiltAxis,
+        planeSnapshot,
+      });
+    },
+    [createSketch]
+  );
+
   // Sketch-on-face: PlanePicker → face-pick mode → click a body face → the
   // worker resolves the planar face → a face-plane sketch (F2). A non-planar
   // pick shows a hint and stays in pick mode.
@@ -820,6 +851,7 @@ export function useSketcher(): SketcherApi {
     toggleIntersect,
     newSketch,
     choosePlane,
+    chooseDatumPlane,
     cancelPlaneChoice,
     beginFacePick,
     cancelFacePick,

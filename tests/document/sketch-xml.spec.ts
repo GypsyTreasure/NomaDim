@@ -92,6 +92,27 @@ describe('sketch XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(original);
   });
 
+  it('round-trips a datum-plane sketch (base + offset + tilt + snapshot, #5)', () => {
+    const original: Sketch = {
+      ...arcSketch(),
+      id: 'skDatum' as SketchId,
+      plane: {
+        kind: 'datum',
+        base: 'XY',
+        offsetMm: 15,
+        tiltDeg: 30,
+        tiltAxis: 'X',
+        planeSnapshot: { origin: [0, 0, 15], xAxis: [1, 0, 0], yAxis: [0, 0.866, 0.5] },
+      },
+    };
+    const xml = sketchToXml(original);
+    expect(xml).toContain('plane="datum"');
+    expect(xml).toContain('<datumRef');
+    const parsed = sketchFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(original);
+  });
+
   it('round-trips an axis (centerline) line, serializing axis="true"', () => {
     const original: Sketch = {
       id: 'skA' as SketchId,

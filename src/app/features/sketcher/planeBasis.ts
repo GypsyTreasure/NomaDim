@@ -9,7 +9,9 @@ import { originPlaneBasis, type SketchPlaneBasis } from '../../../viewport';
  */
 export function sketchPlaneBasis(sketch: Sketch): SketchPlaneBasis {
   if (sketch.plane.kind === 'origin') return originPlaneBasis(sketch.plane.plane);
-  const s = sketch.plane.planeSnapshot;
+  // Face and datum planes both carry an explicit placement snapshot (#5).
+  const plane = sketch.plane;
+  const s = plane.planeSnapshot;
   const [ax, ay, az] = s.xAxis;
   const [bx, by, bz] = s.yAxis;
   const normal: readonly [number, number, number] = [
@@ -17,11 +19,9 @@ export function sketchPlaneBasis(sketch: Sketch): SketchPlaneBasis {
     az * bx - ax * bz,
     ax * by - ay * bx,
   ];
-  return {
-    key: `face:${sketch.plane.fingerprint}`,
-    origin: s.origin,
-    uAxis: s.xAxis,
-    vAxis: s.yAxis,
-    normal,
-  };
+  const key =
+    plane.kind === 'face'
+      ? `face:${plane.fingerprint}`
+      : `datum:${plane.base}:${String(plane.offsetMm)}:${String(plane.tiltDeg)}:${plane.tiltAxis}`;
+  return { key, origin: s.origin, uAxis: s.xAxis, vAxis: s.yAxis, normal };
 }

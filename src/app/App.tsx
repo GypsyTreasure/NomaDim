@@ -337,6 +337,7 @@ export function App(): React.JSX.Element {
               {sketcher.choosingPlane && (
                 <PlanePicker
                   onChoose={sketcher.choosePlane}
+                  onChooseDatum={sketcher.chooseDatumPlane}
                   onPickFace={sketcher.beginFacePick}
                   onCancel={sketcher.cancelPlaneChoice}
                 />

@@ -31,6 +31,9 @@ export const copyBodyOpDefinition: OpDefinition<CopyBodyOp> = {
         tx: op.translate[0],
         ty: op.translate[1],
         tz: op.translate[2],
+        rx: op.rotate[0],
+        ry: op.rotate[1],
+        rz: op.rotate[2],
       },
     };
   },
@@ -56,6 +59,10 @@ export const copyBodyOpDefinition: OpDefinition<CopyBodyOp> = {
     ) {
       return err(new ImportError('Invalid timeline XML', undefined, 'malformed <copyBody>'));
     }
+    // Rotation is optional for back-compat with pre-rotation documents.
+    const rx = numAttr(raw, 'rx') ?? 0;
+    const ry = numAttr(raw, 'ry') ?? 0;
+    const rz = numAttr(raw, 'rz') ?? 0;
     return ok({
       type: 'CopyBody',
       id: id as OpId,
@@ -63,6 +70,7 @@ export const copyBodyOpDefinition: OpDefinition<CopyBodyOp> = {
       suppressed,
       sourceBodyId: source as BodyId,
       translate: [tx, ty, tz],
+      rotate: [rx, ry, rz],
       bodyId: body as BodyId,
     });
   },

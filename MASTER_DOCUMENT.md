@@ -101,6 +101,7 @@ While an Extrude/Revolve dialog is open, the geometry it will act on is highligh
 - **Extrude** (E): 1..n profiles → distance (one side / symmetric / two sides) or **Through All** (self-sizing, passes entirely through the target — the standard way to cut clean through a body), operation **New Body / Join / Cut / Intersect** (choosing a boolean op auto-selects a target body so OK is immediately usable, ADR-0053). Taper: out of scope.
 - **Revolve**: profiles + axis — an **axis/centerline or any line of the same sketch** (drawn with the Axis tool, listed first and named "Axis N") or an always-available origin axis (X/Y/Z); cross-sketch axis references are not allowed (dependency containment) + angle (default 360°), same operation options.
 - Live ghost preview + direction arrows before confirm.
+- **Transform ops (P1, ADR-0061):** **Mirror** (I) reflects a body across a world origin plane (XY/XZ/YZ); **Pattern** (P) arrays a body **linearly** (count + spacing along an axis) or **circularly** (count + total angle about an axis); both offer **Join** (fuse into the source) or **New Body**. **Copy Body** (D) now also **rotates** (Euler XYZ) in addition to translating. All reuse the shared boolean tail (heal included, ADR-0057).
 
 ### F4 — Finishing
 - **Fillet**: multi-edge pick, single radius per op.

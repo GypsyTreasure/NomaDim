@@ -7,6 +7,8 @@ import { FilletDialog } from './FilletDialog';
 import { ChamferDialog } from './ChamferDialog';
 import { CombineDialog } from './CombineDialog';
 import { CopyBodyDialog } from './CopyBodyDialog';
+import { MirrorDialog } from './MirrorDialog';
+import { PatternDialog } from './PatternDialog';
 
 /**
  * App-side op feature registry (ARCHITECTURE §7, the third registry). One
@@ -48,6 +50,12 @@ const copyBodyFeature: OpFeature = {
   labelKey: 'op.copyBody',
   dialog: CopyBodyDialog,
 };
+const mirrorFeature: OpFeature = { type: 'Mirror', labelKey: 'op.mirror', dialog: MirrorDialog };
+const patternFeature: OpFeature = {
+  type: 'Pattern',
+  labelKey: 'op.pattern',
+  dialog: PatternDialog,
+};
 
 export const OP_FEATURES: Record<OpType, OpFeature> = {
   Sketch: sketchFeature,
@@ -57,6 +65,8 @@ export const OP_FEATURES: Record<OpType, OpFeature> = {
   Chamfer: chamferFeature,
   Combine: combineFeature,
   CopyBody: copyBodyFeature,
+  Mirror: mirrorFeature,
+  Pattern: patternFeature,
 };
 
 export const OP_FEATURE_TYPES: readonly OpType[] = Object.keys(OP_FEATURES) as OpType[];

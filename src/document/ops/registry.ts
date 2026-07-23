@@ -7,6 +7,8 @@ import { filletOpDefinition } from './filletOp';
 import { chamferOpDefinition } from './chamferOp';
 import { combineOpDefinition } from './combineOp';
 import { copyBodyOpDefinition } from './copyBodyOp';
+import { mirrorOpDefinition } from './mirrorOp';
+import { patternOpDefinition } from './patternOp';
 
 /**
  * Document-side op registry (ARCHITECTURE §7). The XML codec, timeline UI,
@@ -22,6 +24,8 @@ export const OP_DEFINITIONS: Record<OpType, OpDefinition> = {
   Chamfer: chamferOpDefinition,
   Combine: combineOpDefinition,
   CopyBody: copyBodyOpDefinition,
+  Mirror: mirrorOpDefinition,
+  Pattern: patternOpDefinition,
 };
 
 export function opDefinition(op: TimelineOp): OpDefinition {

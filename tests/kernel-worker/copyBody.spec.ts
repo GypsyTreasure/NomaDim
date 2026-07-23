@@ -92,6 +92,7 @@ describe('copy body executor', () => {
       id: 'cp' as CopyBodyOp['id'],
       name: 'Copy',
       suppressed: false,
+      rotate: [0, 0, 0],
       sourceBodyId: bid('A'),
       translate,
       bodyId: bid('C'),

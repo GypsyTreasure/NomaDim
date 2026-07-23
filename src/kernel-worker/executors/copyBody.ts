@@ -1,13 +1,14 @@
 import type { CopyBodyOp } from '../../document';
 import { trackShapeAllocation } from '../handleCounter';
+import { applyTrsf, rigidTrsf } from './transform';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
  * CopyBody executor (F9): duplicates the source body AS IT STANDS in the map
- * at this op's position (parametric + positional) and stores the copy under a
- * new body id, optionally translated. `BRepBuilderAPI_Transform` with
- * copy=true produces an independent shape; the source stays owned by its
- * producing delta (§9).
+ * at this op's position (parametric + positional) and stores an independent
+ * copy under a new body id, rotated (Euler XYZ about the origin) then
+ * translated. `BRepBuilderAPI_Transform` with copy=true keeps the source
+ * (owned by its producing delta, §9) untouched.
  */
 export function executeCopyBody(ctx: ExecCtx, op: CopyBodyOp): void {
   const { oc, bodies } = ctx;
@@ -16,13 +17,8 @@ export function executeCopyBody(ctx: ExecCtx, op: CopyBodyOp): void {
     throw new KernelExecError('SOURCE_MISSING', `CopyBody source ${op.sourceBodyId} missing`);
   }
 
-  const trsf = new oc.gp_Trsf_1();
-  const vec = new oc.gp_Vec_4(op.translate[0], op.translate[1], op.translate[2]);
-  trsf.SetTranslation_1(vec);
-  const transform = new oc.BRepBuilderAPI_Transform_2(source, trsf, true);
-  const result = transform.Shape();
-  transform.delete();
-  vec.delete();
+  const trsf = rigidTrsf(oc, op.translate, op.rotate);
+  const result = applyTrsf(oc, source, trsf);
   trsf.delete();
 
   if (result.IsNull()) {

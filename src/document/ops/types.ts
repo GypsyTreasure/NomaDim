@@ -18,7 +18,8 @@ export type OpType =
   | 'CopyBody'
   | 'Mirror'
   | 'Pattern'
-  | 'Import';
+  | 'Import'
+  | 'Shell';
 
 /** Placement/array ops keep the source body (NewBody) or fuse into it (Join). */
 export type TransformOperation = 'NewBody' | 'Join';
@@ -182,6 +183,19 @@ export interface ImportOp extends OpBase {
   readonly bodyId: BodyId;
 }
 
+/** Which face (by outward world direction) a Shell op leaves open — or none for
+ * a fully-closed hollow. Directional selection avoids a face-pick UI in v1. */
+export type ShellFace = 'none' | 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
+
+/** Hollow a body to a wall thickness (P2, ADR-0064), optionally opening one
+ * face. Modifies the target body in place (like Fillet/Chamfer). */
+export interface ShellOp extends OpBase {
+  readonly type: 'Shell';
+  readonly bodyId: BodyId;
+  readonly thicknessMm: number;
+  readonly openFace: ShellFace;
+}
+
 export type TimelineOp =
   | SketchOp
   | ExtrudeOp
@@ -192,7 +206,8 @@ export type TimelineOp =
   | CopyBodyOp
   | MirrorOp
   | PatternOp
-  | ImportOp;
+  | ImportOp
+  | ShellOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

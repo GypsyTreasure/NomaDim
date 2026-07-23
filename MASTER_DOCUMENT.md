@@ -107,6 +107,7 @@ While an Extrude/Revolve dialog is open, the geometry it will act on is highligh
 - **Fillet**: multi-edge pick, single radius per op.
 - **Chamfer**: equal-distance only.
 - Edge picking via raycast on tessellated edge polylines with hover highlight.
+- **Shell (L, P2, ADR-0064):** hollows a body to a wall thickness, modifying it in place. The face to leave open is chosen by **outward world direction** (Top/Bottom/Front/Back/Left/Right, or **None** for a fully-enclosed hollow) — no viewport face-pick UI in v1. An open face uses `BRepOffsetAPI_MakeThickSolid`; a closed hollow offsets the solid inward and cuts it from the original (that API needs a face to remove). Result healed per ADR-0057; too-thick walls raise a `ProfileError`-style toast.
 
 ### F5 — Boolean (**Combine**)
 Target body + tool bodies → **Join / Cut / Intersect**, "Keep Tools" option.
@@ -235,7 +236,7 @@ nomadim/
 ```
 
 ## 11. Out of scope (v1) — explicit
-Constraint solver & driving dimensions (v2) · assemblies · joints · drawings · parameters table/expressions · splines · loft/sweep/shell/hole/thread · variable fillets · timeline reordering · Project/Include into sketch · multi-document · touch UI · slicer integration · dark theme.
+Constraint solver & driving dimensions (v2) · assemblies · joints · drawings · parameters table/expressions · splines · loft/sweep/hole/thread · variable fillets · timeline reordering · Project/Include into sketch · multi-document · touch UI · slicer integration · dark theme.
 
 ## 12. Visual design (NomaDirection brand)
 Teal `#1A6B5A` (primary/active/selection @40% alpha), navy `#0D1B2A` (panels), cream canvas, 8-px grid. Typography **Barlow** (600 headings / 400 body), monospace for numeric fields. Icons: Lucide stroke, token-colored. Light theme only. All values as CSS custom properties in `app/ui-tokens/tokens.css`; hardcoded colors fail lint. The full graphic identity — logo/logotype, palette, typography, usage — is documented in **`BRAND.md`** (the "N" mark lives in `public/brand/` + `src/app/features/brand/Logo.tsx`); use those assets as the default for visual changes.

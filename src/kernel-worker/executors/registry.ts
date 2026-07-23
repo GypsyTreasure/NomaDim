@@ -8,6 +8,7 @@ import { executeCopyBody } from './copyBody';
 import { executeMirror } from './mirror';
 import { executePattern } from './pattern';
 import { executeImport } from './import';
+import { executeShell } from './shell';
 import type { OpExecutor } from './types';
 
 /**
@@ -55,5 +56,9 @@ export const OP_EXECUTORS: Record<OpType, OpExecutor> = {
 
   Import: (ctx, planOp) => {
     if (planOp.op.type === 'Import') executeImport(ctx, planOp.op);
+  },
+
+  Shell: (ctx, planOp) => {
+    if (planOp.op.type === 'Shell') executeShell(ctx, planOp.op);
   },
 };

@@ -27,6 +27,7 @@ const OP_KEYS: Readonly<Record<string, OpType>> = {
   d: 'CopyBody',
   i: 'Mirror',
   p: 'Pattern',
+  l: 'Shell',
 };
 
 export function useModelingShortcuts(active: boolean, actions: ModelingShortcutActions): void {

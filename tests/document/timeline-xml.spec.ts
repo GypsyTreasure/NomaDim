@@ -301,6 +301,38 @@ describe('timeline XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(data);
   });
 
+  it('round-trips a Shell op (thickness + open face)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({ id: op('e1'), bodyId: body('b1') }),
+        {
+          type: 'Shell',
+          id: op('sh1'),
+          name: 'Shell1',
+          suppressed: false,
+          bodyId: body('b1'),
+          thicknessMm: 2.5,
+          openFace: 'top',
+        },
+        {
+          type: 'Shell',
+          id: op('sh2'),
+          name: 'Shell2',
+          suppressed: true,
+          bodyId: body('b1'),
+          thicknessMm: 1,
+          openFace: 'none',
+        },
+      ],
+      rollbackIndex: 4,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
   it('round-trips an Import base body (base64 BREP payload)', () => {
     const data: TimelineData = {
       ops: [

@@ -45,6 +45,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'D', desc: 'help.copyOp' },
       { keys: 'I', desc: 'help.mirror' },
       { keys: 'P', desc: 'help.pattern' },
+      { keys: 'L', desc: 'help.shell' },
     ],
   },
   {

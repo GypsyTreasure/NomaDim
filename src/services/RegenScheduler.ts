@@ -58,6 +58,12 @@ export class RegenScheduler {
   private prevDoc: DocumentState;
   private readonly listeners = new Set<RegenListener>();
   private unsubscribe: (() => void) | null = null;
+  /** Coalescing state (ADR-0071): at most one regen runs at a time; edits that
+   * arrive while it runs collapse into a single follow-up with the latest doc,
+   * so a rapid burst (dragging a point, typing a dimension) never queues heavy
+   * WASM work on the single-threaded worker — a top mobile-crash lever. */
+  private busy = false;
+  private pending: DocumentState | null = null;
 
   constructor(
     private readonly client: KernelClient,
@@ -89,9 +95,22 @@ export class RegenScheduler {
   }
 
   private async onChange(state: DocumentState): Promise<void> {
-    const fromIndex = computeFromIndex(this.prevDoc, state);
-    this.prevDoc = state;
-    await this.runRegen(state, fromIndex);
+    // Always remember the newest document; if a regen is already running, it
+    // will pick this up when it finishes (bursts collapse to one follow-up).
+    this.pending = state;
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      while (this.pending) {
+        const doc = this.pending;
+        this.pending = null;
+        const fromIndex = computeFromIndex(this.prevDoc, doc);
+        this.prevDoc = doc;
+        await this.runRegen(doc, fromIndex);
+      }
+    } finally {
+      this.busy = false;
+    }
   }
 
   private async runRegen(doc: DocumentState, fromIndex: number): Promise<void> {

@@ -208,6 +208,10 @@ export function Viewport({
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
   const cameraRef = useRef<RigCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  // On-demand rendering (ADR-0071): the rAF loop only runs during an "active
+  // window" that invalidations and ongoing animations extend, so a static model
+  // costs zero GPU/CPU. The setup effect installs the real requestRender.
+  const requestRenderRef = useRef<() => void>(() => undefined);
   // Live props for the rAF loop (avoids rebuilding the loop on each render);
   // written post-commit in an effect, never during render.
   const sketchModeRef = useRef<SketchModeProps | null>(null);
@@ -238,6 +242,16 @@ export function Viewport({
   useEffect(() => {
     facePickRef.current = facePick;
   }, [facePick]);
+
+  // Catch-all invalidation (ADR-0071): any React commit — a new body mesh,
+  // sketch overlay change, selection, section, highlight, projection label —
+  // wakes the render loop for a short window. Combined with OrbitControls'
+  // 'change' event (camera) and the animations' self-extension, this guarantees
+  // every visual change is drawn without an always-on GPU loop. Runs every
+  // render on purpose (no deps).
+  useEffect(() => {
+    requestRenderRef.current();
+  });
 
   useEffect(() => {
     const host = hostRef.current;
@@ -317,18 +331,28 @@ export function Viewport({
 
     let width = 0;
     let height = 0;
+    let appliedDpr = 0;
     const resize = (): void => {
-      width = host.clientWidth;
-      height = host.clientHeight;
-      if (width === 0 || height === 0) return;
-      rig.setAspect(width / height);
-      renderer.setPixelRatio(renderDpr());
-      renderer.setSize(width, height);
+      const nextW = host.clientWidth;
+      const nextH = host.clientHeight;
+      if (nextW === 0 || nextH === 0) return;
       const dpr = renderDpr();
+      // Skip the (expensive) drawing-buffer reallocation when nothing actually
+      // changed — an orientation change fires the ResizeObserver repeatedly with
+      // the same final size, and reallocating a dpr-2 framebuffer + overlay on
+      // each is a memory-churn spike that can OOM-kill mobile Safari (ADR-0071).
+      if (nextW === width && nextH === height && dpr === appliedDpr) return;
+      width = nextW;
+      height = nextH;
+      appliedDpr = dpr;
+      rig.setAspect(width / height);
+      renderer.setPixelRatio(dpr);
+      renderer.setSize(width, height);
       overlayCanvas.width = Math.round(width * dpr);
       overlayCanvas.height = Math.round(height * dpr);
       overlayCanvas.style.width = `${String(width)}px`;
       overlayCanvas.style.height = `${String(height)}px`;
+      requestRenderRef.current();
     };
 
     fitRequestRef.current = () => {
@@ -364,7 +388,18 @@ export function Viewport({
     resize();
     fitRequestRef.current();
 
-    const resizeObserver = new ResizeObserver(resize);
+    // Coalesce a burst of ResizeObserver callbacks (orientation animation) into
+    // one resize per frame (ADR-0071).
+    let resizePending = false;
+    const scheduleResize = (): void => {
+      if (resizePending) return;
+      resizePending = true;
+      requestAnimationFrame(() => {
+        resizePending = false;
+        resize();
+      });
+    };
+    const resizeObserver = new ResizeObserver(scheduleResize);
     resizeObserver.observe(host);
 
     // Viewport navigation shortcuts (master rule, ADR-0032): Z zoom-to-fit,
@@ -401,7 +436,9 @@ export function Viewport({
     let cameraTarget: { position: THREE.Vector3; up: THREE.Vector3; look: THREE.Vector3 } | null =
       null;
 
-    const updateSketchCamera = (): void => {
+    // Returns true while the sketch-entry camera lerp is still in flight, so the
+    // render loop keeps itself awake until the camera settles (ADR-0071).
+    const updateSketchCamera = (): boolean => {
       const mode = sketchModeRef.current;
       // Orbit while free; lock rotation during sketch editing, edge picking,
       // and measuring so a click resolves to a pick, not an orbit.
@@ -410,7 +447,7 @@ export function Viewport({
       if (!mode) {
         animatedPlaneKey = null;
         cameraTarget = null;
-        return;
+        return false;
       }
       if (mode.basis.key !== animatedPlaneKey) {
         animatedPlaneKey = mode.basis.key;
@@ -434,7 +471,9 @@ export function Viewport({
           cameraTarget = null;
         }
         camera.lookAt(controls.target);
+        return cameraTarget !== null;
       }
+      return false;
     };
 
     // --- Edge picking (F4) -------------------------------------------------
@@ -622,11 +661,33 @@ export function Viewport({
     overlayCanvas.addEventListener('pointerdown', onPointerDown);
     overlayCanvas.addEventListener('pointerup', onPointerUp);
 
+    // On-demand rendering (ADR-0071): render only during an "active window" that
+    // invalidations + ongoing animations extend, so a static model costs no GPU.
+    const RENDER_SETTLE_MS = 350;
+    let hidden = document.hidden;
+    let contextLost = false;
+    let renderUntil = performance.now() + 1000; // draw the first second (initial fit/settle)
+    let running = false;
+    let animationFrame = 0;
+
+    const requestRender = (): void => {
+      renderUntil = performance.now() + RENDER_SETTLE_MS;
+      if (!running && !hidden) {
+        running = true;
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+    requestRenderRef.current = requestRender;
+    // OrbitControls fires 'change' on every camera move (pointer drag AND each
+    // inertial damping step), so this alone keeps navigation rendering until it
+    // settles, then lets the loop idle.
+    controls.addEventListener('change', requestRender);
+
     // WebGL context loss (ADR-0050): under memory pressure iOS may reset the GPU
     // context. Without preventDefault the browser never fires a restore and the
     // canvas is permanently dead → a hard crash/blank. We suppress the default,
-    // pause rendering while lost, and rebuild resources on restore.
-    let contextLost = false;
+    // pause rendering while lost, and redraw on restore (Three.js re-uploads
+    // buffers lazily on the next render).
     const onContextLost = (event: Event): void => {
       event.preventDefault();
       contextLost = true;
@@ -634,27 +695,24 @@ export function Viewport({
     const onContextRestored = (): void => {
       contextLost = false;
       resize();
+      requestRender();
     };
     renderer.domElement.addEventListener('webglcontextlost', onContextLost);
     renderer.domElement.addEventListener('webglcontextrestored', onContextRestored);
 
-    // Pause the render loop while the tab is hidden (ADR-0050): a backgrounded
-    // mobile tab kept doing full-rate WebGL work is a needless memory/GPU load
-    // that invites the OS to kill it. Resume (and resize, in case the device
-    // rotated while away) on return.
-    let hidden = document.hidden;
+    // Pause rendering while the tab is hidden (ADR-0050): a backgrounded mobile
+    // tab doing WebGL work is a needless memory/GPU load that invites an OS kill.
+    // Resume (and resize, in case the device rotated while away) on return.
     const onVisibility = (): void => {
       hidden = document.hidden;
-      if (!hidden) resize();
+      if (!hidden) {
+        resize();
+        requestRender();
+      }
     };
     document.addEventListener('visibilitychange', onVisibility);
 
-    let animationFrame = 0;
-    const animate = (): void => {
-      animationFrame = requestAnimationFrame(animate);
-      if (hidden || contextLost) return;
-      updateSketchCamera();
-      controls.update();
+    const drawFrame = (): void => {
       renderer.render(scene, camera);
       const mode = sketchModeRef.current;
       if (ctx) {
@@ -693,10 +751,25 @@ export function Viewport({
         ctx.restore();
       }
     };
-    animate();
+
+    function animate(): void {
+      // Advance camera animations every active frame; each keeps the window open
+      // while it's still moving, so the loop self-sustains then idles.
+      const lerping = updateSketchCamera();
+      const controlsMoving = controls.update(); // applies inertial damping
+      if (lerping || controlsMoving) renderUntil = performance.now() + RENDER_SETTLE_MS;
+      if (!hidden && !contextLost) drawFrame();
+      if (performance.now() >= renderUntil) {
+        running = false; // nothing changed recently → stop until the next invalidation
+        return;
+      }
+      animationFrame = requestAnimationFrame(animate);
+    }
+    requestRender(); // kick off the initial render window
 
     return () => {
       cancelAnimationFrame(animationFrame);
+      controls.removeEventListener('change', requestRender);
       resizeObserver.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);

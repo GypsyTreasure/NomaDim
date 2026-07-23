@@ -151,11 +151,13 @@ export type KernelRequest =
   /** Parse a STEP file to a solid and return it as a base64 BREP payload the
    * Import op embeds in the document (self-contained round-trip). */
   | { id: ReqId; kind: 'importStep'; bytes: ArrayBuffer }
+  | { id: ReqId; kind: 'exportStep'; bodyIds: BodyId[] }
   | { id: ReqId; kind: 'stats' };
 
 export type KernelOkResult =
   | { of: 'init' }
   | { of: 'exportStl'; stl: ArrayBuffer; fileName: string }
+  | { of: 'exportStep'; step: ArrayBuffer; fileName: string }
   | { of: 'dispose' }
   | { of: 'stats'; liveHandleCount: number };
 

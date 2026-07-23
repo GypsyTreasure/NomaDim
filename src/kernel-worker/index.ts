@@ -17,7 +17,7 @@ import type {
 import { loadOcct } from './occt';
 import { tessellateShape } from './tessellate';
 import { shapeMeshStat } from './meshStats';
-import { readStepToBrepBase64 } from './stepio';
+import { readStepToBrepBase64, writeStepBytes } from './stepio';
 import { tessellateBodyEdges } from './edgeFingerprint';
 import { resolveSketchFace } from './faceResolve';
 import { exportShapeToStl } from './stl';
@@ -328,6 +328,28 @@ async function handleRequest(request: KernelRequest): Promise<void> {
         const oc = await ensureOcct();
         const brepBase64 = readStepToBrepBase64(oc, request.bytes);
         respond({ id: request.id, kind: 'imported', brepBase64 });
+        return;
+      }
+      case 'exportStep': {
+        const oc = await ensureOcct();
+        const shapes = collectShapes(request.bodyIds);
+        if (shapes.length === 0) {
+          respond({
+            id: request.id,
+            kind: 'error',
+            error: { code: 'NO_BODY', message: 'No bodies to export' },
+          });
+          return;
+        }
+        const step = writeStepBytes(oc, shapes);
+        respond(
+          {
+            id: request.id,
+            kind: 'ok',
+            result: { of: 'exportStep', step, fileName: 'nomadim-export.step' },
+          },
+          [step]
+        );
         return;
       }
       case 'preview': {

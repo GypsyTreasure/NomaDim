@@ -5,6 +5,7 @@ import { trackShapeAllocation } from '../handleCounter';
 import { healInvalidSolid } from '../healShape';
 import { triangulationOf } from '../tessellate';
 import { enumArg, enumMember, int } from '../occtCompat';
+import { closedHollow, type HollowEnums } from './hollow';
 import { KernelExecError, type ExecCtx } from './types';
 
 /**
@@ -25,12 +26,6 @@ const OPEN_DIR: Record<Exclude<ShellFace, 'none'>, Vec3> = {
   right: [1, 0, 0],
   left: [-1, 0, 0],
 };
-
-/** Enum members not on the generated instance type (ADR-0011 gap). */
-interface ShellEnums {
-  readonly BRepOffset_Mode: { readonly BRepOffset_Skin: unknown };
-  readonly GeomAbs_JoinType: { readonly GeomAbs_Arc: unknown };
-}
 
 /** The planar face whose OUTWARD normal is most aligned with `dir` (caller
  * deletes it). Null if nothing faces that way. */
@@ -104,7 +99,7 @@ function openShell(
   thicknessMm: number,
   openFace: TopoDS_Face
 ): TopoDS_Shape {
-  const en = oc as unknown as ShellEnums;
+  const en = oc as unknown as HollowEnums;
   const closingFaces = new oc.TopTools_ListOfShape_1();
   closingFaces.Append_1(openFace);
   const maker = new oc.BRepOffsetAPI_MakeThickSolid();
@@ -132,54 +127,6 @@ function openShell(
     maker.delete();
     progress.delete();
     closingFaces.delete();
-  }
-}
-
-/**
- * Closed hollow: `MakeThickSolidByJoin` needs a face to remove, so a fully
- * enclosed hollow is built instead by offsetting the solid inward
- * (`MakeOffsetShape`) and cutting that inner solid out of the original — an
- * internal void with no opening. Returns an UNTRACKED result (caller heals +
- * tracks) or throws SHELL_FAILED.
- */
-function closedHollow(
-  oc: OpenCascadeInstance,
-  shape: TopoDS_Shape,
-  thicknessMm: number
-): TopoDS_Shape {
-  const en = oc as unknown as ShellEnums;
-  const offset = new oc.BRepOffsetAPI_MakeOffsetShape();
-  const progress = new oc.Message_ProgressRange_1();
-  let inner: TopoDS_Shape | null = null;
-  try {
-    offset.PerformByJoin(
-      shape,
-      -thicknessMm,
-      1e-3,
-      enumArg(en.BRepOffset_Mode.BRepOffset_Skin),
-      false,
-      false,
-      enumArg(en.GeomAbs_JoinType.GeomAbs_Arc),
-      false,
-      progress
-    );
-    inner = offset.IsDone() ? offset.Shape() : null;
-    if (!inner || inner.IsNull()) {
-      inner?.delete();
-      throw new KernelExecError('SHELL_FAILED', THICK_FAILED);
-    }
-    const cut = new oc.BRepAlgoAPI_Cut_3(shape, inner, progress);
-    const result = cut.IsDone() ? cut.Shape() : null;
-    cut.delete();
-    if (!result || result.IsNull()) {
-      result?.delete();
-      throw new KernelExecError('SHELL_FAILED', THICK_FAILED);
-    }
-    return result;
-  } finally {
-    offset.delete();
-    progress.delete();
-    inner?.delete();
   }
 }
 

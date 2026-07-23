@@ -195,6 +195,7 @@ export const en = {
   'dialog.edges.remove': 'Remove edge',
   'dialog.edges.clear': 'Clear all',
   'dialog.body': 'Body',
+  'dialog.wallThickness': 'Wall Thickness (mm, 0 = solid)',
   'dialog.shell.thickness': 'Wall Thickness (mm)',
   'dialog.shell.openFace': 'Open Face',
   'dialog.shell.face.none': 'None (fully closed)',

@@ -42,6 +42,7 @@ function extrudeOp(overrides: Partial<ExtrudeOp> = {}): ExtrudeOp {
     distance2Mm: 3,
     operation: 'NewBody',
     targetBodyId: null,
+    wallThicknessMm: 0,
     bodyId: body('b1'),
     ...overrides,
   };
@@ -59,6 +60,7 @@ function revolveOp(overrides: Partial<RevolveOp> = {}): RevolveOp {
     angleDeg: 270,
     operation: 'Cut',
     targetBodyId: body('b1'),
+    wallThicknessMm: 0,
     bodyId: body('b2'),
     ...overrides,
   };

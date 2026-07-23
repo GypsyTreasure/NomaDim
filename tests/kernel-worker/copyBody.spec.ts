@@ -82,6 +82,7 @@ describe('copy body executor', () => {
       distance2Mm: 0,
       operation: 'NewBody',
       targetBodyId: null,
+      wallThicknessMm: 0,
       bodyId: bid('A'),
     });
     cache.record(0, diffDelta(before, bodies), { opId: 'o0' as never, status: 'ok' });

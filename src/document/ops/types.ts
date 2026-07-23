@@ -57,6 +57,10 @@ export interface ExtrudeOp extends OpBase {
   readonly operation: BooleanOperation;
   /** Target for Join/Cut/Intersect; ignored for NewBody. */
   readonly targetBodyId: BodyId | null;
+  /** Thin-wall (single-wall/shell) thickness (mm); 0 = a solid body (#7). When
+   * > 0 the extrusion is hollowed to this wall thickness before the boolean, so
+   * a thin wall can still Join/Cut/Intersect an existing body. */
+  readonly wallThicknessMm: number;
   /** Minted at creation (§8) — the produced body for NewBody, stable across regens. */
   readonly bodyId: BodyId;
 }
@@ -74,6 +78,8 @@ export interface RevolveOp extends OpBase {
   readonly angleDeg: number;
   readonly operation: BooleanOperation;
   readonly targetBodyId: BodyId | null;
+  /** Thin-wall (single-wall/shell) thickness (mm); 0 = a solid body (#7). */
+  readonly wallThicknessMm: number;
   readonly bodyId: BodyId;
 }
 

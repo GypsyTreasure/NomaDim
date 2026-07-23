@@ -50,6 +50,7 @@ function makeBox(bodies: BodyStateMap): void {
     distance2Mm: 0,
     operation: 'NewBody',
     targetBodyId: null,
+    wallThicknessMm: 0,
     bodyId: bid('B'),
   };
   const ctx: ExecCtx = { oc, bodies, profiles: new Map([[profile.id, profile]]) };

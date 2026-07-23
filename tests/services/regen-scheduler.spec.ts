@@ -75,6 +75,7 @@ function sketchAndExtrude(radius: number): {
     distance2Mm: 0,
     operation: 'NewBody',
     targetBodyId: null,
+    wallThicknessMm: 0,
     bodyId: 'b1' as BodyId,
   };
   doc = apply(doc, { type: 'AddOp', payload: { op: extrude } });

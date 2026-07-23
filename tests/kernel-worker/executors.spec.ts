@@ -58,6 +58,7 @@ function extrude(overrides: Partial<ExtrudeOp>): ExtrudeOp {
     distance2Mm: 0,
     operation: 'NewBody',
     targetBodyId: null,
+    wallThicknessMm: 0,
     bodyId: bid('B'),
     ...overrides,
   };
@@ -108,6 +109,59 @@ describe('extrude executor', () => {
     // (40*40 - pi*5^2) * 2
     if (shape) expect(volumeOf(shape)).toBeCloseTo((1600 - Math.PI * 25) * 2, 1);
     freeBodies(bodies);
+  });
+
+  it('thin-wall extrude hollows the prism to a single wall (#7)', () => {
+    const bodies: BodyStateMap = new Map();
+    const profile = rectProfile('p', 0, 0, 40, 40);
+    executeExtrude(
+      ctxFor(bodies, [profile]),
+      extrude({ profileIds: [profile.id], distanceMm: 10, wallThicknessMm: 2 })
+    );
+    const shape = bodies.get(bid('B'));
+    expect(shape).toBeDefined();
+    // Closed hollow: 40*40*10 solid − (36*36*6) inner void = 16000 − 7776 = 8224.
+    if (shape) expect(volumeOf(shape)).toBeCloseTo(8224, 1);
+    freeBodies(bodies);
+  });
+
+  it('thin-wall extrude can Join its wall to an existing body (#7)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    // Base solid to join onto.
+    const base = rectProfile('base', 0, 0, 40, 40);
+    executeExtrude(
+      ctxFor(bodies, [base]),
+      extrude({ profileIds: [base.id], distanceMm: 2, bodyId: bid('A') })
+    );
+    cache.record(0, diffDelta(new Map(), bodies), { opId: 'o0' as never, status: 'ok' });
+
+    // A thin wall stacked above, joined into A (the pre-join A is owned by delta 1).
+    const wall = rectProfile('wall', 0, 0, 40, 40);
+    const before = snapshotRefs(bodies);
+    executeExtrude(
+      ctxFor(bodies, [wall]),
+      extrude({
+        profileIds: [wall.id],
+        distanceMm: 20,
+        wallThicknessMm: 2,
+        operation: 'Join',
+        targetBodyId: bid('A'),
+        bodyId: bid('unused'),
+      })
+    );
+    cache.record(1, diffDelta(before, bodies), { opId: 'o1' as never, status: 'ok' });
+
+    const shape = bodies.get(bid('A'));
+    expect(shape).toBeDefined();
+    // The result is the base plate fused with a hollow wall — volume is between
+    // the base alone and a full solid; assert it grew but stayed hollow.
+    if (shape) {
+      const v = volumeOf(shape);
+      expect(v).toBeGreaterThan(3200); // more than the 40*40*2 base (3200)
+      expect(v).toBeLessThan(40 * 40 * 22); // less than a full solid block
+    }
+    cache.freeFrom(0);
   });
 
   it('symmetric direction straddles the plane (same total volume)', () => {
@@ -238,6 +292,7 @@ describe('revolve executor', () => {
       angleDeg: 360,
       operation: 'NewBody',
       targetBodyId: null,
+      wallThicknessMm: 0,
       bodyId: bid('R'),
     };
     executeRevolve(ctxFor(bodies, [profile]), op, axis);

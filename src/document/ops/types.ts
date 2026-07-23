@@ -9,7 +9,22 @@ import type { BodyId, EntityId, OpId, ProfileId, SketchId } from '../../core';
  */
 
 export type OpType =
-  'Sketch' | 'Extrude' | 'Revolve' | 'Fillet' | 'Chamfer' | 'Combine' | 'CopyBody';
+  | 'Sketch'
+  | 'Extrude'
+  | 'Revolve'
+  | 'Fillet'
+  | 'Chamfer'
+  | 'Combine'
+  | 'CopyBody'
+  | 'Mirror'
+  | 'Pattern';
+
+/** Placement/array ops keep the source body (NewBody) or fuse into it (Join). */
+export type TransformOperation = 'NewBody' | 'Join';
+
+/** World origin plane / axis a transform op works about. */
+export type OriginPlane = 'XY' | 'XZ' | 'YZ';
+export type OriginAxis = 'X' | 'Y' | 'Z';
 
 interface OpBase {
   readonly id: OpId;
@@ -116,12 +131,53 @@ export interface CopyBodyOp extends OpBase {
   readonly type: 'CopyBody';
   readonly sourceBodyId: BodyId;
   readonly translate: readonly [number, number, number];
+  /** Euler XYZ rotation in degrees, applied about the world origin before the
+   * translation. Defaults to [0,0,0] (a pure copy) for back-compat. */
+  readonly rotate: readonly [number, number, number];
   /** Minted at creation — the produced copy, stable across regens (§8). */
   readonly bodyId: BodyId;
 }
 
+/** Mirror a body across a world origin plane (P1). Join fuses the reflection
+ * into the source; NewBody produces a separate mirrored body. */
+export interface MirrorOp extends OpBase {
+  readonly type: 'Mirror';
+  readonly sourceBodyId: BodyId;
+  readonly plane: OriginPlane;
+  readonly operation: TransformOperation;
+  readonly bodyId: BodyId;
+}
+
+export type PatternKind = 'linear' | 'circular';
+
+/** Array a body linearly (along an axis) or circularly (about an axis). `count`
+ * includes the source position; Join fuses the extra instances into the source,
+ * NewBody collects them as a separate body (P1). */
+export interface PatternOp extends OpBase {
+  readonly type: 'Pattern';
+  readonly sourceBodyId: BodyId;
+  readonly kind: PatternKind;
+  readonly count: number;
+  /** Linear: centre-to-centre spacing (mm) along `axis`. */
+  readonly spacingMm: number;
+  /** Linear: translation axis. Circular: rotation axis. */
+  readonly axis: OriginAxis;
+  /** Circular: total sweep angle (deg) across all instances. */
+  readonly angleDeg: number;
+  readonly operation: TransformOperation;
+  readonly bodyId: BodyId;
+}
+
 export type TimelineOp =
-  SketchOp | ExtrudeOp | RevolveOp | FilletOp | ChamferOp | CombineOp | CopyBodyOp;
+  | SketchOp
+  | ExtrudeOp
+  | RevolveOp
+  | FilletOp
+  | ChamferOp
+  | CombineOp
+  | CopyBodyOp
+  | MirrorOp
+  | PatternOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

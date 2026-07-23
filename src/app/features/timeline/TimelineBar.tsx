@@ -14,6 +14,8 @@ const OP_SHORTCUT: Partial<Record<OpType, string>> = {
   Chamfer: 'H',
   Combine: 'B',
   CopyBody: 'D',
+  Mirror: 'I',
+  Pattern: 'P',
 };
 
 /** Effective chip status (suppressed overrides the last run result). */

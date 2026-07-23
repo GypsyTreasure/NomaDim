@@ -132,6 +132,7 @@ const ops: TimelineOp[] = [
     suppressed: false,
     sourceBodyId: body('b1'),
     translate: [5, 0, 0],
+    rotate: [0, 0, 0],
     bodyId: body('b9'),
   },
 ];

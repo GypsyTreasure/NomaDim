@@ -5,6 +5,8 @@ import { executeFillet } from './fillet';
 import { executeChamfer } from './chamfer';
 import { executeCombine } from './combine';
 import { executeCopyBody } from './copyBody';
+import { executeMirror } from './mirror';
+import { executePattern } from './pattern';
 import type { OpExecutor } from './types';
 
 /**
@@ -40,5 +42,13 @@ export const OP_EXECUTORS: Record<OpType, OpExecutor> = {
 
   CopyBody: (ctx, planOp) => {
     if (planOp.op.type === 'CopyBody') executeCopyBody(ctx, planOp.op);
+  },
+
+  Mirror: (ctx, planOp) => {
+    if (planOp.op.type === 'Mirror') executeMirror(ctx, planOp.op);
+  },
+
+  Pattern: (ctx, planOp) => {
+    if (planOp.op.type === 'Pattern') executePattern(ctx, planOp.op);
   },
 };

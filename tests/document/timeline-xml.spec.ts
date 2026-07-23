@@ -120,6 +120,7 @@ function copyBodyOp(overrides: Partial<CopyBodyOp> = {}): CopyBodyOp {
     id: op('cp1'),
     name: 'Copy1',
     suppressed: false,
+    rotate: [0, 0, 0],
     sourceBodyId: body('b1'),
     translate: [12.5, -3, 0],
     bodyId: body('b9'),
@@ -247,10 +248,52 @@ describe('timeline XML round-trip', () => {
     }
   });
 
-  it('round-trips CopyBody with its translation', () => {
+  it('round-trips CopyBody with its translation + rotation', () => {
     const data: TimelineData = {
-      ops: [sketchOp('so1', 's1'), extrudeOp({ id: op('e1'), bodyId: body('b1') }), copyBodyOp()],
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({ id: op('e1'), bodyId: body('b1') }),
+        copyBodyOp({ translate: [5, 0, 2], rotate: [0, 90, 45] }),
+      ],
       rollbackIndex: 3,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
+  it('round-trips Mirror and Pattern (P1 transform ops)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({ id: op('e1'), bodyId: body('b1') }),
+        {
+          type: 'Mirror',
+          id: op('mi1'),
+          name: 'Mirror1',
+          suppressed: false,
+          sourceBodyId: body('b1'),
+          plane: 'YZ',
+          operation: 'Join',
+          bodyId: body('b2'),
+        },
+        {
+          type: 'Pattern',
+          id: op('pa1'),
+          name: 'Pattern1',
+          suppressed: false,
+          sourceBodyId: body('b1'),
+          kind: 'circular',
+          count: 6,
+          spacingMm: 0,
+          axis: 'Z',
+          angleDeg: 360,
+          operation: 'NewBody',
+          bodyId: body('b3'),
+        },
+      ],
+      rollbackIndex: 4,
     };
     const xml = timelineToXml(data);
     const parsed = timelineFromXml(xml);

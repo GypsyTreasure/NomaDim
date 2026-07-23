@@ -20,6 +20,9 @@ export function CopyBodyDialog({ editing, onClose }: OpDialogProps): React.JSX.E
   const [tx, setTx] = useState(prior?.translate[0] ?? 0);
   const [ty, setTy] = useState(prior?.translate[1] ?? 0);
   const [tz, setTz] = useState(prior?.translate[2] ?? 0);
+  const [rx, setRx] = useState(prior?.rotate[0] ?? 0);
+  const [ry, setRy] = useState(prior?.rotate[1] ?? 0);
+  const [rz, setRz] = useState(prior?.rotate[2] ?? 0);
 
   const okDisabled = sourceBodyId === null;
 
@@ -33,6 +36,7 @@ export function CopyBodyDialog({ editing, onClose }: OpDialogProps): React.JSX.E
       suppressed: prior?.suppressed ?? false,
       sourceBodyId,
       translate: [tx, ty, tz],
+      rotate: [rx, ry, rz],
       bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
     };
     const result = commandBus.dispatch(
@@ -52,6 +56,9 @@ export function CopyBodyDialog({ editing, onClose }: OpDialogProps): React.JSX.E
       <NumberRow labelKey="dialog.translateX" value={tx} onChange={setTx} />
       <NumberRow labelKey="dialog.translateY" value={ty} onChange={setTy} />
       <NumberRow labelKey="dialog.translateZ" value={tz} onChange={setTz} />
+      <NumberRow labelKey="dialog.rotateX" value={rx} onChange={setRx} />
+      <NumberRow labelKey="dialog.rotateY" value={ry} onChange={setRy} />
+      <NumberRow labelKey="dialog.rotateZ" value={rz} onChange={setRz} />
     </DialogFrame>
   );
 }

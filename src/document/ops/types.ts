@@ -154,7 +154,13 @@ export type PatternKind = 'linear' | 'circular';
 
 /** Array a body linearly (along an axis) or circularly (about an axis). `count`
  * includes the source position; Join fuses the extra instances into the source,
- * NewBody collects them as a separate body (P1). */
+ * NewBody collects them as a separate body (P1).
+ *
+ * A **linear** pattern can array along up to THREE independent axes at once (a
+ * box/grid, request #4): direction 1 is `count`/`spacingMm`/`axis`; the optional
+ * directions 2 and 3 add `count{2,3}`/`spacingMm{2,3}`/`axis{2,3}`. A count of 1
+ * on a direction disables it, so a legacy single-axis pattern is exactly
+ * `count2 = count3 = 1` — old documents that omit the fields default to that. */
 export interface PatternOp extends OpBase {
   readonly type: 'Pattern';
   readonly sourceBodyId: BodyId;
@@ -166,6 +172,14 @@ export interface PatternOp extends OpBase {
   readonly axis: OriginAxis;
   /** Circular: total sweep angle (deg) across all instances. */
   readonly angleDeg: number;
+  /** Linear grid direction 2 (count 1 = unused). Ignored for circular. */
+  readonly count2: number;
+  readonly spacingMm2: number;
+  readonly axis2: OriginAxis;
+  /** Linear grid direction 3 (count 1 = unused). Ignored for circular. */
+  readonly count3: number;
+  readonly spacingMm3: number;
+  readonly axis3: OriginAxis;
   readonly operation: TransformOperation;
   readonly bodyId: BodyId;
 }

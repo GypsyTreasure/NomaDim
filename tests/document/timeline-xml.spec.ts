@@ -289,6 +289,12 @@ describe('timeline XML round-trip', () => {
           spacingMm: 0,
           axis: 'Z',
           angleDeg: 360,
+          count2: 1,
+          spacingMm2: 0,
+          axis2: 'Y',
+          count3: 1,
+          spacingMm3: 0,
+          axis3: 'Z',
           operation: 'NewBody',
           bodyId: body('b3'),
         },
@@ -299,6 +305,26 @@ describe('timeline XML round-trip', () => {
     const parsed = timelineFromXml(xml);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
+  it('parses a legacy single-axis pattern (no dir 2/3 attrs) to grid defaults (#4)', () => {
+    const legacy =
+      '<timeline rollback="1">' +
+      '<pattern index="0" id="pa1" name="Pattern1" suppressed="false" source="b1" ' +
+      'kind="linear" count="3" spacing="20" axis="X" angle="0" operation="Join" body="b2"/>' +
+      '</timeline>';
+    const parsed = timelineFromXml(legacy);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      const patternOp = parsed.value.ops[0];
+      expect(patternOp?.type).toBe('Pattern');
+      if (patternOp?.type === 'Pattern') {
+        expect(patternOp.count2).toBe(1);
+        expect(patternOp.count3).toBe(1);
+        expect(patternOp.axis2).toBe('Y');
+        expect(patternOp.axis3).toBe('Z');
+      }
+    }
   });
 
   it('round-trips a Shell op (thickness + open face)', () => {

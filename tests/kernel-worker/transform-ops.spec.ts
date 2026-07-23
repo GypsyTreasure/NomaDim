@@ -125,6 +125,12 @@ describe('Pattern', () => {
       spacingMm: 20, // gaps → disjoint
       axis: 'X',
       angleDeg: 0,
+      count2: 1,
+      spacingMm2: 0,
+      axis2: 'Y',
+      count3: 1,
+      spacingMm3: 0,
+      axis3: 'Z',
       operation: 'Join',
       bodyId: bid('unused'),
     };
@@ -133,6 +139,41 @@ describe('Pattern', () => {
     record(cache, 1, before, bodies);
 
     expect(volOf(bodies, 'A')).toBeCloseTo(3000, 2);
+    cache.freeFrom(0);
+  });
+
+  it('linear 2-axis grid Join fills a count×count2 box (#4)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    seedBox(bodies, 'A', 0); // x ∈ [0,10]
+    record(cache, 0, new Map(), bodies);
+
+    const op: PatternOp = {
+      type: 'Pattern',
+      id: 'p2' as PatternOp['id'],
+      name: 'Pattern',
+      suppressed: false,
+      sourceBodyId: bid('A'),
+      kind: 'linear',
+      count: 2,
+      spacingMm: 20,
+      axis: 'X',
+      angleDeg: 0,
+      count2: 2,
+      spacingMm2: 20,
+      axis2: 'Y',
+      count3: 1,
+      spacingMm3: 0,
+      axis3: 'Z',
+      operation: 'Join',
+      bodyId: bid('unused'),
+    };
+    const before = snapshotRefs(bodies);
+    executePattern(ctx(bodies), op);
+    record(cache, 1, before, bodies);
+
+    // 2×2 disjoint cells of a 10³ box → four boxes → 4000.
+    expect(volOf(bodies, 'A')).toBeCloseTo(4000, 2);
     cache.freeFrom(0);
   });
 });

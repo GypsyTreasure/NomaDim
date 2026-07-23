@@ -23,6 +23,7 @@ import { BrowserTree } from './features/browser/BrowserTree';
 import { MeasureHud } from './features/measure/MeasureHud';
 import { useMeasure } from './features/measure/useMeasure';
 import { DocumentIO } from './features/document-io/DocumentIO';
+import { ImportStepButton } from './features/document-io/ImportStepButton';
 import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
 import { OnboardingHint } from './features/onboarding/OnboardingHint';
 import { Toaster } from './features/toast/Toaster';
@@ -294,6 +295,7 @@ export function App(): React.JSX.Element {
                 </button>
                 <NewProjectButton />
                 <DocumentIO />
+                <ImportStepButton />
                 <ExportStlButton />
                 <button
                   type="button"

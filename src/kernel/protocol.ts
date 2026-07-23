@@ -148,6 +148,9 @@ export type KernelRequest =
   | { id: ReqId; kind: 'dispose'; bodyIds: BodyId[] }
   | { id: ReqId; kind: 'preview'; planOp: PlanOp }
   | { id: ReqId; kind: 'meshStats'; bodyIds: BodyId[]; quality: MeshQuality }
+  /** Parse a STEP file to a solid and return it as a base64 BREP payload the
+   * Import op embeds in the document (self-contained round-trip). */
+  | { id: ReqId; kind: 'importStep'; bytes: ArrayBuffer }
   | { id: ReqId; kind: 'stats' };
 
 export type KernelOkResult =
@@ -175,4 +178,5 @@ export type KernelResponse =
    * (empty if it would fail). Never touches the persistent BodyStateMap. */
   | { id: ReqId; kind: 'preview'; meshes: MeshTransfer[] }
   | { id: ReqId; kind: 'meshStats'; stats: MeshStat[] }
+  | { id: ReqId; kind: 'imported'; brepBase64: string }
   | { id: ReqId; kind: 'error'; error: KernelErrorPayload };

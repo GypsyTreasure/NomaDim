@@ -301,6 +301,28 @@ describe('timeline XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(data);
   });
 
+  it('round-trips an Import base body (base64 BREP payload)', () => {
+    const data: TimelineData = {
+      ops: [
+        {
+          type: 'Import',
+          id: op('im1'),
+          name: 'Import1',
+          suppressed: false,
+          format: 'step',
+          sourceName: 'bracket.step',
+          brepBase64: 'RFVNTVlCUkVQUEFZTE9BRA==',
+          bodyId: body('b1'),
+        },
+      ],
+      rollbackIndex: 1,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
   it('rejects malformed timeline XML with ImportError', () => {
     for (const bad of [
       '<notTimeline/>',

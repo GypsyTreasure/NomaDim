@@ -135,6 +135,7 @@ export const OP_PLAN_RESOLVERS: Record<OpType, OpPlanResolver> = {
   CopyBody: noInputsResolver,
   Mirror: noInputsResolver,
   Pattern: noInputsResolver,
+  Import: noInputsResolver,
 };
 
 // --- Plan assembly ---------------------------------------------------------

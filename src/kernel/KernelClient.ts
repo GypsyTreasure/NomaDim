@@ -129,6 +129,16 @@ export class KernelClient {
     throw new InternalError('Unexpected response to "meshStats" request');
   }
 
+  /** Parse a STEP file to a solid, returned as a base64 BREP payload the Import
+   * op embeds in the document (roadmap P1). */
+  async importStep(bytes: ArrayBuffer): Promise<string> {
+    const response = await this.send({ id: this.nextId(), kind: 'importStep', bytes });
+    if (response.kind === 'imported') {
+      return response.brepBase64;
+    }
+    throw new InternalError('Unexpected response to "importStep" request');
+  }
+
   async exportStl(request: StlExportRequest): Promise<StlExportResult> {
     const response = await this.send({ id: this.nextId(), kind: 'exportStl', ...request });
     if (response.kind === 'ok' && response.result.of === 'exportStl') {

@@ -17,7 +17,8 @@ export type OpType =
   | 'Combine'
   | 'CopyBody'
   | 'Mirror'
-  | 'Pattern';
+  | 'Pattern'
+  | 'Import';
 
 /** Placement/array ops keep the source body (NewBody) or fuse into it (Join). */
 export type TransformOperation = 'NewBody' | 'Join';
@@ -168,6 +169,19 @@ export interface PatternOp extends OpBase {
   readonly bodyId: BodyId;
 }
 
+/** An imported base body (roadmap P1): a parentless root body whose geometry is
+ * a solid parsed from a STEP file, embedded as a base64 BREP payload so the
+ * document round-trips with no external file. Reconstructed at regen. */
+export interface ImportOp extends OpBase {
+  readonly type: 'Import';
+  readonly format: 'step';
+  /** Original file name, for the timeline label / browser tree. */
+  readonly sourceName: string;
+  /** The solid serialized to base64 OCCT BREP text. */
+  readonly brepBase64: string;
+  readonly bodyId: BodyId;
+}
+
 export type TimelineOp =
   | SketchOp
   | ExtrudeOp
@@ -177,7 +191,8 @@ export type TimelineOp =
   | CombineOp
   | CopyBodyOp
   | MirrorOp
-  | PatternOp;
+  | PatternOp
+  | ImportOp;
 
 /** Dependency semantics consumed by dirty tracking and suppression skipping. */
 export interface OpDependencies {

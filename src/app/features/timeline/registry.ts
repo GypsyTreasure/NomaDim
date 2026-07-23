@@ -56,6 +56,8 @@ const patternFeature: OpFeature = {
   labelKey: 'op.pattern',
   dialog: PatternDialog,
 };
+// Import has no create-dialog — it is authored by the file-import flow, like Sketch.
+const importFeature: OpFeature = { type: 'Import', labelKey: 'op.import', dialog: null };
 
 export const OP_FEATURES: Record<OpType, OpFeature> = {
   Sketch: sketchFeature,
@@ -67,6 +69,7 @@ export const OP_FEATURES: Record<OpType, OpFeature> = {
   CopyBody: copyBodyFeature,
   Mirror: mirrorFeature,
   Pattern: patternFeature,
+  Import: importFeature,
 };
 
 export const OP_FEATURE_TYPES: readonly OpType[] = Object.keys(OP_FEATURES) as OpType[];

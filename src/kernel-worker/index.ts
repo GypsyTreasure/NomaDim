@@ -17,6 +17,7 @@ import type {
 import { loadOcct } from './occt';
 import { tessellateShape } from './tessellate';
 import { shapeMeshStat } from './meshStats';
+import { readStepToBrepBase64 } from './stepio';
 import { tessellateBodyEdges } from './edgeFingerprint';
 import { resolveSketchFace } from './faceResolve';
 import { exportShapeToStl } from './stl';
@@ -321,6 +322,12 @@ async function handleRequest(request: KernelRequest): Promise<void> {
           kind: 'meshStats',
           stats: meshStatsFor(oc, request.bodyIds, request.quality),
         });
+        return;
+      }
+      case 'importStep': {
+        const oc = await ensureOcct();
+        const brepBase64 = readStepToBrepBase64(oc, request.bytes);
+        respond({ id: request.id, kind: 'imported', brepBase64 });
         return;
       }
       case 'preview': {

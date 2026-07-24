@@ -4,6 +4,7 @@ import {
   applyCommand,
   emptyDocument,
   type Command,
+  type Datum,
   type DatumPlane,
   type DocumentState,
   type ExtrudeOp,
@@ -179,5 +180,52 @@ describe('Mirror plane resolution (#datum)', () => {
     const planeWorld = buildRegenPlan(doc).ops.find((o) => o.op.id === 'mir1')?.planeWorld;
     expect(planeWorld?.origin).toEqual([0, 0, 20]); // offset 20 along XY normal (+Z)
     expect(planeWorld?.normal).toEqual([0, 0, 1]);
+  });
+
+  it('resolves a construction AXIS as a revolve axis to world space (#1)', () => {
+    const datum: Datum = {
+      id: 'da1' as DatumId,
+      name: 'Axis1',
+      visible: true,
+      kind: 'axis',
+      base: 'Z',
+      offset: [3, 0, 0],
+      angleDeg: 0,
+      angleAxis: 'Y',
+    };
+    let doc = apply(emptyDocument(), { type: 'AddDatum', payload: { datum } });
+    // A minimal sketch so the revolve's sketch lookup succeeds.
+    doc = apply(doc, {
+      type: 'CreateSketch',
+      payload: {
+        sketchId: 'sk' as never,
+        opId: 'so' as OpId,
+        name: 'Sketch1',
+        plane: { kind: 'origin', plane: 'XY' },
+      },
+    });
+    doc = apply(doc, {
+      type: 'AddOp',
+      payload: {
+        op: {
+          type: 'Revolve',
+          id: 'rv1' as OpId,
+          name: 'Revolve1',
+          suppressed: false,
+          sketchId: 'sk' as never,
+          profileIds: ['sk:p-x' as never],
+          axis: { kind: 'datum', datumId: 'da1' as DatumId },
+          angleDeg: 360,
+          operation: 'NewBody',
+          targetBodyId: null,
+          wallThicknessMm: 0,
+          asSurface: false,
+          bodyId: 'rb1' as BodyId,
+        },
+      },
+    });
+    const axisWorld = buildRegenPlan(doc).ops.find((o) => o.op.id === 'rv1')?.axisWorld;
+    expect(axisWorld?.origin).toEqual([3, 0, 0]);
+    expect(axisWorld?.direction).toEqual([0, 0, 1]); // Z axis, no tilt
   });
 });

@@ -4,6 +4,7 @@ import {
   ImportError,
   ValidationError,
   type BodyId,
+  type DatumId,
   type EntityId,
   type OpId,
   type ProfileId,
@@ -26,12 +27,17 @@ function isOperation(value: string): value is BooleanOperation {
 }
 
 function axisToAttr(axis: RevolveAxis): string {
-  return axis.kind === 'origin' ? `origin:${axis.axis}` : `entity:${axis.entityId}`;
+  if (axis.kind === 'origin') return `origin:${axis.axis}`;
+  if (axis.kind === 'datum') return `datum:${axis.datumId}`;
+  return `entity:${axis.entityId}`;
 }
 
 function axisFromAttr(text: string): RevolveAxis | null {
   if (text === 'origin:X' || text === 'origin:Y' || text === 'origin:Z') {
     return { kind: 'origin', axis: text.slice('origin:'.length) as 'X' | 'Y' | 'Z' };
+  }
+  if (text.startsWith('datum:') && text.length > 'datum:'.length) {
+    return { kind: 'datum', datumId: text.slice('datum:'.length) as DatumId };
   }
   if (text.startsWith('entity:') && text.length > 'entity:'.length) {
     return { kind: 'entity', entityId: text.slice('entity:'.length) as EntityId };

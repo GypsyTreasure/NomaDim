@@ -24,12 +24,19 @@ function linearGridTrsfs(oc: OpenCascadeInstance, op: PatternOp): gp_Trsf[] {
   return trsfs;
 }
 
-/** Circular placement transforms: `angleDeg / (count - 1)` per step. */
+/**
+ * Circular placement transforms (Fusion parity). A **full** turn (|angle| ≥
+ * 360) evenly spaces `count` instances at 360/count so the last does NOT land
+ * back on the source (the old `angle/(count−1)` step put a duplicate on top of
+ * the source at 360° — the reported "doubling"). A **partial** sweep keeps both
+ * ends inclusive at `angle/(count−1)`.
+ */
 function circularTrsfs(oc: OpenCascadeInstance, op: PatternOp): gp_Trsf[] {
-  const steps = op.count - 1;
+  const full = Math.abs(op.angleDeg) >= 360 - 1e-6;
+  const stepDeg = full ? (op.angleDeg >= 0 ? 360 : -360) / op.count : op.angleDeg / (op.count - 1);
   const trsfs: gp_Trsf[] = [];
-  for (let i = 1; i <= steps; i += 1) {
-    trsfs.push(axisRotationTrsf(oc, op.axis, (op.angleDeg / steps) * i));
+  for (let i = 1; i < op.count; i += 1) {
+    trsfs.push(axisRotationTrsf(oc, op.axis, stepDeg * i));
   }
   return trsfs;
 }

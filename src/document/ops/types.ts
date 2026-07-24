@@ -69,10 +69,12 @@ export interface ExtrudeOp extends OpBase {
   readonly bodyId: BodyId;
 }
 
-/** Revolve axis: a line of the SAME sketch (dependency containment, ADR-0007) or an origin axis. */
+/** Revolve axis: a line of the SAME sketch (dependency containment, ADR-0007),
+ * an origin axis, or a reusable construction axis (datum, #1). */
 export type RevolveAxis =
   | { readonly kind: 'entity'; readonly entityId: EntityId }
-  | { readonly kind: 'origin'; readonly axis: 'X' | 'Y' | 'Z' };
+  | { readonly kind: 'origin'; readonly axis: 'X' | 'Y' | 'Z' }
+  | { readonly kind: 'datum'; readonly datumId: DatumId };
 
 export interface RevolveOp extends OpBase {
   readonly type: 'Revolve';

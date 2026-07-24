@@ -43,37 +43,6 @@ export function originPlaneBasis(plane: OriginPlaneId): SketchPlaneBasis {
   return { key: plane, origin: [0, 0, 0], uAxis: a.u, vAxis: a.v, normal: a.n };
 }
 
-const AXIS_VEC: Record<'X' | 'Y' | 'Z', Triple> = {
-  X: [1, 0, 0],
-  Y: [0, 1, 0],
-  Z: [0, 0, 1],
-};
-
-/**
- * Snapshot (origin + in-plane axes) for a datum plane (#5): a base origin
- * plane offset along its normal by `offsetMm`, with its in-plane frame tilted
- * `tiltDeg` about the world `tiltAxis`. Pure THREE vector math; the result is
- * stored on the DatumPlaneRef so it reuses the face-plane world-placement path.
- */
-export function datumPlaneSnapshot(
-  base: OriginPlaneId,
-  offsetMm: number,
-  tiltDeg: number,
-  tiltAxis: 'X' | 'Y' | 'Z'
-): { origin: Triple; xAxis: Triple; yAxis: Triple } {
-  const a = ORIGIN_AXES[base];
-  const origin = v3(a.n).multiplyScalar(offsetMm);
-  const axis = v3(AXIS_VEC[tiltAxis]);
-  const angle = (tiltDeg * Math.PI) / 180;
-  const u = v3(a.u).applyAxisAngle(axis, angle);
-  const w = v3(a.v).applyAxisAngle(axis, angle);
-  return {
-    origin: [origin.x, origin.y, origin.z],
-    xAxis: [u.x, u.y, u.z],
-    yAxis: [w.x, w.y, w.z],
-  };
-}
-
 const v3 = (t: Triple): THREE.Vector3 => new THREE.Vector3(t[0], t[1], t[2]);
 
 /** Builds the THREE-typed mapping used for projection/picking from a plain basis. */

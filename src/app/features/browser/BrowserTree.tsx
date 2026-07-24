@@ -11,6 +11,7 @@ import { t } from '../../i18n/t';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
+import { useConstructStore } from '../../store/constructStore';
 import styles from './Browser.module.css';
 
 /** The op that produces a given body (its creating feature, F8 delete target). */
@@ -70,6 +71,47 @@ export function BrowserTree(): React.JSX.Element {
           </label>
         ))}
       </section>
+
+      {document.datums.length > 0 && (
+        <section className={styles.section}>
+          <h3 className={styles.heading}>{t('tree.construction')}</h3>
+          {document.datums.map((datum) => (
+            <div key={datum.id} className={styles.bodyRow ?? ''} data-testid="tree-datum">
+              <input
+                type="checkbox"
+                title={datum.visible ? t('tree.datum.hide') : t('tree.datum.show')}
+                checked={datum.visible}
+                onChange={(e) => {
+                  commandBus.dispatch({
+                    type: 'SetDatumVisible',
+                    payload: { datumId: datum.id, visible: e.target.checked },
+                  });
+                }}
+              />
+              <button
+                type="button"
+                className={styles.itemButton}
+                title={t('tree.datum.edit')}
+                onClick={() => {
+                  useConstructStore.getState().openEdit(datum);
+                }}
+              >
+                {datum.name}
+              </button>
+              <button
+                type="button"
+                className={styles.iconButton}
+                title={t('tree.datum.delete')}
+                onClick={() => {
+                  commandBus.dispatch({ type: 'RemoveDatum', payload: { datumId: datum.id } });
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className={styles.section}>
         <h3 className={styles.heading}>{t('tree.sketches')}</h3>

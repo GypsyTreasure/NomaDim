@@ -1,4 +1,12 @@
-import { err, ok, ImportError, ValidationError, type BodyId, type OpId } from '../../core';
+import {
+  err,
+  ok,
+  ImportError,
+  ValidationError,
+  type BodyId,
+  type DatumId,
+  type OpId,
+} from '../../core';
 import { boolAttr, strAttr } from '../xml/xmlRaw';
 import type { OpDefinition } from './definition';
 import type { MirrorOp, OriginPlane, TransformOperation } from './types';
@@ -28,6 +36,8 @@ export const mirrorOpDefinition: OpDefinition<MirrorOp> = {
         suppressed: op.suppressed,
         source: op.sourceBodyId,
         plane: op.plane,
+        // Only emitted when mirroring across a construction plane (#datum).
+        ...(op.datumId ? { datum: op.datumId } : {}),
         operation: op.operation,
         body: op.bodyId,
       },
@@ -55,6 +65,7 @@ export const mirrorOpDefinition: OpDefinition<MirrorOp> = {
     ) {
       return err(new ImportError('Invalid timeline XML', undefined, 'malformed <mirror>'));
     }
+    const datum = strAttr(raw, 'datum');
     return ok({
       type: 'Mirror',
       id: id as OpId,
@@ -62,6 +73,7 @@ export const mirrorOpDefinition: OpDefinition<MirrorOp> = {
       suppressed,
       sourceBodyId: source as BodyId,
       plane: plane as OriginPlane,
+      ...(datum !== null ? { datumId: datum as DatumId } : {}),
       operation: operation as TransformOperation,
       bodyId: body as BodyId,
     });

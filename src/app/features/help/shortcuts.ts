@@ -50,6 +50,13 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     ],
   },
   {
+    title: 'help.group.construct',
+    items: [
+      { keys: 'G', desc: 'help.constructPlane' },
+      { keys: 'J', desc: 'help.constructAxis' },
+    ],
+  },
+  {
     title: 'help.group.document',
     items: [
       { keys: 'Ctrl+S', desc: 'help.save' },

@@ -3,6 +3,7 @@ import type { DocumentState } from './model';
 import type { Sketch } from './sketch/types';
 import type { SketchMeta } from './sketch/meta';
 import type { BodyMeta } from './bodies/types';
+import type { Datum } from './datums/types';
 
 /**
  * Undo/redo (ARCHITECTURE §4 R2): every command produces exactly one
@@ -47,7 +48,15 @@ export interface SketchMetaPatch {
   readonly after: readonly SketchMeta[];
 }
 
-export type DocumentPatch = SketchPatch | TimelinePatch | BodyMetaPatch | SketchMetaPatch;
+/** Whole construction-geometry replacement — the list is small, one row per datum. */
+export interface DatumPatch {
+  readonly kind: 'replaceDatums';
+  readonly before: readonly Datum[];
+  readonly after: readonly Datum[];
+}
+
+export type DocumentPatch =
+  SketchPatch | TimelinePatch | BodyMetaPatch | SketchMetaPatch | DatumPatch;
 
 export interface Transaction {
   readonly label: string;
@@ -93,6 +102,10 @@ function applyPatches(
       }
       case 'replaceSketchMeta': {
         next = { ...next, sketchMeta: direction === 'forward' ? patch.after : patch.before };
+        break;
+      }
+      case 'replaceDatums': {
+        next = { ...next, datums: direction === 'forward' ? patch.after : patch.before };
         break;
       }
       default: {

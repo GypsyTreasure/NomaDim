@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BodyId } from '../core';
 import { edgeFingerprintKey } from '../kernel';
-import { defaultBodyMeta } from '../document';
+import { defaultBodyMeta, isDatumPlane, type DatumPlane } from '../document';
 import {
   Viewport,
   VIEW_IDS,
@@ -13,6 +13,10 @@ import {
 } from '../viewport';
 import { NumericHud } from './features/sketcher/NumericHud';
 import { PlanePicker } from './features/sketcher/PlanePicker';
+import { ConstructMenu } from './features/construct/ConstructMenu';
+import { ConstructDialog } from './features/construct/ConstructDialog';
+import { buildDatumRenders } from './features/construct/datumRenders';
+import { useConstructStore } from './store/constructStore';
 import { PropertiesPanel } from './features/sketcher/PropertiesPanel';
 import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
@@ -65,6 +69,10 @@ export function App(): React.JSX.Element {
   const bodyMeta = useDocumentStore((s) => s.document.bodyMeta);
   const sketches = useDocumentStore((s) => s.document.sketches);
   const sketchMeta = useDocumentStore((s) => s.document.sketchMeta);
+  const datums = useDocumentStore((s) => s.document.datums);
+  const datumPreview = useConstructStore((s) => s.preview);
+  const constructOpen = useConstructStore((s) => s.open);
+  const openConstruct = useConstructStore((s) => s.openCreate);
   const selectedBodyId = useSessionStore((s) => s.selectedBodyId);
   const planeVisibility = useSessionStore((s) => s.planeVisibility);
   const profileHighlight = useSessionStore((s) => s.profileHighlight);
@@ -101,6 +109,12 @@ export function App(): React.JSX.Element {
     toggleMeasure: measure.toggle,
     createOp: timeline.openCreate,
     hasSketch: sketches.length > 0,
+    createPlane: () => {
+      openConstruct('plane');
+    },
+    createAxis: () => {
+      openConstruct('axis');
+    },
   });
 
   // Restore the autosaved document, boot the worker + RegenScheduler, then keep
@@ -133,6 +147,15 @@ export function App(): React.JSX.Element {
     () => buildSketchPreviews(sketches, sketchMeta, activeSketchId),
     [sketches, sketchMeta, activeSketchId]
   );
+
+  // Construction geometry (datum planes/axes) + the live creation ghost → the
+  // viewport. Placement is derived (document math); hidden datums are dropped.
+  const datumRenders = useMemo(
+    () => buildDatumRenders(datums, datumPreview),
+    [datums, datumPreview]
+  );
+  // Construction planes offered as sketch bases in the plane picker (#datum).
+  const datumPlanes = useMemo<readonly DatumPlane[]>(() => datums.filter(isDatumPlane), [datums]);
 
   // Translated labels for the standard view buttons (F11).
   const viewLabels = useMemo<Partial<Record<ViewId, string>>>(() => {
@@ -208,6 +231,7 @@ export function App(): React.JSX.Element {
             bodyStyles={bodyStyles}
             planeVisibility={planeVisibility}
             sketchPreviews={sketchPreviews}
+            datums={datumRenders}
             opHighlight={profileHighlight}
             onSelectBody={setSelectedBody}
             facePick={sketcher.pickingFace ? { onPick: sketcher.pickFace } : null}
@@ -293,6 +317,7 @@ export function App(): React.JSX.Element {
                 >
                   {t('measure.toggle')}
                 </button>
+                <ConstructMenu />
                 <NewProjectButton />
                 <DocumentIO />
                 <ImportStepButton />
@@ -337,9 +362,10 @@ export function App(): React.JSX.Element {
               {sketcher.choosingPlane && (
                 <PlanePicker
                   onChoose={sketcher.choosePlane}
-                  onChooseDatum={sketcher.chooseDatumPlane}
+                  onChooseDatum={sketcher.sketchOnDatum}
                   onPickFace={sketcher.beginFacePick}
                   onCancel={sketcher.cancelPlaneChoice}
+                  datumPlanes={datumPlanes}
                 />
               )}
               {sketcher.pickingFace && (
@@ -369,6 +395,13 @@ export function App(): React.JSX.Element {
               bar, so they paint above it and their edge-pick backdrop stays
               within the canvas region. */}
           <OpDialogHost timeline={timeline} />
+          {/* Construction plane/axis create-edit dialog — keyed per open so its
+              form state resets each time (fresh mint / edit target). */}
+          {constructOpen && (
+            <ConstructDialog
+              key={constructOpen.editing ? constructOpen.editing.id : `new-${constructOpen.kind}`}
+            />
+          )}
           <KeyboardShortcuts />
         </div>
 

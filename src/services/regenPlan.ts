@@ -1,19 +1,31 @@
 import type { SketchId } from '../core';
 import {
+  datumPlaneWorld,
   findSketch,
+  getDatum,
   getEntity,
+  isDatumPlane,
   opDefinition,
   pointMap,
   type DocumentState,
   type ExtrudeOp,
+  type MirrorOp,
   type OpType,
+  type OriginPlane,
   type RevolveAxis,
   type RevolveOp,
   type SketchPlaneRef,
   type TimelineOp,
 } from '../document';
 import { detectProfiles } from '../sketch';
-import type { PlanePlacement, PlanOp, PlanProfile, RegenPlan, WorldAxis } from '../kernel/protocol';
+import type {
+  PlanePlacement,
+  PlanOp,
+  PlanProfile,
+  RegenPlan,
+  WorldAxis,
+  WorldPlane,
+} from '../kernel/protocol';
 
 /**
  * Regen plan construction (ARCHITECTURE §9, R7): the MAIN thread resolves
@@ -55,6 +67,25 @@ function to3d(placement: PlanePlacement, x: number, y: number): Vec3 {
 interface PlanInputs {
   readonly profiles: readonly PlanProfile[];
   readonly axisWorld?: WorldAxis;
+  readonly planeWorld?: WorldPlane;
+}
+
+const ORIGIN_PLANE_NORMAL: Record<OriginPlane, Vec3> = {
+  XY: [0, 0, 1],
+  XZ: [0, 1, 0],
+  YZ: [1, 0, 0],
+};
+
+/** Resolves a mirror plane (origin plane, or a construction plane by id) to world space. */
+function resolveMirrorPlane(doc: DocumentState, op: MirrorOp): WorldPlane {
+  if (op.datumId) {
+    const datum = getDatum(doc, op.datumId);
+    if (datum && isDatumPlane(datum)) {
+      const w = datumPlaneWorld(datum);
+      return { origin: w.origin, normal: w.normal };
+    }
+  }
+  return { origin: [0, 0, 0], normal: ORIGIN_PLANE_NORMAL[op.plane] };
 }
 
 interface OpPlanResolver<T extends TimelineOp = TimelineOp> {
@@ -122,6 +153,10 @@ const revolvePlanResolver: OpPlanResolver<RevolveOp> = {
   }),
 };
 
+const mirrorPlanResolver: OpPlanResolver<MirrorOp> = {
+  resolve: (doc, op) => ({ profiles: [], planeWorld: resolveMirrorPlane(doc, op) }),
+};
+
 /**
  * Per-OpType plan resolver registry (ARCHITECTURE §7). Completeness across
  * OP_TYPES is asserted by the registry-completeness test (R9).
@@ -134,7 +169,7 @@ export const OP_PLAN_RESOLVERS: Record<OpType, OpPlanResolver> = {
   Chamfer: noInputsResolver,
   Combine: noInputsResolver,
   CopyBody: noInputsResolver,
-  Mirror: noInputsResolver,
+  Mirror: mirrorPlanResolver,
   Pattern: noInputsResolver,
   Import: noInputsResolver,
   Shell: noInputsResolver,
@@ -159,7 +194,13 @@ export function buildRegenPlan(doc: DocumentState): RegenPlan {
     const inputs = OP_PLAN_RESOLVERS[op.type].resolve(doc, op);
     const inputsSuppressed =
       deps.consumesSketch !== null && suppressedSketches.has(deps.consumesSketch);
-    return { op, profiles: inputs.profiles, axisWorld: inputs.axisWorld, inputsSuppressed };
+    return {
+      op,
+      profiles: inputs.profiles,
+      axisWorld: inputs.axisWorld,
+      planeWorld: inputs.planeWorld,
+      inputsSuppressed,
+    };
   });
 
   return { ops };

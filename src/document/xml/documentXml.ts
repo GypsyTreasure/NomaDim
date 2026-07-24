@@ -1,11 +1,20 @@
 import { XMLParser } from 'fast-xml-parser';
-import { err, ok, ImportError, type BodyId, type Result, type SketchId } from '../../core';
+import {
+  err,
+  ok,
+  ImportError,
+  type BodyId,
+  type DatumId,
+  type Result,
+  type SketchId,
+} from '../../core';
 import type { DocumentState } from '../model';
 import type { BodyMeta } from '../bodies/types';
+import type { Datum, DatumBaseAxis, DatumBasePlane } from '../datums/types';
 import type { SketchMeta } from '../sketch/meta';
 import type { Sketch } from '../sketch/types';
 import { writeXml, type XmlElement } from './xmlWriter';
-import { asRaw, asRawArray, boolAttr, strAttr } from './xmlRaw';
+import { asRaw, asRawArray, boolAttr, numAttr, strAttr, type Raw } from './xmlRaw';
 import { sketchElement, sketchFromRaw } from './sketchXml';
 import { timelineElement, timelineFromRaw } from './timelineXml';
 
@@ -36,6 +45,101 @@ function sketchMetaElement(meta: SketchMeta): XmlElement {
   return { tag: 'sketch', attrs: { id: meta.id, visible: meta.visible } };
 }
 
+function datumElement(datum: Datum): XmlElement {
+  const common = { id: datum.id, name: datum.name, visible: datum.visible };
+  if (datum.kind === 'plane') {
+    return {
+      tag: 'datum',
+      attrs: {
+        ...common,
+        kind: 'plane',
+        base: datum.base,
+        offset: datum.offsetMm,
+        tilt: datum.tiltDeg,
+        tiltAxis: datum.tiltAxis,
+      },
+    };
+  }
+  return {
+    tag: 'datum',
+    attrs: {
+      ...common,
+      kind: 'axis',
+      base: datum.base,
+      ox: datum.offset[0],
+      oy: datum.offset[1],
+      oz: datum.offset[2],
+      angle: datum.angleDeg,
+      angleAxis: datum.angleAxis,
+    },
+  };
+}
+
+const PLANE_BASES: readonly DatumBasePlane[] = ['XY', 'XZ', 'YZ'];
+const AXIS_DIRS: readonly DatumBaseAxis[] = ['X', 'Y', 'Z'];
+
+function datumFromRaw(raw: Raw): Datum | null {
+  const id = strAttr(raw, 'id');
+  const name = strAttr(raw, 'name');
+  const visible = boolAttr(raw, 'visible');
+  const kind = strAttr(raw, 'kind');
+  if (id === null || name === null || visible === null) return null;
+  const common = { id: id as DatumId, name, visible };
+  if (kind === 'plane') {
+    const base = strAttr(raw, 'base');
+    const offset = numAttr(raw, 'offset');
+    const tilt = numAttr(raw, 'tilt');
+    const tiltAxis = strAttr(raw, 'tiltAxis');
+    if (
+      base === null ||
+      !PLANE_BASES.includes(base as DatumBasePlane) ||
+      offset === null ||
+      tilt === null ||
+      tiltAxis === null ||
+      !AXIS_DIRS.includes(tiltAxis as DatumBaseAxis)
+    ) {
+      return null;
+    }
+    return {
+      ...common,
+      kind: 'plane',
+      base: base as DatumBasePlane,
+      offsetMm: offset,
+      tiltDeg: tilt,
+      tiltAxis: tiltAxis as DatumBaseAxis,
+    };
+  }
+  if (kind === 'axis') {
+    const base = strAttr(raw, 'base');
+    const ox = numAttr(raw, 'ox');
+    const oy = numAttr(raw, 'oy');
+    const oz = numAttr(raw, 'oz');
+    const angle = numAttr(raw, 'angle');
+    const angleAxis = strAttr(raw, 'angleAxis');
+    if (
+      base === null ||
+      !AXIS_DIRS.includes(base as DatumBaseAxis) ||
+      ox === null ||
+      oy === null ||
+      oz === null ||
+      angle === null ||
+      angleAxis === null ||
+      !AXIS_DIRS.includes(angleAxis as DatumBaseAxis)
+    ) {
+      return null;
+    }
+    return {
+      ...common,
+      kind: 'axis',
+      base: base as DatumBaseAxis,
+      offset: [ox, oy, oz],
+      angleDeg: angle,
+      angleAxis: angleAxis as DatumBaseAxis,
+    };
+  }
+  return null;
+}
+
 export function documentToXml(state: DocumentState): string {
   return writeXml({
     tag: 'nomadim',
@@ -45,6 +149,7 @@ export function documentToXml(state: DocumentState): string {
       timelineElement({ ops: state.ops, rollbackIndex: state.rollbackIndex }),
       { tag: 'bodies', children: [...state.bodyMeta].sort(byId).map(bodyMetaElement) },
       { tag: 'sketchMeta', children: [...state.sketchMeta].sort(byId).map(sketchMetaElement) },
+      { tag: 'datums', children: [...state.datums].sort(byId).map(datumElement) },
     ],
   });
 }
@@ -120,11 +225,19 @@ export function documentFromXml(xml: string): Result<DocumentState, ImportError>
     sketchMeta.push({ id: id as SketchId, visible });
   }
 
+  const datums: Datum[] = [];
+  for (const raw of asRawArray(asRaw(root.datums)?.datum)) {
+    const datum = datumFromRaw(raw);
+    if (datum === null) return fail('malformed <datum>');
+    datums.push(datum);
+  }
+
   return ok({
     sketches,
     ops: timeline.value.ops,
     rollbackIndex: timeline.value.rollbackIndex,
     bodyMeta,
     sketchMeta,
+    datums,
   });
 }

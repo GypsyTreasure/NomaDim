@@ -70,6 +70,13 @@ export interface WorldAxis {
   readonly direction: readonly [number, number, number];
 }
 
+/** World-space mirror plane (origin + normal), resolved on the main thread —
+ * lets Mirror reflect across an arbitrary construction plane, not just XY/XZ/YZ. */
+export interface WorldPlane {
+  readonly origin: readonly [number, number, number];
+  readonly normal: readonly [number, number, number];
+}
+
 /**
  * One evaluated timeline entry: the serialized op plus everything the
  * worker must not re-derive — pre-resolved profiles (R7) and, for Revolve,
@@ -80,6 +87,8 @@ export interface PlanOp {
   readonly op: TimelineOp;
   readonly profiles: readonly PlanProfile[];
   readonly axisWorld?: WorldAxis;
+  /** Mirror across this world plane (origin plane or a construction plane). */
+  readonly planeWorld?: WorldPlane;
   /** True when a non-body input (the consumed sketch op) is suppressed → op skips (§9). */
   readonly inputsSuppressed?: boolean;
 }

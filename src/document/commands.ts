@@ -3,6 +3,7 @@ import {
   ok,
   ValidationError,
   type BodyId,
+  type DatumId,
   type DimensionId,
   type EntityId,
   type PointId,
@@ -13,6 +14,8 @@ import { findSketch, type DocumentState } from './model';
 import { emptySketch } from './sketch/access';
 import { getBodyMeta, upsertBodyMeta } from './bodies/access';
 import type { BodyMeta } from './bodies/types';
+import { getDatum, removeDatum, upsertDatum } from './datums/access';
+import type { Datum } from './datums/types';
 import { getSketchMeta, upsertSketchMeta } from './sketch/meta';
 import { referencedPointIds } from './sketch/roles';
 import type {
@@ -23,7 +26,13 @@ import type {
   SketchPoint,
 } from './sketch/types';
 import { validateSketch } from './sketch/validate';
-import type { BodyMetaPatch, SketchMetaPatch, SketchPatch, Transaction } from './history';
+import type {
+  BodyMetaPatch,
+  DatumPatch,
+  SketchMetaPatch,
+  SketchPatch,
+  Transaction,
+} from './history';
 import type { OpId } from '../core';
 import { applyTimelineCommand, type TimelineCommand } from './timelineCommands';
 
@@ -85,6 +94,15 @@ export type Command =
   | {
       readonly type: 'SetSketchVisible';
       readonly payload: { sketchId: SketchId; visible: boolean };
+    }
+  // Construction geometry (datum planes & axes) — reusable reference geometry.
+  | { readonly type: 'AddDatum'; readonly payload: { datum: Datum } }
+  | { readonly type: 'EditDatum'; readonly payload: { datum: Datum } }
+  | { readonly type: 'RemoveDatum'; readonly payload: { datumId: DatumId } }
+  | { readonly type: 'RenameDatum'; readonly payload: { datumId: DatumId; name: string } }
+  | {
+      readonly type: 'SetDatumVisible';
+      readonly payload: { datumId: DatumId; visible: boolean };
     };
 
 export interface CommandResult {
@@ -159,6 +177,22 @@ function setSketchVisible(
     state: { ...state, sketchMeta: after },
     transaction: { label: visible ? 'Show Sketch' : 'Hide Sketch', patches: [patch] },
   });
+}
+
+/** Every numeric parameter of a datum must be finite (rejects NaN from blank fields). */
+function validateDatum(datum: Datum): Result<void, ValidationError> {
+  const nums =
+    datum.kind === 'plane' ? [datum.offsetMm, datum.tiltDeg] : [...datum.offset, datum.angleDeg];
+  if (nums.some((n) => !Number.isFinite(n))) {
+    return err(new ValidationError(`Datum "${datum.id}" has a non-finite value`));
+  }
+  return ok(undefined);
+}
+
+/** Commits a whole-list datum replacement as one undoable transaction. */
+function commitDatums(state: DocumentState, label: string, after: readonly Datum[]): CommandResult {
+  const patch: DatumPatch = { kind: 'replaceDatums', before: state.datums, after };
+  return { state: { ...state, datums: after }, transaction: { label, patches: [patch] } };
 }
 
 export function applyCommand(
@@ -336,6 +370,54 @@ export function applyCommand(
       );
     case 'SetSketchVisible':
       return setSketchVisible(state, command.payload.sketchId, command.payload.visible);
+    case 'AddDatum': {
+      const { datum } = command.payload;
+      if (getDatum(state, datum.id)) {
+        return err(new ValidationError(`Datum "${datum.id}" already exists`));
+      }
+      const valid = validateDatum(datum);
+      if (!valid.ok) return valid;
+      return ok(commitDatums(state, 'Create Construction Geometry', upsertDatum(state, datum)));
+    }
+    case 'EditDatum': {
+      const { datum } = command.payload;
+      if (!getDatum(state, datum.id)) {
+        return err(new ValidationError(`Unknown datum "${datum.id}"`));
+      }
+      const valid = validateDatum(datum);
+      if (!valid.ok) return valid;
+      return ok(commitDatums(state, 'Edit Construction Geometry', upsertDatum(state, datum)));
+    }
+    case 'RemoveDatum': {
+      if (!getDatum(state, command.payload.datumId)) {
+        return err(new ValidationError(`Unknown datum "${command.payload.datumId}"`));
+      }
+      return ok(
+        commitDatums(
+          state,
+          'Delete Construction Geometry',
+          removeDatum(state, command.payload.datumId)
+        )
+      );
+    }
+    case 'RenameDatum': {
+      const datum = getDatum(state, command.payload.datumId);
+      if (!datum) return err(new ValidationError(`Unknown datum "${command.payload.datumId}"`));
+      return ok(
+        commitDatums(state, 'Rename', upsertDatum(state, { ...datum, name: command.payload.name }))
+      );
+    }
+    case 'SetDatumVisible': {
+      const datum = getDatum(state, command.payload.datumId);
+      if (!datum) return err(new ValidationError(`Unknown datum "${command.payload.datumId}"`));
+      return ok(
+        commitDatums(
+          state,
+          command.payload.visible ? 'Show' : 'Hide',
+          upsertDatum(state, { ...datum, visible: command.payload.visible })
+        )
+      );
+    }
     default: {
       const exhaustive: never = command;
       return exhaustive;

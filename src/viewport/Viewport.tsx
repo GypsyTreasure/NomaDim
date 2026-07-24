@@ -12,11 +12,13 @@ import {
 } from '../kernel';
 import {
   createBodyMesh,
+  createDatumObject,
   createGhostMesh,
   createGrid,
   createLighting,
   createOriginPlanes,
   disposeSceneObjects,
+  type DatumRender,
 } from './scene';
 import {
   mappingFromBasis,
@@ -153,6 +155,8 @@ export interface ViewportProps {
   planeVisibility?: Readonly<Record<OriginPlaneId, boolean>>;
   /** Committed sketches shown as 3D reference geometry (visible + not being edited). */
   sketchPreviews?: readonly SketchPreview[];
+  /** Construction geometry (datum planes & axes) + the in-progress creation ghost. */
+  datums?: readonly DatumRender[];
   /** Geometry an open Extrude/Revolve dialog will act on, highlighted (F3). */
   opHighlight?: OpHighlight | null;
   /** A body was clicked in the viewport (null = empty space) — tree sync (F8). */
@@ -189,6 +193,7 @@ export function Viewport({
   bodyStyles,
   planeVisibility,
   sketchPreviews,
+  datums,
   opHighlight,
   onSelectBody,
   facePick = null,
@@ -203,6 +208,7 @@ export function Viewport({
   const previewGroupRef = useRef<THREE.Group | null>(null);
   const edgeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
+  const datumGroupRef = useRef<THREE.Group | null>(null);
   const sectionGroupRef = useRef<THREE.Group | null>(null);
   const highlightGroupRef = useRef<THREE.Group | null>(null);
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
@@ -308,6 +314,9 @@ export function Viewport({
     const sketchGroup = new THREE.Group();
     sketchGroup.name = 'SketchPreviews';
     sketchGroupRef.current = sketchGroup;
+    const datumGroup = new THREE.Group();
+    datumGroup.name = 'Datums';
+    datumGroupRef.current = datumGroup;
     const sectionGroup = new THREE.Group();
     sectionGroup.name = 'PlaneSections';
     sectionGroupRef.current = sectionGroup;
@@ -325,6 +334,7 @@ export function Viewport({
       previewGroup,
       edgeGroup,
       sketchGroup,
+      datumGroup,
       sectionGroup,
       highlightGroup
     );
@@ -885,6 +895,16 @@ export function Viewport({
       }
     }
   }, [sketchPreviews]);
+
+  // Rebuild construction geometry (datum planes & axes) + the creation ghost.
+  useEffect(() => {
+    const group = datumGroupRef.current;
+    if (!group) return;
+    disposeSceneObjects(group);
+    group.clear();
+    for (const datum of datums ?? []) group.add(createDatumObject(datum));
+    requestRenderRef.current();
+  }, [datums]);
 
   useEffect(() => {
     sectionViewRef.current = sectionView;

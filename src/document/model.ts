@@ -2,6 +2,7 @@ import type { Sketch } from './sketch/types';
 import type { SketchMeta } from './sketch/meta';
 import type { TimelineOp } from './ops/types';
 import type { BodyMeta } from './bodies/types';
+import type { Datum } from './datums/types';
 
 /**
  * Document root (ARCHITECTURE §5: shape defined here, held by the Zustand
@@ -20,10 +21,12 @@ export interface DocumentState {
   readonly bodyMeta: readonly BodyMeta[];
   /** Per-sketch visibility (preview shown until consumed); lazily materialized. */
   readonly sketchMeta: readonly SketchMeta[];
+  /** Construction geometry (datum planes & axes) — reusable reference geometry. */
+  readonly datums: readonly Datum[];
 }
 
 export function emptyDocument(): DocumentState {
-  return { sketches: [], ops: [], rollbackIndex: 0, bodyMeta: [], sketchMeta: [] };
+  return { sketches: [], ops: [], rollbackIndex: 0, bodyMeta: [], sketchMeta: [], datums: [] };
 }
 
 export function findSketch(state: DocumentState, sketchId: string): Sketch | undefined {

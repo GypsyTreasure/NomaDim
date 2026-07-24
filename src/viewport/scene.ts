@@ -72,6 +72,93 @@ export function createOriginPlanes(): Record<OriginPlaneId, THREE.Group> {
   };
 }
 
+// --- Construction geometry (datum planes & axes) ---------------------------
+
+const DATUM_PLANE_SIZE_MM = 120;
+const DATUM_PLANE_OPACITY = 0.16;
+const DATUM_COLOR = 0x1a6b5a; // MASTER_DOCUMENT §12 brand teal
+const DATUM_GHOST_COLOR = 0xffa62b; // amber — matches op-preview ghosts
+const DATUM_AXIS_HALF_LEN_MM = 90;
+const DATUM_AXIS_RADIUS_MM = 0.6;
+
+type Triple = readonly [number, number, number];
+const vv = (t: Triple): THREE.Vector3 => new THREE.Vector3(t[0], t[1], t[2]);
+
+/** Plain, serializable descriptor of a construction plane for rendering. */
+export interface DatumPlaneRender {
+  readonly id: string;
+  readonly kind: 'plane';
+  readonly origin: Triple;
+  readonly xAxis: Triple;
+  readonly yAxis: Triple;
+  readonly normal: Triple;
+  /** Amber preview styling for the in-progress creation ghost. */
+  readonly ghost?: boolean;
+}
+
+/** Plain, serializable descriptor of a construction axis for rendering. */
+export interface DatumAxisRender {
+  readonly id: string;
+  readonly kind: 'axis';
+  readonly origin: Triple;
+  readonly direction: Triple;
+  readonly ghost?: boolean;
+}
+
+export type DatumRender = DatumPlaneRender | DatumAxisRender;
+
+function makeDatumPlane(render: DatumPlaneRender): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `Datum:${render.id}`;
+  const color = render.ghost ? DATUM_GHOST_COLOR : DATUM_COLOR;
+
+  const geometry = new THREE.PlaneGeometry(DATUM_PLANE_SIZE_MM, DATUM_PLANE_SIZE_MM);
+  const mesh = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: render.ghost ? 0.24 : DATUM_PLANE_OPACITY,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+  );
+  const border = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.6 })
+  );
+  // Orient the local plane frame (+X,+Y,+Z) onto (xAxis, yAxis, normal).
+  group.quaternion.setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(vv(render.xAxis), vv(render.yAxis), vv(render.normal))
+  );
+  group.position.copy(vv(render.origin));
+  group.add(mesh, border);
+  return group;
+}
+
+function makeDatumAxis(render: DatumAxisRender): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `Datum:${render.id}`;
+  const color = render.ghost ? DATUM_GHOST_COLOR : DATUM_COLOR;
+  const geometry = new THREE.CylinderGeometry(
+    DATUM_AXIS_RADIUS_MM,
+    DATUM_AXIS_RADIUS_MM,
+    DATUM_AXIS_HALF_LEN_MM * 2,
+    8
+  );
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color }));
+  // The cylinder's default axis is +Y; rotate it onto the datum direction.
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vv(render.direction).normalize());
+  group.position.copy(vv(render.origin));
+  group.add(mesh);
+  return group;
+}
+
+/** Builds a renderable construction-geometry object (plane quad or axis rod). */
+export function createDatumObject(render: DatumRender): THREE.Group {
+  return render.kind === 'plane' ? makeDatumPlane(render) : makeDatumAxis(render);
+}
+
 const BODY_COLOR = 0x1a6b5a; // MASTER_DOCUMENT §12 brand teal — default body color.
 
 /** Basic shading rig (F11 "solid" shading) — plain ambient + one directional light. */

@@ -24,14 +24,23 @@ function dir(
 /** Mirror about a world origin plane (the plane whose normal is the odd axis). */
 export function mirrorTrsf(oc: OpenCascadeInstance, plane: PlaneName): gp_Trsf {
   const normal: WorldAxisName = plane === 'XY' ? 'Z' : plane === 'XZ' ? 'Y' : 'X';
-  const origin = new oc.gp_Pnt_3(0, 0, 0);
-  const n = dir(oc, normal);
-  const ax2 = new oc.gp_Ax2_3(origin, n); // its plane (⊥ main dir) is the mirror plane
+  return mirrorPlaneTrsf(oc, [0, 0, 0], axisUnit(normal));
+}
+
+/** Mirror about an arbitrary world plane (point + normal) — construction planes. */
+export function mirrorPlaneTrsf(
+  oc: OpenCascadeInstance,
+  origin: readonly [number, number, number],
+  normal: readonly [number, number, number]
+): gp_Trsf {
+  const o = new oc.gp_Pnt_3(origin[0], origin[1], origin[2]);
+  const n = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
+  const ax2 = new oc.gp_Ax2_3(o, n); // its plane (⊥ main dir) is the mirror plane
   const trsf = new oc.gp_Trsf_1();
   trsf.SetMirror_3(ax2);
   ax2.delete();
   n.delete();
-  origin.delete();
+  o.delete();
   return trsf;
 }
 

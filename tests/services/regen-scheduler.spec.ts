@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { BodyId, OpId, SketchId } from '../../src/core';
+import type { BodyId, DatumId, OpId, SketchId } from '../../src/core';
 import {
   applyCommand,
   emptyDocument,
   type Command,
+  type DatumPlane,
   type DocumentState,
   type ExtrudeOp,
+  type MirrorOp,
 } from '../../src/document';
 import { detectProfiles } from '../../src/sketch';
 import { buildRegenPlan, computeFromIndex } from '../../src/services';
@@ -138,5 +140,44 @@ describe('regen plan + dirty tracking (M3 acceptance)', () => {
       payload: { opId: 'ex1' as OpId, name: 'Boss' },
     });
     expect(computeFromIndex(doc, renamed)).toBe(1);
+  });
+});
+
+describe('Mirror plane resolution (#datum)', () => {
+  const mirror = (over: Partial<MirrorOp>): MirrorOp => ({
+    type: 'Mirror',
+    id: 'mir1' as OpId,
+    name: 'Mirror1',
+    suppressed: false,
+    sourceBodyId: 'src' as BodyId,
+    plane: 'XY',
+    operation: 'NewBody',
+    bodyId: 'mb1' as BodyId,
+    ...over,
+  });
+
+  it('resolves an origin-plane mirror to that plane normal', () => {
+    const doc = apply(emptyDocument(), { type: 'AddOp', payload: { op: mirror({ plane: 'XZ' }) } });
+    const planeWorld = buildRegenPlan(doc).ops.find((o) => o.op.id === 'mir1')?.planeWorld;
+    expect(planeWorld?.origin).toEqual([0, 0, 0]);
+    expect(planeWorld?.normal).toEqual([0, 1, 0]); // XZ normal is +Y
+  });
+
+  it('resolves a construction-plane mirror to the datum world plane', () => {
+    const datum: DatumPlane = {
+      id: 'd1' as DatumId,
+      name: 'Plane1',
+      visible: true,
+      kind: 'plane',
+      base: 'XY',
+      offsetMm: 20,
+      tiltDeg: 0,
+      tiltAxis: 'X',
+    };
+    let doc = apply(emptyDocument(), { type: 'AddDatum', payload: { datum } });
+    doc = apply(doc, { type: 'AddOp', payload: { op: mirror({ datumId: 'd1' as DatumId }) } });
+    const planeWorld = buildRegenPlan(doc).ops.find((o) => o.op.id === 'mir1')?.planeWorld;
+    expect(planeWorld?.origin).toEqual([0, 0, 20]); // offset 20 along XY normal (+Z)
+    expect(planeWorld?.normal).toEqual([0, 0, 1]);
   });
 });

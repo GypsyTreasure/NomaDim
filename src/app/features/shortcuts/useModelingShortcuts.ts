@@ -15,6 +15,9 @@ export interface ModelingShortcutActions {
   readonly createOp: (type: OpType) => void;
   /** Mirrors the create buttons' disabled state (need a sketch first). */
   readonly hasSketch: boolean;
+  /** Construct menu (ADR-0032): open the plane / axis creation dialogs. */
+  readonly createPlane: () => void;
+  readonly createAxis: () => void;
 }
 
 /** Letter → create-op, matching the timeline toolbar order. */
@@ -32,7 +35,7 @@ const OP_KEYS: Readonly<Record<string, OpType>> = {
 };
 
 export function useModelingShortcuts(active: boolean, actions: ModelingShortcutActions): void {
-  const { newSketch, toggleMeasure, createOp, hasSketch } = actions;
+  const { newSketch, toggleMeasure, createOp, hasSketch, createPlane, createAxis } = actions;
   useEffect(() => {
     if (!active) return;
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -57,6 +60,15 @@ export function useModelingShortcuts(active: boolean, actions: ModelingShortcutA
         toggleMeasure();
         return;
       }
+      // Construct menu (ADR-0032): construction plane / axis — always available.
+      if (key === 'g') {
+        createPlane();
+        return;
+      }
+      if (key === 'j') {
+        createAxis();
+        return;
+      }
       const op = OP_KEYS[key];
       if (op && hasSketch) createOp(op);
     };
@@ -64,5 +76,5 @@ export function useModelingShortcuts(active: boolean, actions: ModelingShortcutA
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [active, newSketch, toggleMeasure, createOp, hasSketch]);
+  }, [active, newSketch, toggleMeasure, createOp, hasSketch, createPlane, createAxis]);
 }

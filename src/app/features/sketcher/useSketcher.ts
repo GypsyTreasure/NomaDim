@@ -4,13 +4,17 @@ import {
   vec2,
   DEG_TO_RAD,
   type BodyId,
+  type DatumId,
   type DimensionId,
   type EntityId,
   type PointId,
   type Vec2,
 } from '../../../core';
 import {
+  datumPlaneWorld,
   findSketch,
+  getDatum,
+  isDatumPlane,
   pointMap,
   type Sketch,
   type SketchDimensionKind,
@@ -36,7 +40,7 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
-import { datumPlaneSnapshot, sectionPlanePoints, type SketchModeProps } from '../../../viewport';
+import { sectionPlanePoints, type SketchModeProps } from '../../../viewport';
 import { sketchPlaneBasis } from './planeBasis';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { resolveSketchFace, useKernelStore } from '../../store/kernelStore';
@@ -102,14 +106,6 @@ export interface FinishSummary {
 /** Base plane a new sketch can be created on (F2 plane selection). */
 export type SketchPlaneChoice = 'XY' | 'XZ' | 'YZ';
 
-/** Parameters for a datum (construction) plane created at sketch time (#5). */
-export interface DatumPlaneSpec {
-  readonly base: 'XY' | 'XZ' | 'YZ';
-  readonly offsetMm: number;
-  readonly tiltDeg: number;
-  readonly tiltAxis: 'X' | 'Y' | 'Z';
-}
-
 /** Which line the sketch Mirror reflects across (#2). */
 export type MirrorAxis = 'x' | 'y' | 'line';
 
@@ -156,7 +152,8 @@ export interface SketcherApi {
   readonly toggleConstruction: () => void;
   readonly newSketch: () => void;
   readonly choosePlane: (plane: SketchPlaneChoice) => void;
-  readonly chooseDatumPlane: (spec: DatumPlaneSpec) => void;
+  /** Create the new sketch on an existing construction plane (copy-on-use, #datum). */
+  readonly sketchOnDatum: (datumId: DatumId) => void;
   readonly cancelPlaneChoice: () => void;
   readonly beginFacePick: () => void;
   readonly cancelFacePick: () => void;
@@ -822,23 +819,21 @@ export function useSketcher(): SketcherApi {
     [createSketch]
   );
 
-  // Datum plane (#5): compute the world placement from base + offset + tilt and
-  // create the sketch on it (reuses the face-plane placement path downstream).
-  const chooseDatumPlane = useCallback(
-    (spec: DatumPlaneSpec) => {
-      const planeSnapshot = datumPlaneSnapshot(
-        spec.base,
-        spec.offsetMm,
-        spec.tiltDeg,
-        spec.tiltAxis
-      );
+  // Sketch on a construction plane (copy-on-use): resolve the plane's world
+  // placement from the datum collection and stamp it onto the sketch's datum
+  // ref, reusing the face/datum placement path downstream.
+  const sketchOnDatum = useCallback(
+    (datumId: DatumId) => {
+      const datum = getDatum(useDocumentStore.getState().document, datumId);
+      if (!datum || !isDatumPlane(datum)) return;
+      const w = datumPlaneWorld(datum);
       createSketch({
         kind: 'datum',
-        base: spec.base,
-        offsetMm: spec.offsetMm,
-        tiltDeg: spec.tiltDeg,
-        tiltAxis: spec.tiltAxis,
-        planeSnapshot,
+        base: datum.base,
+        offsetMm: datum.offsetMm,
+        tiltDeg: datum.tiltDeg,
+        tiltAxis: datum.tiltAxis,
+        planeSnapshot: { origin: w.origin, xAxis: w.xAxis, yAxis: w.yAxis },
       });
     },
     [createSketch]
@@ -965,7 +960,7 @@ export function useSketcher(): SketcherApi {
     toggleIntersect,
     newSketch,
     choosePlane,
-    chooseDatumPlane,
+    sketchOnDatum,
     cancelPlaneChoice,
     beginFacePick,
     cancelFacePick,

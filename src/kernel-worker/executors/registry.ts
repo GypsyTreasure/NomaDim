@@ -48,7 +48,7 @@ export const OP_EXECUTORS: Record<OpType, OpExecutor> = {
   },
 
   Mirror: (ctx, planOp) => {
-    if (planOp.op.type === 'Mirror') executeMirror(ctx, planOp.op);
+    if (planOp.op.type === 'Mirror') executeMirror(ctx, planOp.op, planOp.planeWorld);
   },
 
   Pattern: (ctx, planOp) => {

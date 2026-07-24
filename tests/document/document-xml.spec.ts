@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { BodyId, EntityId, OpId, PointId, ProfileId, SketchId } from '../../src/core/ids';
-import type { DocumentState, Sketch, TimelineOp } from '../../src/document';
+import type {
+  BodyId,
+  DatumId,
+  EntityId,
+  OpId,
+  PointId,
+  ProfileId,
+  SketchId,
+} from '../../src/core/ids';
+import type { Datum, DocumentState, Sketch, TimelineOp } from '../../src/document';
 import { documentFromXml, documentToXml } from '../../src/document';
 
 /**
@@ -141,12 +149,36 @@ const ops: TimelineOp[] = [
   },
 ];
 
+const datums: Datum[] = [
+  {
+    id: 'd1' as DatumId,
+    name: 'Plane1',
+    visible: true,
+    kind: 'plane',
+    base: 'XY',
+    offsetMm: 12.5,
+    tiltDeg: 30,
+    tiltAxis: 'X',
+  },
+  {
+    id: 'd2' as DatumId,
+    name: 'Axis1',
+    visible: false,
+    kind: 'axis',
+    base: 'Z',
+    offset: [1, -2, 3],
+    angleDeg: 45,
+    angleAxis: 'Y',
+  },
+];
+
 const doc: DocumentState = {
   sketches: [originSketch, faceSketch],
   ops,
   rollbackIndex: ops.length,
   bodyMeta: [{ id: body('b1'), name: 'Base Plate', color: '#ff0000', visible: false }],
   sketchMeta: [{ id: sk('s1'), visible: false }],
+  datums,
 };
 
 describe('document XML round-trip', () => {

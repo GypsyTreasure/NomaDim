@@ -30,7 +30,13 @@ test('pick a body face and sketch + extrude on it', async ({ page }) => {
   await page.getByTestId('plane-choice-face').click();
   await expect(page.getByTestId('face-pick-hint')).toBeVisible();
   await page.getByTestId('sketch-overlay').click(); // hits the box → resolve a planar face
-  // The sketch environment opens on the resolved face (Select default) — pick Circle.
+  // Wait until the sketch environment has actually opened on the resolved face
+  // (async worker round-trip) before typing — otherwise the 'c' keystroke can
+  // land before the sketch's key handler mounts and is lost.
+  await expect(page.getByRole('button', { name: 'Finish Sketch' })).toBeVisible({
+    timeout: 30_000,
+  });
+  // Select default — pick Circle.
   await page.keyboard.press('c');
   await expect(page.getByTestId('hud-field-diameter')).toBeVisible({ timeout: 30_000 });
   await page.keyboard.type('10');

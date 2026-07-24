@@ -147,7 +147,7 @@ export function SketchTransformControls({
               sketcher.patternSelection({ kind, count, spacingMm, dirAxis, angleDeg });
             }}
           >
-            {t('sketch.datum.create')}
+            {t('sketch.create')}
           </button>
         </>
       )}

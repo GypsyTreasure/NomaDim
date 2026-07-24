@@ -11,12 +11,17 @@ export {
   type FacePickProps,
 } from './Viewport';
 export type { SketchOverlayState } from './sketchOverlay';
+export {
+  createDatumObject,
+  type DatumRender,
+  type DatumPlaneRender,
+  type DatumAxisRender,
+} from './scene';
 export { VIEW_IDS, viewOrientation, type ViewId, type ViewOrientation } from './viewOrientation';
 export { type ProjectionMode } from './cameraRig';
 export { sectionPlanePoints } from './section';
 export {
   originPlaneBasis,
-  datumPlaneSnapshot,
   planeMapping,
   mappingFromBasis,
   type OriginPlaneId,

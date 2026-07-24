@@ -1,4 +1,4 @@
-import type { BodyId, EntityId, OpId, ProfileId, SketchId } from '../../core';
+import type { BodyId, DatumId, EntityId, OpId, ProfileId, SketchId } from '../../core';
 
 /**
  * Timeline operation model (MASTER_DOCUMENT F1/F3, ARCHITECTURE §7-§9).
@@ -160,6 +160,9 @@ export interface MirrorOp extends OpBase {
   readonly type: 'Mirror';
   readonly sourceBodyId: BodyId;
   readonly plane: OriginPlane;
+  /** Reflect across this construction plane instead of `plane` when set (#datum);
+   * resolved to a world plane in the plan resolver. Absent = the origin `plane`. */
+  readonly datumId?: DatumId;
   readonly operation: TransformOperation;
   readonly bodyId: BodyId;
 }

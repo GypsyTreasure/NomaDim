@@ -181,12 +181,21 @@ export function patternEntities(
   const taken = existingSketchIds(sketch);
   const points: SketchPoint[] = [];
   const entities: SketchEntity[] = [];
-  const steps = Math.max(0, Math.floor(spec.count) - 1);
+  const count = Math.max(1, Math.floor(spec.count));
+  const steps = count - 1;
+  // Full-turn circular arrays space evenly at 2π/count (Fusion parity) so the
+  // last copy never lands back on the source; partial sweeps stay inclusive.
+  const fullTurn = spec.kind === 'circular' && Math.abs(spec.totalAngleRad) >= 2 * Math.PI - 1e-6;
   for (let i = 1; i <= steps; i += 1) {
-    const xform =
-      spec.kind === 'linear'
-        ? (p: Vec2): Vec2 => add(p, vec2(spec.dx * i, spec.dy * i))
-        : (p: Vec2): Vec2 => rotateAbout(p, spec.center, (spec.totalAngleRad / steps) * i);
+    let xform: (p: Vec2) => Vec2;
+    if (spec.kind === 'linear') {
+      xform = (p: Vec2): Vec2 => add(p, vec2(spec.dx * i, spec.dy * i));
+    } else {
+      const stepRad = fullTurn
+        ? ((spec.totalAngleRad >= 0 ? 2 : -2) * Math.PI) / count
+        : spec.totalAngleRad / steps;
+      xform = (p: Vec2): Vec2 => rotateAbout(p, spec.center, stepRad * i);
+    }
     const delta = transformOnce(sketch, entityIds, xform, false, taken);
     points.push(...delta.points);
     entities.push(...delta.entities);

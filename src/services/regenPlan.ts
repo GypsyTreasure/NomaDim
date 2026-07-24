@@ -1,9 +1,11 @@
 import type { SketchId } from '../core';
 import {
+  datumAxisWorld,
   datumPlaneWorld,
   findSketch,
   getDatum,
   getEntity,
+  isDatumAxis,
   isDatumPlane,
   opDefinition,
   pointMap,
@@ -121,6 +123,12 @@ function resolveAxis(doc: DocumentState, op: RevolveOp): WorldAxis | undefined {
     const direction: Vec3 =
       axis.axis === 'X' ? [1, 0, 0] : axis.axis === 'Y' ? [0, 1, 0] : [0, 0, 1];
     return { origin: [0, 0, 0], direction };
+  }
+  if (axis.kind === 'datum') {
+    const datum = getDatum(doc, axis.datumId);
+    if (!datum || !isDatumAxis(datum)) return undefined;
+    const w = datumAxisWorld(datum);
+    return { origin: w.origin, direction: w.direction };
   }
   const entity = getEntity(sketch, axis.entityId);
   if (entity?.type !== 'line') return undefined;

@@ -85,15 +85,21 @@ const snapEngine = new SnapEngine();
 /** startX/startY fields appended to every tool (F2 start-point entry). */
 const START_FIELD_COUNT = 2;
 
-/** The typed start point (the last two coord fields), or null if either is unset. */
-function startPointOf(state: NumericInputState): Vec2 | null {
+/**
+ * The typed start point (the last two coord fields). Each axis takes effect the
+ * moment it's typed — a missing axis falls back to `fallback` (the live cursor),
+ * so typing just startX moves the anchor's X immediately instead of waiting for
+ * both fields (#5). Null only when NEITHER coordinate is set.
+ */
+function startPointOf(state: NumericInputState, fallback: Vec2): Vec2 | null {
   const n = state.fields.length;
   const xDef = state.fields[n - 2];
   const yDef = state.fields[n - 1];
   if (xDef?.id !== 'startX' || yDef?.id !== 'startY') return null;
   const x = parseField(xDef, state.values[n - 2] ?? '');
   const y = parseField(yDef, state.values[n - 1] ?? '');
-  return x !== null && y !== null ? vec2(x, y) : null;
+  if (x === null && y === null) return null;
+  return vec2(x ?? fallback.x, y ?? fallback.y);
 }
 
 /** World-space basis of a sketch's plane (origin plane, or a body-face snapshot). */
@@ -235,6 +241,10 @@ export function useSketcher(): SketcherApi {
   useEffect(() => {
     dimFirstRef.current = dimFirst;
   }, [dimFirst]);
+  // The first vertex of the active Line/Axis chain (#6): clicking back onto it
+  // closes the loop and ends the chain (Fusion parity). Cleared when the chain
+  // ends (commit-to-close, tool switch, Escape, Finish Sketch).
+  const lineStartRef = useRef<Vec2 | null>(null);
 
   // While dragging (Change tool), render the sketch with the grabbed point
   // moved to its live position; the command only fires on drop.
@@ -347,7 +357,7 @@ export function useSketcher(): SketcherApi {
     const transition = reduceInput(before, { type: 'enter' });
     setInputState(transition.state);
     if (transition.effect.kind === 'commit') {
-      const start = startPointOf(before);
+      const start = startPointOf(before, effectiveCursor);
       const shapeValues = transition.effect.values.slice(
         0,
         before.fields.length - START_FIELD_COUNT
@@ -362,6 +372,7 @@ export function useSketcher(): SketcherApi {
     setToolState(cleared);
     setInputState(initialInputState(fieldsForToolWithStart(cleared.tool, false)));
     setDimFirst(null);
+    lineStartRef.current = null; // Escape ends any open line chain (#6)
   }, [toolState]);
 
   const setFieldText = useCallback((index: number, text: string) => {
@@ -496,6 +507,34 @@ export function useSketcher(): SketcherApi {
         snap?.sourceRef.type === 'point'
           ? { p: snap.point, existing: snap.sourceRef.pointId }
           : { p: snap?.point ?? p };
+
+      // Line/Axis chain intuitiveness (#6): the free-shape chain is the one tool
+      // where stray clicks are easy. Two guards make it predictable —
+      //  (a) DEDUPE: a click landing on the current end point is ignored, so a
+      //      double-click or jittery click never lays down a zero-length stub.
+      //  (b) CLOSE-TO-FINISH: clicking back on the chain's first vertex commits
+      //      the closing segment (shared point → a real closed loop) AND ends
+      //      the chain, so the next click starts a fresh shape instead of
+      //      accidentally extending this one.
+      if (tool === 'line' || tool === 'axis') {
+        const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        const near = (a: Vec2, b: Vec2): boolean => Math.hypot(a.x - b.x, a.y - b.y) <= tolMm;
+        const anchor = toolState.chainAnchor?.p ?? null;
+        if (anchor && near(anchor, spec.p)) return; // (a) ignore repeat click
+        if (!anchor) {
+          lineStartRef.current = spec.p; // first vertex of a fresh chain
+        } else if (lineStartRef.current && near(lineStartRef.current, spec.p)) {
+          // (b) close the loop, then reset to a fresh (disarmed) chain.
+          applyStep(toolClick(toolState, spec));
+          setToolState((prev) => ({
+            ...initialToolState(prev.tool),
+            constructionMode: prev.constructionMode,
+          }));
+          setInputState(initialInputState(fieldsForToolWithStart(tool, false)));
+          lineStartRef.current = null;
+          return;
+        }
+      }
       applyStep(toolClick(toolState, spec));
     },
     [applyStep, liveSketch, snapResult, toolState]
@@ -539,6 +578,7 @@ export function useSketcher(): SketcherApi {
   const setTool = useCallback((tool: SketchToolId | null) => {
     useSessionStore.getState().setActiveTool(tool);
     setDimFirst(null); // switching tools cancels a half-placed dimension
+    lineStartRef.current = null; // and ends any open line chain (#6)
     setToolState((prev) => ({
       ...initialToolState(tool ?? 'line'),
       constructionMode: prev.constructionMode,
@@ -872,6 +912,7 @@ export function useSketcher(): SketcherApi {
   );
 
   const finishSketch = useCallback(() => {
+    lineStartRef.current = null;
     const current = liveSketch();
     if (!current) return;
     const detection = detectProfiles(current);
@@ -907,8 +948,10 @@ export function useSketcher(): SketcherApi {
     return [...dimensionRenders, preview];
   })();
 
-  // A typed start point arms the preview at those coordinates too (not just the commit).
-  const typedStart = startPointOf(inputState);
+  // A typed start point arms the preview at those coordinates too (not just the
+  // commit); each axis reacts as soon as it's typed (#5), the other axis
+  // tracking the cursor until filled.
+  const typedStart = startPointOf(inputState, effectiveCursor);
   const previewToolState = typedStart ? withStartPoint(toolState, typedStart) : toolState;
   const viewportSketchMode: SketchModeProps | null =
     sketch && basis

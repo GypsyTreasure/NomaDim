@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   createId,
   type BodyId,
+  type DatumId,
   type EntityId,
   type OpId,
   type ProfileId,
@@ -9,6 +10,7 @@ import {
 } from '../../../core';
 import {
   findSketch,
+  isDatumAxis,
   type BooleanOperation,
   type RevolveAxis,
   type RevolveOp,
@@ -38,14 +40,19 @@ import {
 import { usePreview } from './usePreview';
 import { t } from '../../i18n/t';
 
-/** Encodes a revolve axis as a stable select value ("origin:X" / "entity:<id>"). */
+/** Encodes a revolve axis as a stable select value ("origin:X" / "entity:<id>" / "datum:<id>"). */
 function axisValue(axis: RevolveAxis): string {
-  return axis.kind === 'origin' ? `origin:${axis.axis}` : `entity:${axis.entityId}`;
+  if (axis.kind === 'origin') return `origin:${axis.axis}`;
+  if (axis.kind === 'datum') return `datum:${axis.datumId}`;
+  return `entity:${axis.entityId}`;
 }
 
 function parseAxis(value: string): RevolveAxis {
   if (value === 'origin:X' || value === 'origin:Y' || value === 'origin:Z') {
     return { kind: 'origin', axis: value.slice('origin:'.length) as 'X' | 'Y' | 'Z' };
+  }
+  if (value.startsWith('datum:')) {
+    return { kind: 'datum', datumId: value.slice('datum:'.length) as DatumId };
   }
   return { kind: 'entity', entityId: value.slice('entity:'.length) as EntityId };
 }
@@ -100,12 +107,14 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     }
   };
 
-  // Axis (centerline) lines are offered first and named "Axis N"; plain lines
-  // remain valid revolve axes but sit after the origin axes.
+  // Only reference geometry is offered as a revolve axis (#3): centerline
+  // "Axis N" lines and X-toggled "Construction N" lines from the sketch, plus
+  // origin axes and reusable construction axes. Plain shape lines are hidden —
+  // they clutter the list and are rarely the intended axis.
   const axisOptions = useMemo<readonly SelectOption<string>[]>(() => {
     const sketch = sketchId ? findSketch(document, sketchId) : null;
     const axisOpts: SelectOption<string>[] = [];
-    const lineOpts: SelectOption<string>[] = [];
+    const constructionOpts: SelectOption<string>[] = [];
     for (const e of sketch?.entities ?? []) {
       if (e.type !== 'line') continue;
       if (e.axis) {
@@ -113,14 +122,17 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           value: `entity:${e.id}`,
           label: `${t('sketch.tool.axis')} ${String(axisOpts.length + 1)}`,
         });
-      } else {
-        lineOpts.push({
+      } else if (e.construction) {
+        constructionOpts.push({
           value: `entity:${e.id}`,
-          label: `${t('sketch.tool.line')} ${String(lineOpts.length + 1)}`,
+          label: `${t('sketch.construction')} ${String(constructionOpts.length + 1)}`,
         });
       }
     }
-    return [...axisOpts, ...ORIGIN_AXES, ...lineOpts];
+    const datumOpts = document.datums
+      .filter(isDatumAxis)
+      .map((d) => ({ value: `datum:${d.id}`, label: d.name }));
+    return [...axisOpts, ...constructionOpts, ...ORIGIN_AXES, ...datumOpts];
   }, [document, sketchId]);
 
   const toggle = (id: ProfileId): void => {

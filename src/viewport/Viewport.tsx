@@ -169,6 +169,7 @@ const EDGE_COLOR = 0x0d1b2a; // navy
 const EDGE_PICKED_COLOR = 0x1a6b5a; // teal
 const EDGE_HOVER_COLOR = 0x2fa78d; // bright teal
 const EDGE_PICK_THRESHOLD_MM = 2;
+const ORBIT_STEP_RAD = 0.3; // ~17° per orbit-widget nudge (#8)
 const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (tokens brand teal)
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
 const SECTION_CSS = '#7b5ea7'; // violet — body cross-section on the sketch plane (#1), distinct from teal/navy/amber
@@ -202,6 +203,8 @@ export function Viewport({
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const fitRequestRef = useRef<(() => void) | null>(null);
   const viewRequestRef = useRef<((id: ViewId) => void) | null>(null);
+  /** Orbit the camera by (Δazimuth, Δelevation) radians — desktop nav widget (#8). */
+  const orbitRequestRef = useRef<((dAzimuth: number, dElevation: number) => void) | null>(null);
   const projectionRequestRef = useRef<(() => void) | null>(null);
   const [projectionMode, setProjectionMode] = useState<ProjectionMode>('perspective');
   const bodyGroupRef = useRef<THREE.Group | null>(null);
@@ -393,6 +396,33 @@ export function Viewport({
         .addScaledVector(new THREE.Vector3(o.dir[0], o.dir[1], o.dir[2]), distance);
       camera.lookAt(controls.target);
       controls.update();
+    };
+
+    // Orbit the camera by fixed angular steps (desktop navigation widget #8):
+    // rotate the offset from the target around the world-up (azimuth) then the
+    // camera-right axis (elevation), keeping distance. Polar is clamped away
+    // from the poles so the view can't flip.
+    orbitRequestRef.current = (dAzimuth: number, dElevation: number) => {
+      if (sketchModeRef.current) return; // plane-locked while sketching
+      const offset = camera.position.clone().sub(controls.target);
+      const radius = offset.length();
+      if (radius < 1e-6) return;
+      const up = new THREE.Vector3(0, 0, 1); // world Z-up
+      let polar = Math.acos(THREE.MathUtils.clamp(offset.z / radius, -1, 1));
+      let azimuth = Math.atan2(offset.y, offset.x);
+      azimuth += dAzimuth;
+      polar = THREE.MathUtils.clamp(polar - dElevation, 0.08, Math.PI - 0.08);
+      const sinP = Math.sin(polar);
+      offset.set(
+        radius * sinP * Math.cos(azimuth),
+        radius * sinP * Math.sin(azimuth),
+        radius * Math.cos(polar)
+      );
+      camera.up.copy(up);
+      camera.position.copy(controls.target).add(offset);
+      camera.lookAt(controls.target);
+      controls.update();
+      requestRenderRef.current();
     };
 
     resize();
@@ -981,6 +1011,51 @@ export function Viewport({
       <div ref={hostRef} className={styles.canvasHost}>
         <canvas ref={overlayRef} className={styles.overlayCanvas} data-testid="sketch-overlay" />
       </div>
+      {sketchMode === null && (
+        <div className={styles.navWidget} data-testid="nav-widget" aria-label="Orbit view">
+          <button
+            type="button"
+            className={`${styles.navBtn ?? ''} ${styles.navUp ?? ''}`}
+            title="Orbit up"
+            onClick={() => orbitRequestRef.current?.(0, ORBIT_STEP_RAD)}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            className={`${styles.navBtn ?? ''} ${styles.navLeft ?? ''}`}
+            title="Orbit left"
+            onClick={() => orbitRequestRef.current?.(-ORBIT_STEP_RAD, 0)}
+          >
+            ◄
+          </button>
+          <button
+            type="button"
+            className={`${styles.navBtn ?? ''} ${styles.navHome ?? ''}`}
+            title="Home view (0)"
+            data-testid="nav-home"
+            onClick={() => viewRequestRef.current?.('home')}
+          >
+            ⌂
+          </button>
+          <button
+            type="button"
+            className={`${styles.navBtn ?? ''} ${styles.navRight ?? ''}`}
+            title="Orbit right"
+            onClick={() => orbitRequestRef.current?.(ORBIT_STEP_RAD, 0)}
+          >
+            ►
+          </button>
+          <button
+            type="button"
+            className={`${styles.navBtn ?? ''} ${styles.navDown ?? ''}`}
+            title="Orbit down"
+            onClick={() => orbitRequestRef.current?.(0, -ORBIT_STEP_RAD)}
+          >
+            ▼
+          </button>
+        </div>
+      )}
       {viewBarOpen && (
         <div className={styles.overlay}>
           <button

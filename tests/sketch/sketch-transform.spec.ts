@@ -128,6 +128,21 @@ describe('patternEntities (#2)', () => {
     expect(at180).toBeDefined();
   });
 
+  it('circular full turn spaces at 2π/count so no copy lands on the source (#2)', () => {
+    const sketch = sampleSketch(); // circle centre at (10,10)
+    const delta = patternEntities(sketch, new Set([eid('ci1')]), {
+      kind: 'circular',
+      count: 4,
+      center: vec2(0, 0),
+      totalAngleRad: 2 * Math.PI, // full ring → step 90°, copies at 90/180/270 only
+    });
+    expect(delta.points).toHaveLength(3);
+    // None of the copies may coincide with the source centre (the old bug).
+    for (const p of delta.points) {
+      expect(Math.hypot(p.x - 10, p.y - 10)).toBeGreaterThan(1e-6);
+    }
+  });
+
   it('count of 1 produces nothing', () => {
     const sketch = sampleSketch();
     const delta = patternEntities(sketch, new Set([eid('ci1')]), {

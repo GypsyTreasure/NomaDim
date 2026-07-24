@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ProfileId } from '../../../core';
 import type { SketchProfile } from '../../../sketch';
@@ -6,6 +7,10 @@ import styles from './Timeline.module.css';
 
 /** Reusable form pieces shared by the Extrude/Revolve dialogs. */
 
+/** Default op-dialog position (px from top-left) — a consistent upper-left
+ * anchor that leaves the centred model visible and orbitable behind it (#7). */
+const DIALOG_DEFAULT = { x: 20, y: 88 };
+
 export function DialogFrame(props: {
   title: string;
   okDisabled: boolean;
@@ -13,13 +18,54 @@ export function DialogFrame(props: {
   onCancel: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
+  // Draggable by its title bar (#4): starts at the same anchor every open, then
+  // the user can move it anywhere to see the model. Position is clamped into
+  // view on each move so it can't be lost off-screen.
+  const [pos, setPos] = useState(DIALOG_DEFAULT);
+  const drag = useRef<{ dx: number; dy: number } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent): void => {
+    drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent): void => {
+    if (!drag.current) return;
+    const maxX = window.innerWidth - 80;
+    const maxY = window.innerHeight - 40;
+    setPos({
+      x: Math.min(Math.max(0, e.clientX - drag.current.dx), maxX),
+      y: Math.min(Math.max(0, e.clientY - drag.current.dy), maxY),
+    });
+  };
+  const endDrag = (e: React.PointerEvent): void => {
+    drag.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
+
   // Rendered through a portal to <body> so the dialog sizes against the whole
   // viewport, not whatever small container hosts the button (e.g. the Export
   // button lives in the compact actions menu, which clipped it to a few px).
+  // The backdrop is pointer-events:none so the viewport behind stays orbitable.
   return createPortal(
     <div className={styles.dialogBackdrop}>
-      <div className={styles.dialog} role="dialog" aria-label={props.title}>
-        <h2 className={styles.dialogTitle}>{props.title}</h2>
+      <div
+        className={styles.dialog}
+        role="dialog"
+        aria-label={props.title}
+        style={{ position: 'absolute', left: pos.x, top: pos.y, margin: 0 }}
+      >
+        <h2
+          className={styles.dialogTitle}
+          style={{ cursor: 'move', touchAction: 'none' }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        >
+          {props.title}
+        </h2>
         <div className={styles.dialogBody}>{props.children}</div>
         <div className={styles.dialogButtons}>
           <button type="button" className={styles.button} onClick={props.onCancel}>

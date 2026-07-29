@@ -40,9 +40,12 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
+import { parseReferenceFile } from '../../../sketch';
 import { sectionPlanePoints, type SketchModeProps } from '../../../viewport';
 import { sketchPlaneBasis } from './planeBasis';
+import { addImportedPrimitives } from './importGeometry';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
+import { pushToast } from '../../store/toastStore';
 import { resolveSketchFace, useKernelStore } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { t } from '../../i18n/t';
@@ -165,6 +168,8 @@ export interface SketcherApi {
   readonly cancelFacePick: () => void;
   readonly pickFace: (bodyId: BodyId, point: readonly [number, number, number]) => void;
   readonly finishSketch: () => void;
+  /** Import SVG/DXF reference geometry into the active sketch (#2). */
+  readonly importReference: (fileName: string, text: string) => void;
   /** Delete the currently selected sketch entities (touch affordance for the Delete key). */
   readonly deleteSelection: () => void;
   /** Mirror the selected entities across the sketch X/Y axis or a selected line (#2). */
@@ -960,6 +965,32 @@ export function useSketcher(): SketcherApi {
     finishRef.current = finishSketch;
   }, [finishSketch]);
 
+  // Import SVG/DXF reference geometry into the active sketch (#2, ADR-0076):
+  // parse to neutral primitives → add as construction (reference) entities via
+  // the same AddSketchGeometry path, so every vertex is snappable and each
+  // shape is selectable. Warnings surface as a toast.
+  const importReference = useCallback(
+    (fileName: string, text: string) => {
+      const current = liveSketch();
+      if (!current) return;
+      const { primitives, warnings } = parseReferenceFile(fileName, text);
+      if (primitives.length > 0) {
+        const plan = new GeometryPlan(current);
+        addImportedPrimitives(plan, primitives);
+        commandBus.dispatch({
+          type: 'AddSketchGeometry',
+          payload: { sketchId: current.id, ...plan.payload },
+        });
+      }
+      if (warnings.length > 0) {
+        pushToast(warnings.join(' '), primitives.length > 0 ? 'info' : 'error');
+      } else {
+        pushToast(`${t('sketch.import.done')} ${String(primitives.length)}`, 'info');
+      }
+    },
+    [liveSketch]
+  );
+
   // While the Dim tool is armed, add a live preview annotation from the first
   // point to the cursor so the user sees the measurement before committing.
   const overlayDimensions: DimensionRender[] = (() => {
@@ -1042,6 +1073,7 @@ export function useSketcher(): SketcherApi {
     cancelFacePick,
     pickFace,
     finishSketch,
+    importReference,
     mirrorSelection,
     patternSelection,
     mirrorLineAvailable,

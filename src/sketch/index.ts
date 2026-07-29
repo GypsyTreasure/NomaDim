@@ -6,6 +6,13 @@
  */
 export * from './entities/curves';
 export { sampleSpline, SPLINE_SAMPLES_PER_SPAN } from './entities/spline';
+export {
+  parseReferenceFile,
+  parseSvg,
+  parseDxf,
+  type ImportPrimitive,
+  type ImportResult,
+} from './import';
 export * from './entities/queries';
 export * from './entities/topology';
 export * from './snap/types';

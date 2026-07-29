@@ -29,3 +29,4 @@ export type {
 } from './protocol';
 export type { EdgeFingerprint } from '../document';
 export { edgeFingerprintKey } from './edgeKey';
+export type { WasmLoadProgress } from './wasmLoader';

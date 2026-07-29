@@ -1,7 +1,12 @@
 import type { BodyId, OpId } from '../core';
 import { findSketch, opDefinition, type DocumentState } from '../document';
 import type { KernelClient } from '../kernel';
-import { StaleRegenError, type MeshTransfer, type OpStatusReport } from '../kernel';
+import {
+  StaleRegenError,
+  type MeshTransfer,
+  type OpStatusReport,
+  type WasmLoadProgress,
+} from '../kernel';
 import type { CommandBus } from './CommandBus';
 import { buildRegenPlan } from './regenPlan';
 
@@ -73,9 +78,13 @@ export class RegenScheduler {
     this.prevDoc = getDocument();
   }
 
-  /** Boots the worker, runs an initial full regen, then tracks every edit. */
-  async start(): Promise<void> {
-    await this.client.init();
+  /** Boots the worker, runs an initial full regen, then tracks every edit.
+   * `options` carry the WASM base URL + a download-progress callback (M8). */
+  async start(options?: {
+    baseUrl?: string;
+    onProgress?: (progress: WasmLoadProgress) => void;
+  }): Promise<void> {
+    await this.client.init(options?.baseUrl, options?.onProgress);
     const initial = this.getDocument();
     this.prevDoc = initial;
     await this.runRegen(initial, 0);

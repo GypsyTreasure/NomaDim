@@ -1,0 +1,25 @@
+{
+  "name": "NomaDim — Parametric 3D CAD",
+  "short_name": "NomaDim",
+  "description": "Browser-based parametric 3D CAD for 3D-printing enthusiasts. Sketch, extrude, and export STL/STEP — entirely in your browser.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0D1B2A",
+  "theme_color": "#0D1B2A",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "brand/logomark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

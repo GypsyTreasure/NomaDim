@@ -7,7 +7,14 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules', 'coverage', 'playwright-report', 'public/wasm'],
+    ignores: [
+      'dist',
+      'node_modules',
+      'coverage',
+      'playwright-report',
+      'public/wasm',
+      'public/sw.js',
+    ],
   },
   {
     files: ['**/*.{ts,tsx}'],

@@ -43,7 +43,7 @@ import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
 import { useTimeline } from './features/timeline/useTimeline';
 import { t } from './i18n/t';
-import { startRegen, useKernelStore } from './store/kernelStore';
+import { scheduleKernelBoot, useKernelStore } from './store/kernelStore';
 import { useDocumentStore } from './store/documentStore';
 import { useSessionStore } from './store/sessionStore';
 import { useGlobalShortcuts } from './useGlobalShortcuts';
@@ -59,6 +59,7 @@ export function App(): React.JSX.Element {
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const kernelError = useKernelStore((s) => s.error);
   const kernelReady = useKernelStore((s) => s.ready);
+  const kernelLoadProgress = useKernelStore((s) => s.loadProgress);
   const previewGhosts = usePreviewStore((s) => s.ghosts);
   useOpErrorToasts(); // §7: failed op → toast (the red chip is the other half)
 
@@ -122,7 +123,9 @@ export function App(): React.JSX.Element {
   // the scheduler's initial regen rebuilds bodies from the restored timeline.
   useEffect(() => {
     restorePersistedDocument();
-    startRegen();
+    // Defer the multi-MB WASM boot to idle so the shell + empty viewport paint
+    // first (M8 lazy kernel). Restore stays synchronous and ordered before it.
+    scheduleKernelBoot();
     return startAutosave();
   }, []);
 
@@ -190,9 +193,19 @@ export function App(): React.JSX.Element {
     <div className={styles.shell}>
       {!kernelReady && !kernelError && (
         <div className={styles.kernelLoading} data-testid="kernel-loading" role="status">
-          <span className={styles.kernelLoadingLabel}>{t('kernel.loading')}</span>
+          <span className={styles.kernelLoadingLabel}>
+            {t('kernel.loading')}
+            {kernelLoadProgress > 0 && ` ${String(Math.round(kernelLoadProgress * 100))}%`}
+          </span>
           <div className={styles.kernelLoadingTrack}>
-            <div className={styles.kernelLoadingBar} />
+            {kernelLoadProgress > 0 ? (
+              <div
+                className={styles.kernelLoadingBarDeterminate}
+                style={{ width: `${String(Math.round(kernelLoadProgress * 100))}%` }}
+              />
+            ) : (
+              <div className={styles.kernelLoadingBar} />
+            )}
           </div>
         </div>
       )}

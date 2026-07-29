@@ -144,7 +144,11 @@ export interface OpStatusReport {
 }
 
 export type KernelRequest =
-  | { id: ReqId; kind: 'init' }
+  /** `wasmBinary`, when present, is the pre-fetched + decompressed OCCT module
+   * (M8): the main thread downloads/gunzips it and transfers it here so
+   * emscripten instantiates from memory instead of re-fetching 50 MB. Absent →
+   * the worker loads via its own `locateFile` fetch (fallback). */
+  | { id: ReqId; kind: 'init'; wasmBinary?: ArrayBuffer }
   | { id: ReqId; kind: 'regen'; generation: number; fromIndex: number; plan: RegenPlan }
   | { id: ReqId; kind: 'bodyEdges'; bodyIds: BodyId[] }
   | { id: ReqId; kind: 'resolveFace'; bodyId: BodyId; point: readonly [number, number, number] }

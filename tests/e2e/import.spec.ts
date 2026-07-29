@@ -29,3 +29,31 @@ test('import an SVG into a sketch and see the confirmation toast', async ({ page
   const toast = page.getByTestId('toast');
   await expect(toast).toContainText('Imported reference shapes: 2');
 });
+
+test('import a DXF whose geometry is inside a block (INSERT)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
+  await expect(page.getByRole('button', { name: 'Finish Sketch' })).toBeVisible();
+
+  // A block "B" holding two lines, INSERTed once — the common real-world shape
+  // (AutoCAD keeps geometry in blocks). The importer must resolve the INSERT.
+  const dxf = [
+    '0', 'SECTION', '2', 'BLOCKS',
+    '0', 'BLOCK', '2', 'B', '10', '0', '20', '0',
+    '0', 'LINE', '10', '0', '20', '0', '11', '10', '21', '0',
+    '0', 'LINE', '10', '10', '20', '0', '11', '10', '21', '10',
+    '0', 'ENDBLK',
+    '0', 'ENDSEC',
+    '0', 'SECTION', '2', 'ENTITIES',
+    '0', 'INSERT', '2', 'B', '10', '5', '20', '5',
+    '0', 'ENDSEC', '0', 'EOF',
+  ].join('\n'); // prettier-ignore
+  await page.getByTestId('sketch-import-input').setInputFiles({
+    name: 'part.dxf',
+    mimeType: 'image/vnd.dxf',
+    buffer: Buffer.from(dxf, 'utf-8'),
+  });
+
+  await expect(page.getByTestId('toast')).toContainText('Imported reference shapes: 2');
+});

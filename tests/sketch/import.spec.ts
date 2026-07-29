@@ -166,6 +166,63 @@ describe('parseDxf', () => {
     expect(primitives).toEqual([]);
     expect(warnings.some((w) => w.includes('TEXT'))).toBe(true);
   });
+
+  it('emits an entity exactly once (regression: ENDSEC double-push)', () => {
+    const doc = ['0', 'SECTION', '2', 'ENTITIES', '0', 'LINE', '10', '0', '20', '0', '11', '5', '21', '0', '0', 'ENDSEC', '0', 'EOF'].join('\n'); // prettier-ignore
+    const { primitives } = parseDxf(doc);
+    expect(primitives).toHaveLength(1);
+  });
+
+  it('resolves an INSERT of a block with translation and rotation', () => {
+    // Block "B" holds a unit line (0,0)-(1,0); insert it at (10,20) rotated 90°.
+    const doc = [
+      '0', 'SECTION', '2', 'BLOCKS',
+      '0', 'BLOCK', '2', 'B', '10', '0', '20', '0',
+      '0', 'LINE', '10', '0', '20', '0', '11', '1', '21', '0',
+      '0', 'ENDBLK',
+      '0', 'ENDSEC',
+      '0', 'SECTION', '2', 'ENTITIES',
+      '0', 'INSERT', '2', 'B', '10', '10', '20', '20', '50', '90',
+      '0', 'ENDSEC', '0', 'EOF',
+    ].join('\n'); // prettier-ignore
+    const { primitives, warnings } = parseDxf(doc);
+    expect(warnings).toEqual([]);
+    expect(primitives).toHaveLength(1);
+    const line = primitives.find((p) => p.kind === 'line');
+    expect(line?.a.x).toBeCloseTo(10);
+    expect(line?.a.y).toBeCloseTo(20);
+    // (1,0) rotated 90° about the insert point → (0,1) offset → (10,21).
+    expect(line?.b.x).toBeCloseTo(10);
+    expect(line?.b.y).toBeCloseTo(21);
+  });
+
+  it('tessellates an ELLIPSE into a closed polyline', () => {
+    const doc = [
+      '0', 'SECTION', '2', 'ENTITIES',
+      '0', 'ELLIPSE', '10', '0', '20', '0', '11', '5', '21', '0', '40', '0.5', '41', '0', '42', '6.283185307',
+      '0', 'ENDSEC', '0', 'EOF',
+    ].join('\n'); // prettier-ignore
+    const { primitives } = parseDxf(doc);
+    const poly = primitives.find((p) => p.kind === 'polyline');
+    expect(poly?.closed).toBe(true);
+    expect(poly?.points.length).toBeGreaterThanOrEqual(16);
+    // Major-axis endpoint (t=0) sits at (5,0).
+    expect(poly?.points[0]?.x).toBeCloseTo(5);
+    expect(poly?.points[0]?.y).toBeCloseTo(0);
+  });
+
+  it('samples a bulged LWPOLYLINE segment into an arc', () => {
+    // Two vertices with bulge 1 → a 180° arc dipping below the chord.
+    const doc = [
+      '0', 'SECTION', '2', 'ENTITIES',
+      '0', 'LWPOLYLINE', '70', '0', '10', '0', '20', '0', '42', '1', '10', '10', '20', '0',
+      '0', 'ENDSEC', '0', 'EOF',
+    ].join('\n'); // prettier-ignore
+    const { primitives } = parseDxf(doc);
+    const poly = primitives.find((p) => p.kind === 'polyline');
+    expect(poly?.points.length).toBeGreaterThan(10); // arc-sampled, not 2 points
+    expect(poly?.points.some((p) => Math.abs(p.y) > 1)).toBe(true); // bulges off the chord
+  });
 });
 
 describe('parseReferenceFile', () => {

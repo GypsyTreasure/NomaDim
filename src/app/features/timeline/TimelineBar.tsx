@@ -1,7 +1,8 @@
 import type { OpRunStatus } from '../../../kernel';
 import type { OpType, TimelineOp } from '../../../document';
 import { t } from '../../i18n/t';
-import { useDocumentStore } from '../../store/documentStore';
+import { withShortcut } from '../help/shortcuts';
+import { useOpAvailability } from './opAvailability';
 import { CREATABLE_OP_TYPES, OP_FEATURES } from './registry';
 import type { TimelineApi } from './useTimeline';
 import styles from './Timeline.module.css';
@@ -108,7 +109,7 @@ export function TimelineBar({
   timeline: TimelineApi;
   onNewSketch: () => void;
 }): React.JSX.Element {
-  const hasSketch = useDocumentStore((s) => s.document.sketches.length > 0);
+  const availabilityOf = useOpAvailability();
   return (
     <div className={styles.bar} data-testid="timeline-bar">
       <div className={styles.createRow}>
@@ -116,25 +117,34 @@ export function TimelineBar({
         <button
           type="button"
           className={`${styles.button ?? ''} ${styles.buttonPrimary ?? ''}`}
-          title="N"
+          title={withShortcut(t('sketch.newSketch'), 'N')}
           onClick={onNewSketch}
         >
           {t('sketch.newSketch')}
         </button>
-        {CREATABLE_OP_TYPES.map((type) => (
-          <button
-            key={type}
-            type="button"
-            className={styles.button}
-            title={OP_SHORTCUT[type]}
-            disabled={!hasSketch}
-            onClick={() => {
-              timeline.openCreate(type);
-            }}
-          >
-            {t(OP_FEATURES[type].labelKey)}
-          </button>
-        ))}
+        {CREATABLE_OP_TYPES.map((type) => {
+          const availability = availabilityOf(type);
+          const label = t(OP_FEATURES[type].labelKey);
+          // Enabled → "Label (Shortcut)"; disabled → the unmet-precondition
+          // reason, so hovering a greyed op explains why (M9: no dead buttons).
+          const title = availability.available
+            ? withShortcut(label, OP_SHORTCUT[type])
+            : t(availability.reasonKey ?? 'guard.needSketch');
+          return (
+            <button
+              key={type}
+              type="button"
+              className={styles.button}
+              title={title}
+              disabled={!availability.available}
+              onClick={() => {
+                timeline.openCreate(type);
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
       <div className={styles.chips}>
         {timeline.ops.map((op, index) => (

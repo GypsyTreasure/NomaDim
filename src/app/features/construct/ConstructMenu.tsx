@@ -1,5 +1,6 @@
 import { useConstructStore } from '../../store/constructStore';
 import { t } from '../../i18n/t';
+import { withShortcut } from '../help/shortcuts';
 import sketcherStyles from '../sketcher/Sketcher.module.css';
 
 /**
@@ -14,7 +15,7 @@ export function ConstructMenu(): React.JSX.Element {
       <button
         type="button"
         className={sketcherStyles.button}
-        title="G"
+        title={withShortcut(t('construct.plane'), 'G')}
         data-testid="construct-plane"
         onClick={() => {
           openCreate('plane');
@@ -25,7 +26,7 @@ export function ConstructMenu(): React.JSX.Element {
       <button
         type="button"
         className={sketcherStyles.button}
-        title="J"
+        title={withShortcut(t('construct.axis'), 'J')}
         data-testid="construct-axis"
         onClick={() => {
           openCreate('axis');

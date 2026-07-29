@@ -29,6 +29,7 @@ import { useMeasure } from './features/measure/useMeasure';
 import { DocumentIO } from './features/document-io/DocumentIO';
 import { ImportStepButton } from './features/document-io/ImportStepButton';
 import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
+import { withShortcut } from './features/help/shortcuts';
 import { OnboardingHint } from './features/onboarding/OnboardingHint';
 import { Toaster } from './features/toast/Toaster';
 import { useOpErrorToasts } from './features/toast/useOpErrorToasts';
@@ -320,7 +321,7 @@ export function App(): React.JSX.Element {
               >
                 <button
                   type="button"
-                  title="M"
+                  title={withShortcut(t('measure.toggle'), 'M')}
                   className={
                     measure.active
                       ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
@@ -338,7 +339,7 @@ export function App(): React.JSX.Element {
                 <button
                   type="button"
                   className={sketcherStyles.button}
-                  title="?"
+                  title={withShortcut(t('help.openButton'), '?')}
                   data-testid="shortcuts-open"
                   onClick={() => {
                     setHelpOpen(true);
@@ -347,8 +348,18 @@ export function App(): React.JSX.Element {
                   {t('help.openButton')}
                 </button>
                 {kernelError && (
-                  <span className={sketcherStyles.summary}>
-                    {t('kernel.status.error')} {kernelError}
+                  <span className={sketcherStyles.summary} role="alert">
+                    {t('kernel.status.error')} {kernelError}{' '}
+                    <button
+                      type="button"
+                      className={sketcherStyles.button}
+                      data-testid="kernel-reload"
+                      onClick={() => {
+                        window.location.reload();
+                      }}
+                    >
+                      {t('kernel.reload')}
+                    </button>
                   </span>
                 )}
               </div>

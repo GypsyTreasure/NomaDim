@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n/t';
+import { withShortcut } from '../help/shortcuts';
 import { useDocumentStore } from '../../store/documentStore';
 import { pushToast } from '../../store/toastStore';
 import { downloadDocument, loadDocumentText } from './documentIO';
@@ -54,7 +55,7 @@ export function DocumentIO(): React.JSX.Element {
       <button
         type="button"
         className={styles.button}
-        title="Ctrl+S"
+        title={withShortcut(t('io.save'), 'Ctrl+S')}
         onClick={save}
         data-testid="doc-save"
       >
@@ -63,7 +64,7 @@ export function DocumentIO(): React.JSX.Element {
       <button
         type="button"
         className={styles.button}
-        title="Ctrl+O"
+        title={withShortcut(t('io.open'), 'Ctrl+O')}
         onClick={() => inputRef.current?.click()}
         data-testid="doc-open"
       >

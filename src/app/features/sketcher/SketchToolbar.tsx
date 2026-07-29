@@ -1,6 +1,7 @@
 import type { SketchToolId } from '../../../sketch';
 import type { TranslationKey } from '../../i18n/en';
 import { t } from '../../i18n/t';
+import { withShortcut } from '../help/shortcuts';
 import { useSessionStore } from '../../store/sessionStore';
 import type { DimensionToolKind, SketcherApi } from './useSketcher';
 import { SketchImportButton } from './SketchImportButton';
@@ -88,7 +89,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={`${styles.button ?? ''} ${styles.primaryAction ?? ''}`}
-        title="F"
+        title={withShortcut(t('sketch.finish'), 'F')}
         data-testid="finish-sketch"
         onClick={sketcher.finishSketch}
       >
@@ -97,7 +98,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={buttonClass(sketcher.tool === null)}
-        title="S"
+        title={withShortcut(t('sketch.tool.select'), 'S')}
         onClick={() => {
           sketcher.setTool(null);
         }}
@@ -107,7 +108,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={buttonClass(sketcher.tool === 'change')}
-        title={TOOL_SHORTCUT.change}
+        title={withShortcut(t('sketch.tool.change'), TOOL_SHORTCUT.change)}
         onClick={() => {
           sketcher.setTool('change');
         }}
@@ -117,7 +118,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={buttonClass(sketcher.tool === 'dimension')}
-        title={TOOL_SHORTCUT.dimension}
+        title={withShortcut(t('sketch.tool.dimension'), TOOL_SHORTCUT.dimension)}
         onClick={() => {
           sketcher.setTool('dimension');
         }}
@@ -146,7 +147,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
           key={tool}
           type="button"
           className={buttonClass(sketcher.tool === tool)}
-          title={TOOL_SHORTCUT[tool]}
+          title={withShortcut(t(TOOL_LABEL_KEYS[tool]), TOOL_SHORTCUT[tool])}
           onClick={() => {
             sketcher.setTool(tool);
           }}
@@ -157,7 +158,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={buttonClass(sketcher.constructionMode)}
-        title="X"
+        title={withShortcut(t('sketch.construction'), 'X')}
         onClick={sketcher.toggleConstruction}
       >
         {t('sketch.construction')}
@@ -165,7 +166,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
       <button
         type="button"
         className={buttonClass(snapEnabled)}
-        title="Q"
+        title={withShortcut(t('sketch.snap'), 'Q')}
         onClick={() => {
           setSnapEnabled(!snapEnabled);
         }}

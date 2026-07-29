@@ -16,7 +16,7 @@ Non-goals (v1): assemblies, drawings, CAM, slicer integration, surfacing, sheet 
 ## 2. Hard constraints
 
 - **C1** Runs 100% locally in modern Chromium/Firefox (WASM + WebGL2). No server calls after page load.
-- **C2** Deployable to GitHub Pages (free tier): static files only, no custom headers → **single-threaded OCCT WASM build** (no SharedArrayBuffer).
+- **C2** Deployable to GitHub Pages (free tier): static files only, no custom headers → **single-threaded OCCT WASM build** (no SharedArrayBuffer). **Delivery (M8, ADR-0078):** the kernel ships as a build-time gzip (`opencascade.full.wasm.gzc`, ~50 MB → ~13 MB) fetched with a real progress bar and gunzipped in-browser via native `DecompressionStream` (the raw `.wasm` is never downloaded); the kernel boots on idle so the shell + empty viewport paint first; a service worker + web manifest make repeat/offline visits instant and the app installable. A trimmed OCCT build (< 8 MB) is the outstanding follow-up (needs an emscripten toolchain).
 - **C3** Max **100 bodies** per session. Enforced with warning at 90, hard stop at 100.
 - **C4** Operation names match Fusion 360 terminology exactly (Extrude, Revolve, Fillet, Chamfer, Combine).
 - **C5** All session state serializable to XML and restorable losslessly (parametric replay, not baked meshes).

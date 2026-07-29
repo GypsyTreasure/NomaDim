@@ -12,6 +12,7 @@ import type {
   RegenPlan,
   ReqId,
 } from './protocol';
+import { loadOcctWasmBinary, type WasmLoadProgress } from './wasmLoader';
 
 export interface StlExportRequest {
   bodyIds: BodyId[];
@@ -63,8 +64,20 @@ export class KernelClient {
     };
   }
 
-  async init(): Promise<void> {
-    const response = await this.send({ id: this.nextId(), kind: 'init' });
+  /**
+   * Boots the kernel. Pre-fetches + decompresses the OCCT WASM on the main
+   * thread (streaming `onProgress`) and transfers the bytes to the worker so it
+   * instantiates from memory; on any failure the worker fetches the plain
+   * `.wasm` itself (fallback). `baseUrl` is `import.meta.env.BASE_URL`.
+   */
+  async init(baseUrl = '/', onProgress?: (progress: WasmLoadProgress) => void): Promise<void> {
+    const wasmBinary = (await loadOcctWasmBinary(baseUrl, onProgress)) ?? undefined;
+    const transfer = wasmBinary ? [wasmBinary] : [];
+    const response = await this.send(
+      { id: this.nextId(), kind: 'init', wasmBinary },
+      undefined,
+      transfer
+    );
     if (response.kind === 'ok' && response.result.of === 'init') return;
     throw new InternalError('Unexpected response to "init" request');
   }
@@ -199,11 +212,12 @@ export class KernelClient {
 
   private send(
     request: KernelRequest,
-    onProgress?: (opIndex: number) => void
+    onProgress?: (opIndex: number) => void,
+    transfer: Transferable[] = []
   ): Promise<KernelResponse> {
     return new Promise((resolve, reject) => {
       this.pending.set(request.id, { resolve, reject, onProgress });
-      this.worker.postMessage(request);
+      this.worker.postMessage(request, transfer);
     });
   }
 

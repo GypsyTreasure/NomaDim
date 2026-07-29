@@ -26,10 +26,13 @@ interface KernelStore {
   readonly liveBodyIds: readonly BodyId[];
   readonly ready: boolean;
   readonly error: string | null;
+  /** WASM download fraction 0..1 (M8), for the determinate loading bar. */
+  readonly loadProgress: number;
   readonly __applyOutcome: (outcome: RegenOutcome) => void;
   readonly __setReady: () => void;
   readonly __setError: (message: string) => void;
   readonly __setBodyEdges: (bodyEdges: BodyEdges[]) => void;
+  readonly __setLoadProgress: (ratio: number) => void;
 }
 
 const EMPTY_STATUSES: ReadonlyMap<OpId, OpStatusReport> = new Map();
@@ -41,6 +44,7 @@ export const useKernelStore = create<KernelStore>((set) => ({
   liveBodyIds: [],
   ready: false,
   error: null,
+  loadProgress: 0,
   __applyOutcome: (outcome) => {
     set({
       bodies: outcome.meshes,
@@ -59,6 +63,9 @@ export const useKernelStore = create<KernelStore>((set) => ({
   },
   __setBodyEdges: (bodyEdges) => {
     set({ bodyEdges });
+  },
+  __setLoadProgress: (ratio) => {
+    set({ loadProgress: ratio });
   },
 }));
 
@@ -108,14 +115,42 @@ export function startRegen(): void {
   scheduler.onRegen((outcome) => {
     useKernelStore.getState().__applyOutcome(outcome);
   });
-  scheduler.start().then(
-    () => {
-      useKernelStore.getState().__setReady();
-    },
-    (error: unknown) => {
-      useKernelStore.getState().__setError(error instanceof Error ? error.message : String(error));
-    }
-  );
+  scheduler
+    .start({
+      baseUrl: import.meta.env.BASE_URL,
+      onProgress: (progress) => {
+        useKernelStore.getState().__setLoadProgress(progress.ratio);
+      },
+    })
+    .then(
+      () => {
+        useKernelStore.getState().__setReady();
+      },
+      (error: unknown) => {
+        useKernelStore
+          .getState()
+          .__setError(error instanceof Error ? error.message : String(error));
+      }
+    );
+}
+
+/**
+ * Schedules the kernel boot for the browser's idle time (M8 lazy kernel), so
+ * first paint + the empty viewport aren't competing with the multi-MB WASM
+ * download. Falls back to a short timeout where `requestIdleCallback` is
+ * unavailable, and a modeling action can still call `startRegen()` directly to
+ * boot immediately. Idempotent.
+ */
+export function scheduleKernelBoot(): void {
+  if (started) return;
+  const boot = (): void => {
+    startRegen();
+  };
+  const ric = (
+    globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void }
+  ).requestIdleCallback;
+  if (typeof ric === 'function') ric(boot, { timeout: 1500 });
+  else setTimeout(boot, 200);
 }
 
 /** The live kernel client (STL export, stats) — null until `startRegen()`. */

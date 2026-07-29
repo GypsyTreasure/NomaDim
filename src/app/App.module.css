@@ -118,3 +118,14 @@
     left: 100%;
   }
 }
+
+/* Determinate variant (M8): width driven by the WASM download fraction. */
+.kernelLoadingBarDeterminate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-pill);
+  transition: width 0.2s ease-out;
+}

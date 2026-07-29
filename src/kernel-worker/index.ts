@@ -50,8 +50,8 @@ function respond(response: KernelResponse, transfer?: Transferable[]): void {
   self.postMessage(response, transfer ?? []);
 }
 
-async function ensureOcct(): Promise<OpenCascadeInstance> {
-  occtInstance ??= await loadOcct();
+async function ensureOcct(wasmBinary?: ArrayBuffer): Promise<OpenCascadeInstance> {
+  occtInstance ??= await loadOcct(wasmBinary);
   return occtInstance;
 }
 
@@ -256,7 +256,7 @@ async function handleRequest(request: KernelRequest): Promise<void> {
   try {
     switch (request.kind) {
       case 'init': {
-        await ensureOcct();
+        await ensureOcct(request.wasmBinary);
         respond({ id: request.id, kind: 'ok', result: { of: 'init' } });
         return;
       }

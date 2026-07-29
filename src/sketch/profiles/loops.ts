@@ -59,6 +59,8 @@ function reverseSegment(segment: LoopSegment): LoopSegment {
       return { kind: 'arc', a: segment.b, b: segment.a, center: segment.center, ccw: !segment.ccw };
     case 'circle':
       return segment;
+    case 'polyline':
+      return { kind: 'polyline', points: [...segment.points].reverse() };
     default: {
       const exhaustive: never = segment;
       return exhaustive;
@@ -89,9 +91,33 @@ function buildEdges(sketch: Sketch): GraphEdge[] {
   const edges: GraphEdge[] = [];
   for (const entity of sketch.entities) {
     if (entity.construction) continue;
-    if (entity.type !== 'line' && entity.type !== 'arc') continue;
+    if (entity.type !== 'line' && entity.type !== 'arc' && entity.type !== 'spline') continue;
     const curve = evaluateEntity(entity, points);
     if (!curve) continue;
+
+    // Open spline: an edge between its first & last fit point, geometry = its
+    // tessellated polyline (a closed spline is a standalone loop, handled in
+    // detect.ts alongside circles).
+    if (entity.type === 'spline' && curve.kind === 'spline' && !entity.closed) {
+      const samplesAB = curve.samples;
+      const first = samplesAB[0];
+      const second = samplesAB[1];
+      const last = samplesAB[samplesAB.length - 1];
+      const penultimate = samplesAB[samplesAB.length - 2];
+      const aId = entity.points[0];
+      const bId = entity.points[entity.points.length - 1];
+      if (!first || !second || !last || !penultimate || !aId || !bId) continue;
+      edges.push({
+        entityId: entity.id,
+        aId,
+        bId,
+        samplesAB,
+        depA: angleOf(sub(second, first)),
+        depB: angleOf(sub(penultimate, last)),
+        segmentAB: { kind: 'polyline', points: samplesAB },
+      });
+      continue;
+    }
 
     if (entity.type === 'line' && curve.kind === 'segment') {
       edges.push({

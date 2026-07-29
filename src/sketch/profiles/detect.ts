@@ -71,9 +71,44 @@ function circleLoops(sketch: Sketch): TraversedLoop[] {
   return out;
 }
 
+function polygonArea(polygon: readonly Vec2[]): number {
+  let sum = 0;
+  for (let i = 0; i < polygon.length; i += 1) {
+    const p = polygon[i];
+    const q = polygon[(i + 1) % polygon.length];
+    if (p && q) sum += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(sum) / 2;
+}
+
+/** A CLOSED spline bounds a region by itself (like a circle), as one polyline loop. */
+function closedSplineLoops(sketch: Sketch): TraversedLoop[] {
+  const points = pointMap(sketch);
+  const out: TraversedLoop[] = [];
+  for (const entity of sketch.entities) {
+    if (entity.type !== 'spline' || !entity.closed || entity.construction) continue;
+    const curve = evaluateEntity(entity, points);
+    if (curve?.kind !== 'spline') continue;
+    const polygon = curve.samples;
+    const area = polygonArea(polygon);
+    if (area < 1e-9) continue;
+    out.push({
+      entityIds: [entity.id],
+      polygon: [...polygon],
+      area,
+      segments: [{ kind: 'polyline', points: [...polygon] }],
+    });
+  }
+  return out;
+}
+
 export function detectProfiles(sketch: Sketch): ProfileDetectionResult {
   const extraction = extractLoops(sketch);
-  const loops: TraversedLoop[] = [...extraction.loops, ...circleLoops(sketch)];
+  const loops: TraversedLoop[] = [
+    ...extraction.loops,
+    ...circleLoops(sketch),
+    ...closedSplineLoops(sketch),
+  ];
 
   // Immediate parent = smallest-area loop strictly containing the probe point.
   const parents: (number | null)[] = loops.map((loop, i) => {

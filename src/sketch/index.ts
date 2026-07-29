@@ -5,6 +5,7 @@
  * or DOM (ARCHITECTURE §3, R11).
  */
 export * from './entities/curves';
+export { sampleSpline, SPLINE_SAMPLES_PER_SPAN } from './entities/spline';
 export * from './entities/queries';
 export * from './entities/topology';
 export * from './snap/types';

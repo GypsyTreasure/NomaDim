@@ -11,7 +11,7 @@ import {
   type PointId,
   type Vec2,
 } from '../../../core';
-import type { Curve, SketchToolId } from '../../../sketch';
+import { sampleSpline, type Curve, type SketchToolId } from '../../../sketch';
 import type { GeometryPlan, PointSpec } from './geometryPlan';
 import {
   arcIsCcw,
@@ -243,6 +243,10 @@ export function toolClick(state: ToolState, spec: PointSpec): ToolStep {
         },
       };
     }
+    case 'spline':
+      // Each click adds a fit point; the curve commits on finish (Enter /
+      // close-on-start), handled in the hook.
+      return noCommit({ ...state, clicks: [...state.clicks, spec] });
     case 'change':
     case 'dimension':
       // Editing / annotation tools: clicks select existing points (handled in
@@ -358,6 +362,18 @@ export function toolEnter(
         },
       };
     }
+    case 'spline': {
+      // Enter finishes an OPEN spline through the accumulated fit points.
+      if (state.clicks.length < 2) return noCommit(state);
+      const fit = state.clicks;
+      const construction = state.constructionMode;
+      return {
+        state: { ...state, clicks: [] },
+        commit: (plan) => {
+          plan.addSpline(fit, false, construction);
+        },
+      };
+    }
     case 'change':
     case 'dimension':
       return noCommit(state);
@@ -450,6 +466,12 @@ export function toolPreview(
         a,
         b: vertices[(i + 1) % vertices.length] ?? a,
       }));
+    }
+    case 'spline': {
+      // Smooth curve through the placed fit points plus the live cursor.
+      const fit = [...state.clicks.map((c) => c.p), cursor];
+      if (fit.length < 2) return [];
+      return [{ kind: 'spline', fit, samples: sampleSpline(fit, false), closed: false }];
     }
     case 'point':
     case 'change':

@@ -44,6 +44,9 @@ function endpointPointIds(entities: readonly SketchEntity[]): ReadonlySet<PointI
       case 'point':
         ids.add(entity.point);
         break;
+      case 'spline':
+        for (const id of entity.points) ids.add(id);
+        break;
       case 'circle':
         break;
       default: {

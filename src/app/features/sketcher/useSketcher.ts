@@ -352,7 +352,14 @@ export function useSketcher(): SketcherApi {
   // <input> fields, so a mobile soft keyboard drives the same machine) -------
   const submitInput = useCallback(() => {
     // Select/navigate mode (no active tool): Enter must not commit geometry.
-    if (useSessionStore.getState().activeTool === null) return;
+    const activeTool = useSessionStore.getState().activeTool;
+    if (activeTool === null) return;
+    // Spline has no numeric fields — Enter finishes the OPEN curve through the
+    // fit points placed so far.
+    if (activeTool === 'spline') {
+      applyStep(toolEnter(toolState, [], effectiveCursor));
+      return;
+    }
     const before = inputStateRef.current;
     const transition = reduceInput(before, { type: 'enter' });
     setInputState(transition.state);
@@ -535,6 +542,31 @@ export function useSketcher(): SketcherApi {
           return;
         }
       }
+
+      // Spline: accumulate fit points; ignore a repeat click on the last point,
+      // and CLOSE the curve when clicking back on the first fit point (#1).
+      if (tool === 'spline') {
+        const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        const near = (a: Vec2, b: Vec2): boolean => Math.hypot(a.x - b.x, a.y - b.y) <= tolMm;
+        const clicks = toolState.clicks;
+        const last = clicks[clicks.length - 1]?.p;
+        if (last && near(last, spec.p)) return;
+        const first = clicks[0]?.p;
+        if (clicks.length >= 2 && first && near(first, spec.p)) {
+          const plan = new GeometryPlan(current);
+          plan.addSpline(clicks, true, toolState.constructionMode);
+          commandBus.dispatch({
+            type: 'AddSketchGeometry',
+            payload: { sketchId: current.id, ...plan.payload },
+          });
+          setToolState((prev) => ({
+            ...initialToolState('spline'),
+            constructionMode: prev.constructionMode,
+          }));
+          setInputState(initialInputState([]));
+          return;
+        }
+      }
       applyStep(toolClick(toolState, spec));
     },
     [applyStep, liveSketch, snapResult, toolState]
@@ -682,6 +714,7 @@ export function useSketcher(): SketcherApi {
         a: 'arc-3p',
         p: 'point',
         g: 'polygon',
+        b: 'spline',
         m: 'change',
         d: 'dimension',
       };

@@ -172,7 +172,8 @@ export const tangentGuideProvider: GuideProvider = {
 
     for (const entity of ctx.evaluated) {
       const curve = entity.curve;
-      if (curve.kind === 'segment') continue;
+      // Tangent guides need a circular centre; segments and splines have none.
+      if (curve.kind === 'segment' || curve.kind === 'spline') continue;
       if (ctx.excludeEntityIds?.has(entity.entityId)) continue;
       const onCurve = closestPointOnCurve(curve, anchor);
       if (distance(onCurve, anchor) > ctx.toleranceMm) continue;

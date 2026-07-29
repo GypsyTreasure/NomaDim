@@ -18,7 +18,10 @@ export type LoopSegment =
       /** Travel orientation a→b about center. */
       readonly ccw: boolean;
     }
-  | { readonly kind: 'circle'; readonly center: Vec2; readonly r: number };
+  | { readonly kind: 'circle'; readonly center: Vec2; readonly r: number }
+  /** A spline edge, pre-tessellated to a polyline (ordered a→…→b) — the worker
+   * builds one line edge per span (solver-free, no OCCT BSpline dependency). */
+  | { readonly kind: 'polyline'; readonly points: readonly Vec2[] };
 
 /** Ordered, connected segments; implicitly closed (last meets first). */
 export type LoopGeometry = readonly LoopSegment[];

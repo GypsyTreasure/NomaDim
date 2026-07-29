@@ -65,10 +65,23 @@ export interface PointEntity extends EntityBase {
 }
 
 /**
+ * Fit-point spline (F2 Spline tool, AutoCAD parity): a smooth curve through an
+ * ordered list of ≥2 pool points. Solver-free — the curve is a deterministic
+ * centripetal Catmull–Rom interpolation of the fit points (sketch/ evaluates it
+ * to a polyline). `closed` loops the last fit point back to the first, so a
+ * single spline can bound a profile.
+ */
+export interface SplineEntity extends EntityBase {
+  readonly type: 'spline';
+  readonly points: readonly PointId[];
+  readonly closed: boolean;
+}
+
+/**
  * Persisted entity kinds. Rectangle/Polygon are macro TOOLS: they expand to
  * `line` entities on commit (F2) and never appear in the document.
  */
-export type SketchEntity = LineEntity | CircleEntity | ArcEntity | PointEntity;
+export type SketchEntity = LineEntity | CircleEntity | ArcEntity | PointEntity | SplineEntity;
 
 export type SketchEntityType = SketchEntity['type'];
 

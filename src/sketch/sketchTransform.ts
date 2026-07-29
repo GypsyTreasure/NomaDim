@@ -122,6 +122,15 @@ function transformOnce(
           construction: entity.construction,
         });
         break;
+      case 'spline':
+        newEntities.push({
+          type: 'spline',
+          id,
+          points: entity.points.map(mapped),
+          closed: entity.closed,
+          construction: entity.construction,
+        });
+        break;
       default: {
         const exhaustive: never = entity;
         return exhaustive;

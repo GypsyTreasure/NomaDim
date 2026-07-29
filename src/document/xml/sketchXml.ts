@@ -73,6 +73,13 @@ function entityToXml(entity: SketchEntity): XmlElement {
         tag: 'point',
         attrs: { id: entity.id, ref: entity.point, construction: entity.construction },
       };
+    case 'spline':
+      return {
+        tag: 'spline',
+        attrs: { id: entity.id, closed: entity.closed, construction: entity.construction },
+        // Ordered fit points — child order IS the curve order.
+        children: entity.points.map((ref) => ({ tag: 'fit', attrs: { ref } })),
+      };
     default: {
       const exhaustive: never = entity;
       return exhaustive;
@@ -301,6 +308,19 @@ function parseEntities(entitiesRaw: Raw): Result<SketchEntity[], ImportError> {
       return fail('malformed entity <point>');
     }
     entities.push({ type: 'point', id: id as EntityId, point: ref as PointId, construction });
+  }
+
+  for (const raw of asRawArray(entitiesRaw.spline)) {
+    const id = strAttr(raw, 'id');
+    const closed = boolAttr(raw, 'closed');
+    const construction = boolAttr(raw, 'construction');
+    const points = asRawArray(raw.fit)
+      .map((f) => strAttr(f, 'ref'))
+      .filter((ref): ref is string => ref !== null) as PointId[];
+    if (id === null || closed === null || construction === null || points.length < 2) {
+      return fail('malformed entity <spline>');
+    }
+    entities.push({ type: 'spline', id: id as EntityId, points, closed, construction });
   }
 
   entities.sort(byId);

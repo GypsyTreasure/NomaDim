@@ -11,12 +11,15 @@ import type { SketchEntity, SketchEntityType } from './types';
 
 export type PointRole = 'p1' | 'p2' | 'center';
 
-/** Roles each entity type exposes, in canonical order. */
+/** Roles each entity type exposes, in canonical order. A spline exposes its
+ * connectable ENDPOINTS as p1/p2 (first/last fit point); its interior fit points
+ * are handled directly by `referencedPointIds` (variable length, no fixed role). */
 export const POINT_ROLES: Record<SketchEntityType, readonly PointRole[]> = {
   line: ['p1', 'p2'],
   circle: ['center'],
   arc: ['center', 'p1', 'p2'],
   point: ['p1'],
+  spline: ['p1', 'p2'],
 };
 
 /** Resolves a role on an entity to its pool point id, or null when the entity lacks that role. */
@@ -60,6 +63,16 @@ export function resolveRole(entity: SketchEntity, role: PointRole): PointId | nu
           return null;
       }
       break;
+    case 'spline':
+      switch (role) {
+        case 'p1':
+          return entity.points[0] ?? null;
+        case 'p2':
+          return entity.points[entity.points.length - 1] ?? null;
+        case 'center':
+          return null;
+      }
+      break;
     default: {
       const exhaustive: never = entity;
       return exhaustive;
@@ -69,6 +82,8 @@ export function resolveRole(entity: SketchEntity, role: PointRole): PointId | nu
 
 /** All pool point ids an entity references, in canonical role order. */
 export function referencedPointIds(entity: SketchEntity): readonly PointId[] {
+  // A spline references every fit point (variable length, not fixed roles).
+  if (entity.type === 'spline') return entity.points;
   const ids: PointId[] = [];
   for (const role of POINT_ROLES[entity.type]) {
     const id = resolveRole(entity, role);

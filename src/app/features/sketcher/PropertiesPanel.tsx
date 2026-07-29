@@ -293,6 +293,20 @@ export function PropertiesPanel({ sketch }: { sketch: Sketch }): React.JSX.Eleme
     case 'point':
       fields = <PointFields sketch={sketch} pointId={entity.point} label="P" />;
       break;
+    case 'spline':
+      fields = (
+        <>
+          {entity.points.map((pointId, i) => (
+            <PointFields
+              key={pointId}
+              sketch={sketch}
+              pointId={pointId}
+              label={`P${String(i + 1)}`}
+            />
+          ))}
+        </>
+      );
+      break;
     default: {
       const exhaustive: never = entity;
       return exhaustive;

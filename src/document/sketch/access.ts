@@ -31,6 +31,8 @@ export function entitiesUsingPoint(sketch: Sketch, pointId: PointId): readonly S
         return entity.center === pointId || entity.start === pointId || entity.end === pointId;
       case 'point':
         return entity.point === pointId;
+      case 'spline':
+        return entity.points.includes(pointId);
       default: {
         const exhaustive: never = entity;
         return exhaustive;

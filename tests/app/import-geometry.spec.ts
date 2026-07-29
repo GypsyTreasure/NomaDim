@@ -62,4 +62,31 @@ describe('addImportedPrimitives', () => {
     addImportedPrimitives(p, [{ kind: 'circle', center: { x: 0, y: 0 }, r: 0 }]);
     expect(p.entities).toHaveLength(0);
   });
+
+  it('merges coincident endpoints across many shapes (shared topology)', () => {
+    const p = plan();
+    // Two lines meeting at (10,0) and (0,0) — a chain sharing endpoints.
+    addImportedPrimitives(p, [
+      { kind: 'line', a: { x: 0, y: 0 }, b: { x: 10, y: 0 } },
+      { kind: 'line', a: { x: 10, y: 0 }, b: { x: 10, y: 10 } },
+      { kind: 'line', a: { x: 10, y: 10 }, b: { x: 0, y: 0 } },
+    ]);
+    expect(p.entities.filter((e) => e.type === 'line')).toHaveLength(3);
+    // Three shared corners → three pool points, not six endpoints.
+    expect(p.payload.points).toHaveLength(3);
+  });
+
+  it('resolves thousands of points quickly (spatial-hash merge)', () => {
+    const p = plan();
+    const prims = Array.from({ length: 4000 }, (_, i) => ({
+      kind: 'line' as const,
+      a: { x: i, y: 0 },
+      b: { x: i + 1, y: 0 },
+    }));
+    const t0 = Date.now();
+    addImportedPrimitives(p, prims);
+    // A chain of 4000 segments merges to 4001 shared points; must not be O(n²).
+    expect(p.payload.points).toHaveLength(4001);
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
 });

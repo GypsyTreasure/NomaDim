@@ -19,27 +19,63 @@ export interface PointSpec {
   readonly existing?: PointId;
 }
 
+/** Spatial-hash cell size — a small multiple of the merge tolerance. */
+const CELL_MM = MERGE_TOL_MM * 4;
+
 export class GeometryPlan {
   private readonly newPoints: SketchPoint[] = [];
   readonly entities: SketchEntity[] = [];
   private readonly usedIds: Set<string>;
+  /**
+   * Spatial hash of every candidate point (existing + newly added), so
+   * coordinate-merge lookups are O(1) instead of scanning the whole pool.
+   * Without this an import of thousands of primitives is O(n²) and freezes the
+   * UI for seconds; with it the same import is near-instant.
+   */
+  private readonly index = new Map<string, SketchPoint[]>();
 
-  constructor(private readonly sketch: Sketch) {
+  constructor(sketch: Sketch) {
     this.usedIds = new Set<string>([
       ...sketch.points.map((p) => p.id),
       ...sketch.entities.map((e) => e.id),
     ]);
+    for (const point of sketch.points) this.addToIndex(point);
+  }
+
+  private cellKey(cx: number, cy: number): string {
+    return `${String(cx)}:${String(cy)}`;
+  }
+
+  private addToIndex(point: SketchPoint): void {
+    const cx = Math.round(point.x / CELL_MM);
+    const cy = Math.round(point.y / CELL_MM);
+    const key = this.cellKey(cx, cy);
+    const bucket = this.index.get(key);
+    if (bucket) bucket.push(point);
+    else this.index.set(key, [point]);
   }
 
   /** Resolves a PointSpec to a pool id — existing ref, coordinate match, or a new point. */
   resolvePoint(spec: PointSpec): PointId {
     if (spec.existing) return spec.existing;
-    for (const point of [...this.sketch.points, ...this.newPoints]) {
-      if (distance(vec2(point.x, point.y), spec.p) <= MERGE_TOL_MM) return point.id;
+    // Scan the point's cell and its eight neighbours (a merge candidate may
+    // straddle a cell boundary), then confirm with an exact distance check.
+    const cx = Math.round(spec.p.x / CELL_MM);
+    const cy = Math.round(spec.p.y / CELL_MM);
+    for (let dx = -1; dx <= 1; dx += 1) {
+      for (let dy = -1; dy <= 1; dy += 1) {
+        const bucket = this.index.get(this.cellKey(cx + dx, cy + dy));
+        if (!bucket) continue;
+        for (const point of bucket) {
+          if (distance(vec2(point.x, point.y), spec.p) <= MERGE_TOL_MM) return point.id;
+        }
+      }
     }
     const id = createId<'PointId'>(this.usedIds);
     this.usedIds.add(id);
-    this.newPoints.push({ id, x: spec.p.x, y: spec.p.y });
+    const point: SketchPoint = { id, x: spec.p.x, y: spec.p.y };
+    this.newPoints.push(point);
+    this.addToIndex(point);
     return id;
   }
 

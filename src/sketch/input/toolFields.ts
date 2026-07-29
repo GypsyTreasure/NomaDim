@@ -20,6 +20,7 @@ export type SketchToolId =
   | 'arc-center'
   | 'point'
   | 'polygon'
+  | 'spline'
   | 'change'
   | 'dimension';
 
@@ -49,9 +50,9 @@ export const LINE_FIELDS_CHAINED: readonly FieldDef[] = [
  * numeric-HUD fields at all.
  */
 export function fieldsForToolWithStart(tool: SketchToolId, chained = false): readonly FieldDef[] {
-  // Change and Dimension operate on existing points (pick / drag), so neither
-  // exposes numeric-HUD or start-point fields.
-  if (tool === 'change' || tool === 'dimension') return [];
+  // Change and Dimension operate on existing points (pick / drag); Spline is a
+  // pure click-through-points tool — none expose numeric-HUD or start fields.
+  if (tool === 'change' || tool === 'dimension' || tool === 'spline') return [];
   return [...fieldsForTool(tool, chained), ...START_POINT_FIELDS];
 }
 
@@ -72,6 +73,7 @@ export function fieldsForTool(tool: SketchToolId, chained = false): readonly Fie
     case 'point':
     case 'change':
     case 'dimension':
+    case 'spline':
       return [];
     case 'polygon':
       return [COUNT('sides'), LENGTH('diameter')];

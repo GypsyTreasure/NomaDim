@@ -16,6 +16,7 @@ const TOOLS: readonly SketchToolId[] = [
   'arc-center',
   'point',
   'polygon',
+  'spline',
 ];
 
 const TOOL_LABEL_KEYS = {
@@ -28,6 +29,7 @@ const TOOL_LABEL_KEYS = {
   'arc-center': 'sketch.tool.arc-center',
   point: 'sketch.tool.point',
   polygon: 'sketch.tool.polygon',
+  spline: 'sketch.tool.spline',
   change: 'sketch.tool.change',
   dimension: 'sketch.tool.dimension',
 } as const;
@@ -67,6 +69,7 @@ const TOOL_SHORTCUT: Record<SketchToolId, string> = {
   'arc-center': 'Shift+A',
   point: 'P',
   polygon: 'G',
+  spline: 'B',
   change: 'M',
   dimension: 'D',
 };

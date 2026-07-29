@@ -109,6 +109,26 @@ function addSegmentEdge(
       center.delete();
       return;
     }
+    case 'polyline': {
+      // A spline edge → one line edge per span (skipping zero-length spans so
+      // ShapeFix_Wire doesn't choke on duplicate vertices).
+      const pts = segment.points;
+      for (let i = 0; i + 1 < pts.length; i += 1) {
+        const p = pts[i];
+        const q = pts[i + 1];
+        if (!p || !q || Math.hypot(q.x - p.x, q.y - p.y) < 1e-9) continue;
+        const a = to3d(oc, plane, p);
+        const b = to3d(oc, plane, q);
+        const maker = new oc.BRepBuilderAPI_MakeEdge_3(a, b);
+        const edge = maker.Edge();
+        wireMaker.Add_1(edge);
+        edge.delete();
+        maker.delete();
+        a.delete();
+        b.delete();
+      }
+      return;
+    }
     default: {
       const exhaustive: never = segment;
       return exhaustive;

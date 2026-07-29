@@ -100,6 +100,18 @@ export class GeometryPlan {
     });
   }
 
+  /** Fit-point spline through ≥2 points (Spline tool); `closed` loops it. */
+  addSpline(fit: readonly PointSpec[], closed: boolean, construction: boolean): void {
+    if (fit.length < 2) return;
+    this.entities.push({
+      type: 'spline',
+      id: this.newEntityId(),
+      points: fit.map((spec) => this.resolvePoint(spec)),
+      closed,
+      construction,
+    });
+  }
+
   get payload(): { points: readonly SketchPoint[]; entities: readonly SketchEntity[] } {
     return { points: this.newPoints, entities: this.entities };
   }

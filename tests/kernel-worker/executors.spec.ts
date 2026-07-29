@@ -101,6 +101,33 @@ describe('extrude executor', () => {
     freeBodies(bodies);
   });
 
+  it('extrudes a polyline (spline) loop into a solid (#spline)', () => {
+    const bodies: BodyStateMap = new Map();
+    // A closed spline ships as one polyline loop segment — here a 20×20 square.
+    const profile: PlanProfile = {
+      id: pid('sp'),
+      plane: XY,
+      outer: [
+        {
+          kind: 'polyline',
+          points: [
+            { x: 0, y: 0 },
+            { x: 20, y: 0 },
+            { x: 20, y: 20 },
+            { x: 0, y: 20 },
+            { x: 0, y: 0 },
+          ],
+        },
+      ],
+      inner: [],
+    };
+    executeExtrude(ctxFor(bodies, [profile]), extrude({ profileIds: [profile.id], distanceMm: 5 }));
+    const shape = bodies.get(bid('B'));
+    expect(shape).toBeDefined();
+    if (shape) expect(volumeOf(shape)).toBeCloseTo(2000, 2); // 20*20*5
+    freeBodies(bodies);
+  });
+
   it('extrudes a plate with a hole as outer minus inner', () => {
     const bodies: BodyStateMap = new Map();
     const profile = plateWithHole('p');

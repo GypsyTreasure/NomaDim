@@ -89,6 +89,15 @@ export function validateSketch(sketch: Sketch): Result<void, ValidationError> {
       }
       case 'point':
         break;
+      case 'spline':
+        // Referenced-point existence is checked generically above; only the
+        // fit-point count is spline-specific.
+        if (entity.points.length < 2) {
+          return err(
+            new ValidationError(`Spline "${entity.id}" needs at least 2 fit points`, 'entities')
+          );
+        }
+        break;
       default: {
         const exhaustive: never = entity;
         return exhaustive;

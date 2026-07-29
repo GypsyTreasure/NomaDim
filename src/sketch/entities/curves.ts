@@ -1,5 +1,6 @@
 import { angleOf, ccwSweep, distance, sub, type EntityId, type Vec2 } from '../../core';
 import { pointMap, type Sketch, type SketchEntity } from '../../document';
+import { sampleSpline } from './spline';
 
 /**
  * Evaluated 2D curves (sketch-local coordinates). `document/` stores
@@ -35,7 +36,16 @@ export interface ArcCurve {
   readonly sweep: number;
 }
 
-export type Curve = SegmentCurve | CircleCurve | ArcCurve;
+export interface SplineCurve {
+  readonly kind: 'spline';
+  /** Fit points the curve passes through (≥2). */
+  readonly fit: readonly Vec2[];
+  /** Tessellated polyline through the fit points (closed → last==first). */
+  readonly samples: readonly Vec2[];
+  readonly closed: boolean;
+}
+
+export type Curve = SegmentCurve | CircleCurve | ArcCurve | SplineCurve;
 
 export interface EvaluatedEntity {
   readonly entityId: EntityId;
@@ -93,6 +103,18 @@ export function evaluateEntity(
       const startAngle = entity.ccw ? startAngleRaw : endAngleRaw;
       const endAngle = entity.ccw ? endAngleRaw : startAngleRaw;
       return { kind: 'arc', center, r, startAngle, sweep: ccwSweep(startAngle, endAngle) };
+    }
+    case 'spline': {
+      const fit = entity.points
+        .map((id) => points.get(id))
+        .filter((p): p is Vec2 => p !== undefined);
+      if (fit.length < 2) return null;
+      return {
+        kind: 'spline',
+        fit,
+        samples: sampleSpline(fit, entity.closed),
+        closed: entity.closed,
+      };
     }
     case 'point':
       return null;

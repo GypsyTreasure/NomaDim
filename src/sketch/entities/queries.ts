@@ -12,7 +12,14 @@ import {
   GEOM_EPS,
   type Vec2,
 } from '../../core';
-import { angleOnArc, type ArcCurve, type CircleCurve, type Curve } from './curves';
+import {
+  angleOnArc,
+  type ArcCurve,
+  type CircleCurve,
+  type Curve,
+  type SegmentCurve,
+  type SplineCurve,
+} from './curves';
 
 /** Pure geometric queries over evaluated curves — snap providers and profile
  * detection build on these. No DOM, no pixels (R11). */
@@ -35,11 +42,35 @@ export function closestPointOnCurve(curve: Curve, p: Vec2): Vec2 {
       const end = pointAtAngle(curve, curve.startAngle + curve.sweep);
       return distance(p, start) <= distance(p, end) ? start : end;
     }
+    case 'spline': {
+      let best = curve.samples[0] ?? p;
+      let bestD = Infinity;
+      for (const seg of splineSegments(curve)) {
+        const q = closestPointOnCurve(seg, p);
+        const d = distance(p, q);
+        if (d < bestD) {
+          bestD = d;
+          best = q;
+        }
+      }
+      return best;
+    }
     default: {
       const exhaustive: never = curve;
       return exhaustive;
     }
   }
+}
+
+/** A spline's tessellated polyline as segment curves (for distance/intersection). */
+function splineSegments(curve: SplineCurve): SegmentCurve[] {
+  const segs: SegmentCurve[] = [];
+  for (let i = 0; i + 1 < curve.samples.length; i += 1) {
+    const a = curve.samples[i];
+    const b = curve.samples[i + 1];
+    if (a && b) segs.push({ kind: 'segment', a, b });
+  }
+  return segs;
 }
 
 function pointAtAngle(curve: CircleCurve | ArcCurve, angleRad: number): Vec2 {
@@ -60,6 +91,8 @@ export function curveMidpoint(curve: Curve): Vec2 | null {
       return pointAtAngle(curve, curve.startAngle + curve.sweep / 2);
     case 'circle':
       return null;
+    case 'spline':
+      return curve.samples[Math.floor(curve.samples.length / 2)] ?? null;
     default: {
       const exhaustive: never = curve;
       return exhaustive;
@@ -69,7 +102,7 @@ export function curveMidpoint(curve: Curve): Vec2 | null {
 
 /** N/E/S/W quadrant points of circles, and of arcs where the quadrant lies on the sweep. */
 export function quadrantPoints(curve: Curve): readonly Vec2[] {
-  if (curve.kind === 'segment') return [];
+  if (curve.kind === 'segment' || curve.kind === 'spline') return [];
   const quadrantAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
   const angles =
     curve.kind === 'circle'
@@ -142,8 +175,15 @@ function onArcIfArc(curve: CircleCurve | ArcCurve, p: Vec2): boolean {
   return curve.kind === 'circle' || angleOnArc(curve, angleOf(sub(p, curve.center)), 1e-6);
 }
 
-/** All point intersections between two curves (arc ranges respected). */
+/** All point intersections between two curves (arc ranges respected). A spline
+ * intersects via its tessellated polyline (each sample segment vs the other). */
 export function intersectCurves(a: Curve, b: Curve): readonly Vec2[] {
+  if (a.kind === 'spline' || b.kind === 'spline') {
+    const segsOf = (c: Curve): readonly Curve[] => (c.kind === 'spline' ? splineSegments(c) : [c]);
+    const out: Vec2[] = [];
+    for (const sa of segsOf(a)) for (const sb of segsOf(b)) out.push(...intersectCurves(sa, sb));
+    return out;
+  }
   if (a.kind === 'segment' && b.kind === 'segment') return segSegIntersections(a, b);
   if (a.kind === 'segment') return segCircleIntersections(a, b as CircleCurve | ArcCurve);
   if (b.kind === 'segment') return segCircleIntersections(b, a);
@@ -162,6 +202,8 @@ export function sampleCurve(curve: Curve, chordTolMm: number): readonly Vec2[] {
       return sampleArcRange(curve, 0, 2 * Math.PI, chordTolMm, true);
     case 'arc':
       return sampleArcRange(curve, curve.startAngle, curve.sweep, chordTolMm, false);
+    case 'spline':
+      return curve.samples;
     default: {
       const exhaustive: never = curve;
       return exhaustive;

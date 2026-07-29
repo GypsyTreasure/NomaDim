@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { t } from '../../i18n/t';
+import { withShortcut } from '../help/shortcuts';
 import { useKernelStore } from '../../store/kernelStore';
 import { ExportStlDialog } from './ExportStlDialog';
 import styles from './Timeline.module.css';
@@ -34,7 +35,7 @@ export function ExportStlButton(): React.JSX.Element {
       <button
         type="button"
         className={styles.button}
-        title="Ctrl+E"
+        title={hasBodies ? withShortcut(t('kernel.exportStl'), 'Ctrl+E') : t('guard.needBody')}
         disabled={!hasBodies}
         onClick={() => {
           setOpen(true);

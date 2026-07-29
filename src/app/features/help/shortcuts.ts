@@ -9,6 +9,15 @@ import type { TranslationKey } from '../../i18n/en';
  * descriptions and section titles translate.
  */
 
+/**
+ * Composes a button tooltip as "Label (Shortcut)" (ADR-0032: every tool shows
+ * its shortcut as its `title`). A descriptive label first, the chord in
+ * parentheses — never a bare shortcut character (M9 GUI hardening).
+ */
+export function withShortcut(label: string, keys?: string): string {
+  return keys ? `${label} (${keys})` : label;
+}
+
 export interface Shortcut {
   /** Display chord, e.g. "Ctrl+Z" or "Shift+R". */
   readonly keys: string;

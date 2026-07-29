@@ -16,6 +16,7 @@ export const en = {
   'viewport.origin.yz': 'YZ Plane',
   'kernel.status.loading': 'Loading kernel…',
   'kernel.status.error': 'Kernel error:',
+  'kernel.reload': 'Reload',
   'kernel.exportStl': 'Export',
   'io.save': 'Save',
   'io.open': 'Open',
@@ -165,6 +166,10 @@ export const en = {
   'measure.diameter': 'Diameter',
   'measure.hint': 'Pick two points; a circular edge shows radius. Esc exits.',
   'timeline.edit': 'Edit',
+  // Op precondition guards (M9): shown as the tooltip of a disabled op button.
+  'guard.needSketch': 'Create a sketch first',
+  'guard.needBody': 'Create a body first',
+  'guard.needTwoBodies': 'Needs two or more bodies',
   'timeline.suppress': 'Suppress',
   'timeline.unsuppress': 'Unsuppress',
   'timeline.delete': 'Delete',

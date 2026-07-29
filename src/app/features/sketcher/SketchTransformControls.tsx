@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { t } from '../../i18n/t';
+import { withShortcut } from '../help/shortcuts';
 import type { SketcherApi } from './useSketcher';
 import styles from './Sketcher.module.css';
 
@@ -31,7 +32,7 @@ export function SketchTransformControls({
         type="button"
         className={styles.button}
         data-testid="mirror-x"
-        title="K"
+        title={withShortcut(t('sketch.mirrorX'), 'K')}
         onClick={() => {
           sketcher.mirrorSelection('x');
         }}
@@ -42,7 +43,7 @@ export function SketchTransformControls({
         type="button"
         className={styles.button}
         data-testid="mirror-y"
-        title="Shift+K"
+        title={withShortcut(t('sketch.mirrorY'), 'Shift+K')}
         onClick={() => {
           sketcher.mirrorSelection('y');
         }}

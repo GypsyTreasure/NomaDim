@@ -1061,7 +1061,7 @@ export function Viewport({
           <button
             type="button"
             className={styles.button}
-            title="Z"
+            title={`${zoomToFitLabel} (Z)`}
             onClick={() => fitRequestRef.current?.()}
           >
             {zoomToFitLabel}
@@ -1075,7 +1075,7 @@ export function Viewport({
                   key={id}
                   type="button"
                   className={styles.button}
-                  title={VIEW_KEY_HINT[id]}
+                  title={`${label} (${VIEW_KEY_HINT[id]})`}
                   data-testid={`view-${id}`}
                   onClick={() => viewRequestRef.current?.(id)}
                 >
@@ -1087,7 +1087,7 @@ export function Viewport({
             <button
               type="button"
               className={styles.button}
-              title="O"
+              title={`${projectionLabels[projectionMode]} (O)`}
               data-testid="projection-toggle"
               onClick={() => projectionRequestRef.current?.()}
             >

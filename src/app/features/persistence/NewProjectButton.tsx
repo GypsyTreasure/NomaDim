@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { emptyDocument, type DocumentState } from '../../../document';
 import { t } from '../../i18n/t';
+import { withShortcut } from '../help/shortcuts';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { downloadDocument } from '../document-io/documentIO';
@@ -63,7 +64,7 @@ export function NewProjectButton(): React.JSX.Element {
       <button
         type="button"
         className={styles.button}
-        title="Shift+N"
+        title={withShortcut(t('project.new'), 'Shift+N')}
         disabled={empty}
         onClick={requestNew}
         data-testid="new-project"

@@ -1,12 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="5" fill="#0d1b2a" />
-  <path
-    d="M8 23 L8 10 L13 10 L24 23 L24 10"
-    fill="none"
-    stroke="#1a6b5a"
-    stroke-width="3"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <circle cx="8" cy="10" r="2" fill="#faf7f0" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="32" height="32" role="img" aria-label="NomaDim">
+  <!-- "ND" monogram favicon: N light + D medium, white on navy, brand red node. -->
+  <rect width="200" height="200" rx="28" fill="#0d1b2a" />
+  <text
+    x="100"
+    y="132"
+    text-anchor="middle"
+    font-family="Barlow, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    font-size="104"
+    letter-spacing="-4"
+    fill="#ffffff"
+  ><tspan font-weight="300">N</tspan><tspan font-weight="500">D</tspan></text>
+  <circle cx="156" cy="156" r="13" fill="#e5342e" />
 </svg>

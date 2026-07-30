@@ -1,20 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" role="img" aria-label="NomaDim">
-  <rect width="64" height="64" rx="10" fill="#0d1b2a" />
-  <path
-    d="M16 46 L16 20 L26 20 L48 46 L48 20"
-    fill="none"
-    stroke="#1a6b5a"
-    stroke-width="6"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <circle cx="16" cy="20" r="4" fill="#e5342e" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 56" width="176" height="56" role="img" aria-label="NomaDim">
+  <!-- "Noma" light + "Dim" medium; textLength pins the width so the red node lands exactly at the wordmark end regardless of the resolved font. -->
   <text
-    x="84"
+    x="0"
     y="42"
+    textLength="150"
+    lengthAdjust="spacing"
     font-family="Barlow, -apple-system, 'Segoe UI', Roboto, sans-serif"
-    font-size="34"
-    font-weight="600"
+    font-size="38"
     fill="#0d1b2a"
-  >Noma<tspan fill="#1a6b5a">Dim</tspan></text>
+  ><tspan font-weight="300">Noma</tspan><tspan font-weight="500">Dim</tspan></text>
+  <circle cx="162" cy="37" r="6" fill="#e5342e" />
 </svg>

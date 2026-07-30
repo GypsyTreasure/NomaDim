@@ -19,25 +19,27 @@ colors, fonts, or logo variants without updating this file.
 
 ## 2. Logo
 
-Two lockups, both built from the same **"N" mark** — a plotted vector path
-(up → diagonal → up) with a filled **start node** echoing a sketch origin/point.
-It reads simultaneously as the letter **N** (NomaDim / NomaDirection) and as a
-toolpath.
+A **wordmark** mirroring the NomaDirection lockup (ADR-0083): **"Noma"** in
+Barlow **Light (300)** + **"Dim"** in Barlow **Medium (500)**, tight tracking,
+with the brand **red node** — a filled dot — sitting just after the wordmark.
+The dot is the same red **origin marker** used at the world origin (3D) and the
+sketch origin (2D), so the identity ties the app to its geometry. The icon is
+the **"ND" monogram** (N light + D medium) white on navy with the red node.
 
 | Asset                      | File                              | Use                                   |
 | -------------------------- | --------------------------------- | ------------------------------------- |
-| Logomark (tile)            | `public/brand/logomark.svg`       | App tile, social avatar, ≥ 32 px      |
-| Logotype (mark + wordmark) | `public/brand/logotype.svg`       | Headers, docs, README                 |
-| Favicon                    | `public/favicon.svg`              | Browser tab (rounded navy tile)       |
+| Logomark / icon (tile)     | `public/brand/logomark.svg`       | App tile, social avatar, ≥ 32 px      |
+| Logotype (wordmark + node) | `public/brand/logotype.svg`       | Headers, docs, README, OG image       |
+| Favicon                    | `public/favicon.svg`              | Browser tab (navy "ND" tile)          |
 | In-app logotype            | `src/app/features/brand/Logo.tsx` | The app header (inline, token-driven) |
 
 **Rules**
 
-- Clear space around the mark ≥ the height of the start node.
-- Minimum mark size 20 px (below that the start node is dropped).
-- On dark surfaces (navy header) the mark stroke is teal, the node is canvas.
-- Do **not** recolor the mark outside the palette, stretch it, add effects, or
-  rebuild the wordmark in another typeface.
+- The node is **brand red** (`--color-origin`, `#e5342e`) — never recolor it.
+- Clear space around the lockup ≥ the node diameter.
+- On dark surfaces (navy header) the wordmark is canvas/white; on light, navy.
+- Do **not** stretch the lockup, add effects, change the two weights, or rebuild
+  the wordmark in another typeface.
 
 ## 3. Color
 

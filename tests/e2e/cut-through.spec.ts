@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('a sketch cuts through a body with Cut + Through All', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // Body 1: a Ø30 disc, 10 mm tall.
   await page.getByRole('button', { name: 'New Sketch' }).click();

@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test';
 
 test('100-body copy/paste session renders at 30fps', async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await page.keyboard.press('c');

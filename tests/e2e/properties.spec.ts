@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test';
 test('Select summarizes the whole shape; Change edits one line with H/V align', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await page.waitForTimeout(1400); // let the normal-to-plane camera settle
@@ -41,7 +41,7 @@ test('Select summarizes the whole shape; Change edits one line with H/V align', 
 });
 
 test('whole-shape Width is editable and resizes the shape', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await page.waitForTimeout(1400);

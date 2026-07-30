@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('the shortcuts overlay opens, lists hotkeys, and closes', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   const overlay = page.getByTestId('shortcuts-overlay');
   await expect(overlay).toBeHidden();

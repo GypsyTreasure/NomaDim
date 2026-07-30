@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test';
 test('the Dim tool is selectable, offers a kind chooser, is HUD-less and catalogued', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 

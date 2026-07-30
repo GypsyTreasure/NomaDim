@@ -1,0 +1,325 @@
+/*
+ * Marketing landing styles (M10). Brand tokens only (no hardcoded colours —
+ * stylelint no-hardcoded-color) so the site matches the app's teal/navy/Barlow
+ * identity. Self-contained: no external fonts or assets (static-host safe).
+ */
+@import '../app/ui-tokens/tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body);
+  color: var(--color-panel-fg);
+  background-color: var(--color-navy-900);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  line-height: 1.15;
+  margin: 0 0 0.5em;
+}
+
+a {
+  color: var(--color-teal-bright);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.wrap {
+  width: min(1120px, 100% - 2.5rem);
+  margin-inline: auto;
+}
+
+/* --- Header --- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--color-navy-alpha-55);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-navy-500);
+}
+
+.site-header .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.85rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-heading);
+  font-size: 1.2rem;
+  color: var(--color-panel-fg);
+}
+
+.brand img {
+  height: 28px;
+  width: auto;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav a {
+  color: var(--color-grey-300);
+  font-size: 0.95rem;
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-block;
+  padding: 0.7rem 1.4rem;
+  border-radius: var(--radius-pill, 999px);
+  font-weight: var(--font-weight-medium);
+  font-size: 1rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    transform 0.08s ease,
+    background-color 0.15s ease;
+}
+
+.btn:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background-color: var(--color-teal);
+  color: var(--color-panel-fg);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-teal-bright);
+}
+
+.btn-ghost {
+  border-color: var(--color-navy-500);
+  color: var(--color-panel-fg);
+}
+
+/* --- Hero --- */
+.hero {
+  padding-block: clamp(3rem, 8vw, 6rem);
+  text-align: center;
+  background:
+    radial-gradient(60% 60% at 50% 0%, var(--color-navy-700), transparent), var(--color-navy-900);
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  max-width: 16ch;
+  margin-inline: auto;
+}
+
+.hero .lead {
+  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+  color: var(--color-grey-300);
+  max-width: 52ch;
+  margin: 1rem auto 2rem;
+}
+
+.hero .cta {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero .note {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--color-grey-300);
+}
+
+/* --- Demo frame --- */
+.demo {
+  margin-top: 3rem;
+}
+
+.demo-frame {
+  aspect-ratio: 16 / 9;
+  width: min(900px, 100%);
+  margin-inline: auto;
+  border-radius: var(--radius-lg, 14px);
+  border: 1px solid var(--color-navy-500);
+  background: linear-gradient(135deg, var(--color-navy-700), var(--color-navy-800));
+  display: grid;
+  place-items: center;
+  color: var(--color-grey-300);
+  overflow: hidden;
+}
+
+/* --- Sections --- */
+section {
+  padding-block: clamp(3rem, 7vw, 5rem);
+}
+
+.section-title {
+  text-align: center;
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  margin-bottom: 2.5rem;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  padding: 1.5rem;
+  border-radius: var(--radius-md, 12px);
+  background-color: var(--color-navy-800);
+  border: 1px solid var(--color-navy-600);
+}
+
+.card h3 {
+  font-size: 1.15rem;
+  color: var(--color-teal-bright);
+}
+
+.card p {
+  margin: 0;
+  color: var(--color-grey-300);
+  font-size: 0.98rem;
+}
+
+/* --- Pricing --- */
+.pricing {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.plan {
+  padding: 2rem;
+  border-radius: var(--radius-lg, 14px);
+  background-color: var(--color-navy-800);
+  border: 1px solid var(--color-navy-600);
+  text-align: center;
+}
+
+.plan.featured {
+  border-color: var(--color-teal);
+}
+
+.plan .price {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: var(--font-weight-heading);
+  margin: 0.5rem 0;
+}
+
+.plan ul {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  text-align: left;
+  color: var(--color-grey-300);
+}
+
+.plan li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--color-navy-600);
+}
+
+/* --- FAQ --- */
+.faq {
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.faq details {
+  border-bottom: 1px solid var(--color-navy-600);
+  padding: 1rem 0;
+}
+
+.faq summary {
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+  font-size: 1.05rem;
+}
+
+.faq p {
+  color: var(--color-grey-300);
+  margin: 0.75rem 0 0;
+}
+
+/* --- Footer --- */
+.site-footer {
+  border-top: 1px solid var(--color-navy-500);
+  padding-block: 2.5rem;
+  color: var(--color-grey-300);
+  font-size: 0.9rem;
+}
+
+.site-footer .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.site-footer nav {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.nav-toggle {
+  display: none;
+  background: none;
+  border: 0;
+  color: var(--color-panel-fg);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .nav {
+    display: none;
+  }
+
+  .nav.open {
+    display: flex;
+    position: absolute;
+    inset: 100% 0 auto;
+    flex-direction: column;
+    padding: 1rem 1.25rem;
+    background-color: var(--color-navy-800);
+    border-bottom: 1px solid var(--color-navy-500);
+  }
+
+  .nav-toggle {
+    display: block;
+  }
+}

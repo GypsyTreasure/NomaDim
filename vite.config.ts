@@ -39,4 +39,14 @@ function gzipWasm(): Plugin {
 
 export default defineConfig({
   plugins: [react(), gzipWasm()],
+  build: {
+    // Multi-page (M10): the marketing landing at `/` (index.html) and the CAD
+    // app at `/app/` (app/index.html). The landing loads zero WASM/app code.
+    rollupOptions: {
+      input: {
+        landing: resolve('index.html'),
+        app: resolve('app/index.html'),
+      },
+    },
+  },
 });

@@ -11,7 +11,7 @@ import { expect, test } from '@playwright/test';
 test('create a construction plane → reusable in the tree and the plane picker', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByRole('button', { name: 'New Sketch' })).toBeVisible();
 
   // Create a construction plane from the Construct menu, accepting the

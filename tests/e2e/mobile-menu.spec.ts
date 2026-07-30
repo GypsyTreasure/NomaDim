@@ -12,7 +12,7 @@ test('phone: New Sketch stays visible; the rest collapse behind a hamburger', as
 }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
-  await page.goto('/');
+  await page.goto('/app/');
 
   // New Sketch is always reachable; the hamburger holds the rest.
   await expect(page.getByRole('button', { name: 'New Sketch' })).toBeVisible();
@@ -35,7 +35,7 @@ test('phone: opening New Project from the menu keeps the menu open for the decis
 }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
-  await page.goto('/');
+  await page.goto('/app/');
 
   // Build a body so New Project is enabled.
   await page.getByRole('button', { name: 'New Sketch' }).click();
@@ -61,7 +61,7 @@ test('phone: opening New Project from the menu keeps the menu open for the decis
 
 test('desktop: the hamburger is hidden and actions show inline', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByTestId('app-menu-toggle')).toBeHidden();
   await expect(page.getByRole('button', { name: 'New Sketch' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Shortcuts' })).toBeVisible();

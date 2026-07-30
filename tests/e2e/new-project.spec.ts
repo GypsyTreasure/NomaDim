@@ -24,7 +24,7 @@ async function buildBody(page: Page): Promise<void> {
 test('New Project (Discard) clears the model and the clearance survives reload', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // Nothing to clear yet → the button is disabled.
   await expect(page.getByTestId('new-project')).toBeDisabled();
@@ -48,7 +48,7 @@ test('New Project (Discard) clears the model and the clearance survives reload',
 });
 
 test('New Project (Export) downloads the model before clearing', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await buildBody(page);
 
   await page.getByTestId('new-project').click();
@@ -61,7 +61,7 @@ test('New Project (Export) downloads the model before clearing', async ({ page }
 });
 
 test('New Project can be cancelled, leaving the model intact', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await buildBody(page);
 
   await page.getByTestId('new-project').click();

@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('the onboarding hint shows on an empty document and dismisses', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   const hint = page.getByTestId('onboarding-hint');
   await expect(hint).toBeVisible();
@@ -20,7 +20,7 @@ test('the onboarding hint shows on an empty document and dismisses', async ({ pa
 });
 
 test('the onboarding hint steps aside for the plane picker', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByTestId('onboarding-hint')).toBeVisible();
 
   await page.getByRole('button', { name: 'New Sketch' }).click();

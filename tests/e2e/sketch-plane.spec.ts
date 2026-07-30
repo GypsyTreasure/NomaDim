@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('choose a non-XY base plane, then sketch and extrude on it', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // New Sketch asks which plane first.
   await page.getByRole('button', { name: 'New Sketch' }).click();
@@ -32,7 +32,7 @@ test('choose a non-XY base plane, then sketch and extrude on it', async ({ page 
 });
 
 test('plane choice can be cancelled', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await expect(page.getByTestId('plane-picker')).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();

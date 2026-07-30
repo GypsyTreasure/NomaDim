@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
 test('op buttons are disabled with an explanatory tooltip when preconditions are unmet', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByRole('button', { name: 'New Sketch' })).toBeVisible();
 
   // Empty document: no sketch, no body.
@@ -26,7 +26,7 @@ test('op buttons are disabled with an explanatory tooltip when preconditions are
 });
 
 test('enabled buttons carry a descriptive "Label (Shortcut)" tooltip', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   const newSketch = page.getByRole('button', { name: 'New Sketch' });
   await expect(newSketch).toBeVisible();
   await expect(newSketch).toHaveAttribute('title', 'New Sketch (N)');

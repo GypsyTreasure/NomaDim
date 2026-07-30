@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('import an SVG into a sketch and see the confirmation toast', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 
@@ -31,7 +31,7 @@ test('import an SVG into a sketch and see the confirmation toast', async ({ page
 });
 
 test('import a DXF whose geometry is inside a block (INSERT)', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await expect(page.getByRole('button', { name: 'Finish Sketch' })).toBeVisible();

@@ -88,6 +88,11 @@ export class GeometryPlan {
   addLine(start: PointSpec, end: PointSpec, construction: boolean, axis = false): PointId {
     const startId = this.resolvePoint(start);
     const endId = this.resolvePoint(end);
+    // Skip a degenerate (zero-length) line: both endpoints merged to one pool
+    // point. Real DXF/SVG files carry such artifacts, and one would otherwise
+    // fail validation and reject the WHOLE import (ADR-0085). The anchor id is
+    // still returned so a drawing chain continues from the same point.
+    if (startId === endId) return endId;
     this.entities.push({
       type: 'line',
       id: this.newEntityId(),
@@ -116,12 +121,18 @@ export class GeometryPlan {
     ccw: boolean,
     construction: boolean
   ): void {
+    const centerId = this.resolvePoint(center);
+    const startId = this.resolvePoint(start);
+    const endId = this.resolvePoint(end);
+    // Skip a degenerate arc (endpoints coincide, or zero radius) — it would
+    // fail validation and reject the whole import (ADR-0085).
+    if (startId === endId || centerId === startId) return;
     this.entities.push({
       type: 'arc',
       id: this.newEntityId(),
-      center: this.resolvePoint(center),
-      start: this.resolvePoint(start),
-      end: this.resolvePoint(end),
+      center: centerId,
+      start: startId,
+      end: endId,
       ccw,
       construction,
     });

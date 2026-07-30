@@ -253,6 +253,7 @@ export function App(): React.JSX.Element {
             bodies={bodies}
             previewBodies={previewGhosts}
             sketchMode={sketcher.viewportSketchMode}
+            fitNonce={sketcher.fitNonce}
             sectionView={sketcher.intersect}
             edgePick={edgePick}
             measure={measure.measureProps}

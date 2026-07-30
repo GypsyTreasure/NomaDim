@@ -1,3 +1,7 @@
+/* Self-hosted Barlow (300/500) — must precede all other rules per the CSS
+   @import ordering requirement. Bundled locally, no CDN fetch (ADR-0086). */
+@import './fonts.css';
+
 /**
  * NomaDirection design tokens (MASTER_DOCUMENT §12). The only place hex/rgb
  * color literals are allowed to live — every other stylesheet must reference
@@ -64,8 +68,8 @@
   --color-status-skipped: var(--color-grey-muted);
   --color-status-suppressed: var(--color-amber);
 
-  /* Typography — Barlow, system-font fallback until the webfont is bundled
-     locally (ADR: no CDN font fetch, keeps C1 "no server calls" honest). */
+  /* Typography — Barlow, self-hosted (300/500) via ./fonts.css; the system
+     fonts are the swap fallback while the woff2 loads (no CDN fetch, C1). */
   --font-heading: 'Barlow', -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Barlow', -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;

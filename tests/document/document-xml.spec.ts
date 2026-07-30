@@ -173,6 +173,7 @@ const datums: Datum[] = [
 ];
 
 const doc: DocumentState = {
+  name: 'Bracket',
   sketches: [originSketch, faceSketch],
   ops,
   rollbackIndex: ops.length,

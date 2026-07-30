@@ -94,4 +94,4 @@ never hardcoded in source.
 
 ---
 
-© Kacper / NomaDirection — all rights reserved.
+© 2026 NomaDim — all rights reserved.

@@ -1,0 +1,28 @@
+.field {
+  min-width: 8ch;
+  max-width: 28ch;
+  padding: calc(var(--grid-unit) * 0.4) calc(var(--grid-unit) * 0.75);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-panel-fg);
+  background-color: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.field::placeholder {
+  color: var(--color-grey-muted);
+}
+
+.field:hover {
+  border-color: var(--color-hairline);
+}
+
+.field:focus {
+  outline: none;
+  background-color: var(--color-canvas-bg);
+  border-color: var(--color-primary);
+}

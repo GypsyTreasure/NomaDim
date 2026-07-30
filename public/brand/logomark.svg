@@ -10,5 +10,5 @@
     stroke-linejoin="round"
   />
   <!-- Start node, echoing a sketch point / origin. -->
-  <circle cx="16" cy="20" r="4" fill="#faf7f0" />
+  <circle cx="16" cy="20" r="4" fill="#e5342e" />
 </svg>

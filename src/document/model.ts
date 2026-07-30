@@ -9,6 +9,12 @@ import type { Datum } from './datums/types';
  * `documentStore` in app/store).
  */
 export interface DocumentState {
+  /**
+   * User-facing project name (F7). Empty until the user names it; export
+   * filenames and the header field fall back to a default when blank. Persisted
+   * on the `<nomadim>` root and mutated only through the RenameDocument command.
+   */
+  readonly name: string;
   readonly sketches: readonly Sketch[];
   /** The timeline — a multi-body DAG evaluated in order (§9). */
   readonly ops: readonly TimelineOp[];
@@ -26,7 +32,15 @@ export interface DocumentState {
 }
 
 export function emptyDocument(): DocumentState {
-  return { sketches: [], ops: [], rollbackIndex: 0, bodyMeta: [], sketchMeta: [], datums: [] };
+  return {
+    name: '',
+    sketches: [],
+    ops: [],
+    rollbackIndex: 0,
+    bodyMeta: [],
+    sketchMeta: [],
+    datums: [],
+  };
 }
 
 export function findSketch(state: DocumentState, sketchId: string): Sketch | undefined {

@@ -36,6 +36,7 @@ const COLOR_SNAP = '#e0554f';
 const COLOR_POINT = '#0d1b2a';
 const COLOR_DIMENSION = '#1a6b5a'; // teal — reference-dimension annotations
 const COLOR_DIMENSION_HALO = '#f4f5f6'; // light halo so labels read over geometry
+const COLOR_ORIGIN = '#e5342e'; // brand red — origin node (matches logomark + 3D marker)
 
 export interface SketchOverlayState {
   /** Pre-evaluated curves (app evaluates once per document change — never per frame). */
@@ -105,19 +106,21 @@ export function drawSketchOverlay(
     ctx.fillRect(s.x - 2.5, s.y - 2.5, 5, 5);
   }
 
-  // Sketch origin (0,0) — the base dimensioning datum, always marked.
+  // Sketch origin (0,0) — the base dimensioning datum, marked with the brand red
+  // node (the 2D echo of the logomark dot + the 3D origin ball, graphic identity).
   const origin = toScreen({ x: 0, y: 0 });
-  ctx.strokeStyle = COLOR_AXIS;
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = COLOR_ORIGIN;
+  ctx.lineWidth = 1.25;
   ctx.beginPath();
   ctx.moveTo(origin.x - 7, origin.y);
   ctx.lineTo(origin.x + 7, origin.y);
   ctx.moveTo(origin.x, origin.y - 7);
   ctx.lineTo(origin.x, origin.y + 7);
   ctx.stroke();
+  ctx.fillStyle = COLOR_ORIGIN;
   ctx.beginPath();
   ctx.arc(origin.x, origin.y, 3.5, 0, 2 * Math.PI);
-  ctx.stroke();
+  ctx.fill();
 
   // Reference dimensions (associative, solver-free): extension/dimension lines
   // plus a haloed measured-value label. Everything arrives plane-space and is

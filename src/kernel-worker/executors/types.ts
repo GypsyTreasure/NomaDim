@@ -23,7 +23,13 @@ export class KernelExecError extends Error {
   override readonly name = 'KernelExecError';
   constructor(
     readonly code: string,
-    message: string
+    message: string,
+    /**
+     * For edge-based ops (Fillet/Chamfer): the indices — into the op's edge
+     * list — of the edges that could not be built, so the UI can name and
+     * highlight the offending edge(s) (#8). Empty/undefined when not applicable.
+     */
+    readonly failedEdgeIndices?: readonly number[]
   ) {
     super(message);
   }

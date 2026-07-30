@@ -8,6 +8,8 @@ import { pushToast } from '../../store/toastStore';
 import { t } from '../../i18n/t';
 import { useEntitlement } from '../../store/entitlementStore';
 import { applyStlWatermark, FREE_WATERMARK } from '../licensing/watermark';
+import { exportFileName } from '../naming/exportName';
+import { getSettings } from '../../store/settingsStore';
 import { DialogFrame, NumberRow, SelectRow, type SelectOption } from './dialogShared';
 import styles from './Timeline.module.css';
 
@@ -80,10 +82,12 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
     ? FORMAT_OPTIONS
     : FORMAT_OPTIONS.filter((o) => o.value !== 'step');
 
+  // Seed the dialog from the user's export defaults (Admin panel, F7).
+  const defaults = getSettings();
   const [scope, setScope] = useState<Scope>(selectedBodyId ? 'selected' : 'visible');
-  const [format, setFormat] = useState<Format>('binary');
-  const [linearMm, setLinearMm] = useState(PRESETS.medium.linearMm);
-  const [angularDeg, setAngularDeg] = useState(PRESETS.medium.angularDeg);
+  const [format, setFormat] = useState<Format>(defaults.stlFormat);
+  const [linearMm, setLinearMm] = useState(defaults.stlLinearDeflectionMm);
+  const [angularDeg, setAngularDeg] = useState(defaults.stlAngularDeflectionDeg);
   const [stats, setStats] = useState<MeshStat[] | null>(null);
 
   // Resolve the scope to a concrete body-id set.
@@ -158,7 +162,7 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
         return;
       }
       void client.exportStep([...bodyIds]).then((result) => {
-        downloadBlob(result.data, result.fileName);
+        downloadBlob(result.data, exportFileName('.step'));
         onClose();
       }, onError);
       return;
@@ -175,7 +179,7 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
         const stl = entitlements.watermark
           ? applyStlWatermark(result.stl, format, FREE_WATERMARK)
           : result.stl;
-        downloadBlob(stl, result.fileName);
+        downloadBlob(stl, exportFileName('.stl'));
         onClose();
       }, onError);
   };

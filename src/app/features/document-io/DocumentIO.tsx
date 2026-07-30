@@ -4,6 +4,7 @@ import { withShortcut } from '../help/shortcuts';
 import { useDocumentStore } from '../../store/documentStore';
 import { pushToast } from '../../store/toastStore';
 import { downloadDocument, loadDocumentText } from './documentIO';
+import { exportFileName } from '../naming/exportName';
 import styles from '../timeline/Timeline.module.css';
 
 /**
@@ -18,7 +19,7 @@ export function DocumentIO(): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const save = (): void => {
-    downloadDocument(doc);
+    downloadDocument(doc, exportFileName('.nomadim.xml'));
   };
 
   // Ctrl+S / Ctrl+O shortcuts (master rule, ADR-0032). Rebinds `save` each

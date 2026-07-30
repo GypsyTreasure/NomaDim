@@ -29,6 +29,7 @@ import { validateSketch } from './sketch/validate';
 import type {
   BodyMetaPatch,
   DatumPatch,
+  DocumentNamePatch,
   SketchMetaPatch,
   SketchPatch,
   Transaction,
@@ -87,6 +88,7 @@ export type Command =
       readonly type: 'DeleteSketchDimensions';
       readonly payload: { sketchId: SketchId; dimensionIds: readonly DimensionId[] };
     }
+  | { readonly type: 'RenameDocument'; readonly payload: { name: string } }
   | { readonly type: 'RenameSketch'; readonly payload: { sketchId: SketchId; name: string } }
   | { readonly type: 'SetBodyName'; readonly payload: { bodyId: BodyId; name: string } }
   | { readonly type: 'SetBodyColor'; readonly payload: { bodyId: BodyId; color: string } }
@@ -341,6 +343,14 @@ export function applyCommand(
         dimensions: before.dimensions.filter((d) => !doomed.has(d.id)),
       };
       return commitSketchEdit(state, 'Delete Dimension', before, after);
+    }
+    case 'RenameDocument': {
+      const after = command.payload.name;
+      const patch: DocumentNamePatch = { kind: 'replaceName', before: state.name, after };
+      return ok({
+        state: { ...state, name: after },
+        transaction: { label: 'Rename Project', patches: [patch] },
+      });
     }
     case 'RenameSketch': {
       const found = requireSketch(state, command.payload.sketchId);

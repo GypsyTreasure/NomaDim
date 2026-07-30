@@ -166,6 +166,21 @@ export const en = {
   'measure.diameter': 'Diameter',
   'measure.hint': 'Pick two points; a circular edge shows radius. Esc exits.',
   'timeline.edit': 'Edit',
+  // Sample projects (M12).
+  'sample.menu': 'Samples',
+  'sample.open': 'Load a sample project',
+  'sample.error': 'Could not load the sample:',
+  'sample.plate': 'Plate',
+  'sample.plate.desc': 'A 40 × 30 mm plate, extruded 10 mm.',
+  'sample.plateHole': 'Plate with hole',
+  'sample.plateHole.desc': 'A plate with a Ø10 mm bore — a good first parametric edit.',
+  'sample.bar': 'Bar',
+  'sample.bar.desc': 'A 15 × 60 mm bar, extruded 8 mm.',
+  'onboard.loadSample': 'Load a sample',
+  // Support & telemetry (M12).
+  'support.contact': 'Contact support',
+  'support.subject': 'NomaDim support request',
+  'support.crashReports': 'Send anonymous crash reports',
   // Licensing (M11).
   'license.menu': 'License',
   'license.title': 'NomaDim license',

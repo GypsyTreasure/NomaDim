@@ -41,6 +41,7 @@ import { restorePersistedDocument, startAutosave } from './features/persistence/
 import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { LicenseButton } from './features/licensing/LicenseButton';
+import { SampleGallery } from './features/samples/SampleGallery';
 import { useEntitlementStore } from './store/entitlementStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -89,6 +90,7 @@ export function App(): React.JSX.Element {
   // collapsed behind their own toggles in the top-right menu cluster.
   const [treeOpen, setTreeOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
+  const [samplesOpen, setSamplesOpen] = useState(false);
   const appBarRef = useRef<HTMLDivElement>(null);
 
   // Tapping outside the app bar closes the menu — but NOT on item clicks, so a
@@ -340,6 +342,7 @@ export function App(): React.JSX.Element {
                 <DocumentIO />
                 <ImportStepButton />
                 <ExportStlButton />
+                <SampleGallery open={samplesOpen} onOpenChange={setSamplesOpen} />
                 <LicenseButton />
                 <button
                   type="button"
@@ -387,7 +390,13 @@ export function App(): React.JSX.Element {
             </>
           ) : (
             <>
-              {!sketcher.choosingPlane && !sketcher.pickingFace && <OnboardingHint />}
+              {!sketcher.choosingPlane && !sketcher.pickingFace && (
+                <OnboardingHint
+                  onLoadSample={() => {
+                    setSamplesOpen(true);
+                  }}
+                />
+              )}
               {sketcher.choosingPlane && (
                 <PlanePicker
                   onChoose={sketcher.choosePlane}

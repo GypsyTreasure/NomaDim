@@ -1,6 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSessionStore } from '../../store/sessionStore';
 import { t } from '../../i18n/t';
+import {
+  isErrorReportingAvailable,
+  isErrorReportingEnabled,
+  setErrorReporting,
+} from '../telemetry/errorReporting';
+import { supportMailto } from '../support/support';
 import { SHORTCUT_GROUPS } from './shortcuts';
 import styles from './Help.module.css';
 
@@ -13,6 +19,7 @@ import styles from './Help.module.css';
 export function KeyboardShortcuts(): React.JSX.Element | null {
   const open = useSessionStore((s) => s.helpOpen);
   const setHelpOpen = useSessionStore((s) => s.setHelpOpen);
+  const [reporting, setReporting] = useState(isErrorReportingEnabled);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -80,6 +87,29 @@ export function KeyboardShortcuts(): React.JSX.Element | null {
               </dl>
             </section>
           ))}
+        </div>
+        <div className={styles.footer}>
+          <a
+            className={styles.support}
+            href={supportMailto(t('support.subject'))}
+            data-testid="support-link"
+          >
+            {t('support.contact')}
+          </a>
+          {isErrorReportingAvailable() && (
+            <label className={styles.reporting}>
+              <input
+                type="checkbox"
+                checked={reporting}
+                data-testid="error-reporting-toggle"
+                onChange={(e) => {
+                  setErrorReporting(e.target.checked);
+                  setReporting(e.target.checked);
+                }}
+              />
+              {t('support.crashReports')}
+            </label>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * Properties granularity (#3) + line alignment (#2): the Select tool picks the
@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test';
 /** Move-then-click: a bare .click() emits no pointermove, so the snap engine
  * sees a stale cursor and the first click snaps to origin (documented artifact).
  * Moving first gives the engine the live cursor. */
-async function at(page: import('@playwright/test').Page, x: number, y: number): Promise<void> {
+async function at(page: Page, x: number, y: number): Promise<void> {
   await page.mouse.move(x, y);
   await page.mouse.click(x, y);
 }

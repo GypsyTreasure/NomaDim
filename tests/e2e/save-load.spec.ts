@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('save a document, then open it back in a fresh session', async ({ page, browser }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // Build one body.
   await page.getByRole('button', { name: 'New Sketch' }).click();
@@ -35,7 +35,7 @@ test('save a document, then open it back in a fresh session', async ({ page, bro
   // A brand-new session starts blank (no autosaved document)…
   const ctx = await browser.newContext();
   const fresh = await ctx.newPage();
-  await fresh.goto('/');
+  await fresh.goto('/app/');
   await expect(fresh.getByTestId('body-count')).toHaveText('0', { timeout: 30_000 });
 
   // …and opening the saved file replays the timeline, bringing the body back.

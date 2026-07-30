@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('Select default, single-shot tools, Line chains, Finish leads', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 
@@ -37,7 +37,7 @@ test('Select default, single-shot tools, Line chains, Finish leads', async ({ pa
 });
 
 test('Intersect toggle is present and catalogued', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XZ').click();
 

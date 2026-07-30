@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('the view buttons snap the camera without disturbing the model', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // One body.
   await page.getByRole('button', { name: 'New Sketch' }).click();

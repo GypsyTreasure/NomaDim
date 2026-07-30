@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('the project survives a page reload (autosave restores it)', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // Build one body.
   await page.getByRole('button', { name: 'New Sketch' }).click();
@@ -32,7 +32,7 @@ test('the project survives a page reload (autosave restores it)', async ({ page 
 });
 
 test('a returning sketch (no feature yet) is restored too', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();

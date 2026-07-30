@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('draw an axis line and revolve a profile around it', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 

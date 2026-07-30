@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('a circle placed by typed start coordinates + diameter commits', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 

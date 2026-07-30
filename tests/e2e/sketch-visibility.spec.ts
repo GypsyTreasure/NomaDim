@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('sketch preview shows, auto-hides on extrude, and can be re-shown', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 

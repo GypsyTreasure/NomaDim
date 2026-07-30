@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('choosing Cut in Extrude auto-selects a target and enables OK', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // A body to cut into: Ø30 disc extruded.
   await page.getByRole('button', { name: 'New Sketch' }).click();

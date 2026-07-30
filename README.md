@@ -6,7 +6,7 @@ precisely, extrude/revolve, finish with fillets/chamfers, export STL — running
 entirely client-side (WASM + WebGL2, no backend, no account) as a static site
 on GitHub Pages.
 
-**Status:** Live at **https://gypsytreasure.github.io/NomaDim/**. Sketching
+**Status:** Live — marketing site at **https://gypsytreasure.github.io/NomaDim/**, the app at **/app/**. Sketching
 (all entities + snapping + numeric input), Extrude/Revolve/Fillet/Chamfer/
 Combine, copy/paste, measure, the browser tree, sketching on base planes and
 body faces, `.nomadim.xml` save/load, and the standard-view / projection /

@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('the HUD commit button applies typed values (no Enter key)', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await page.keyboard.press('l');

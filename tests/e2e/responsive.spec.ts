@@ -12,7 +12,7 @@ const overflowPx = (page: Page): Promise<number> =>
 test('iPhone-12 viewport: controls reachable, no horizontal page scroll', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
-  await page.goto('/');
+  await page.goto('/app/');
 
   expect(await overflowPx(page)).toBeLessThanOrEqual(0);
 

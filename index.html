@@ -3,34 +3,199 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NomaDim — Parametric 3D CAD for 3D printing</title>
+    <title>NomaDim — Parametric 3D CAD in your browser, for 3D printing</title>
     <meta
       name="description"
-      content="Browser-based parametric 3D CAD for 3D-printing enthusiasts. Sketch with exact dimensions, extrude and revolve, then export STL or STEP — entirely in your browser, no install."
+      content="NomaDim is a fast, browser-based parametric CAD for 3D-printing enthusiasts. Sketch with exact dimensions, extrude and revolve, import SVG/DXF/STEP, and export STL — no install, no account."
     />
+    <link rel="canonical" href="https://gypsytreasure.github.io/nomadim/" />
     <meta name="theme-color" content="#0D1B2A" />
-    <!-- Base-path aware (Vite substitutes %BASE_URL%): favicon/manifest resolve
-         under the GitHub Pages /<repo>/ base, never a hardcoded /. -->
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
-    <link rel="apple-touch-icon" href="%BASE_URL%favicon.svg" />
-    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="NomaDim — Parametric 3D CAD for 3D printing" />
+    <meta property="og:title" content="NomaDim — Parametric 3D CAD in your browser" />
     <meta
       property="og:description"
       content="Sketch, extrude, and export STL/STEP in your browser. Parametric CAD built for 3D-printing enthusiasts."
     />
     <meta property="og:image" content="%BASE_URL%brand/logotype.svg" />
+    <meta property="og:url" content="https://gypsytreasure.github.io/nomadim/" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="NomaDim — Parametric 3D CAD for 3D printing" />
+    <meta name="twitter:title" content="NomaDim — Parametric 3D CAD in your browser" />
     <meta
       name="twitter:description"
-      content="Sketch, extrude, and export STL/STEP in your browser. Parametric CAD built for 3D-printing enthusiasts."
+      content="Sketch, extrude, and export STL/STEP in your browser. Parametric CAD for 3D printing."
     />
     <meta name="twitter:image" content="%BASE_URL%brand/logotype.svg" />
+    <script type="module" src="/src/landing/main.ts"></script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="%BASE_URL%">
+          <img src="%BASE_URL%brand/logomark.svg" alt="" />
+          NomaDim
+        </a>
+        <button class="nav-toggle" data-nav-toggle aria-label="Menu">☰</button>
+        <nav class="nav" data-nav>
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+          <a class="btn btn-primary" href="%BASE_URL%app/">Launch app</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <h1>Parametric 3D CAD that runs in your browser</h1>
+          <p class="lead">
+            Built for 3D-printing enthusiasts who find FreeCAD unintuitive and Fusion licensing
+            annoying. Sketch with exact dimensions, extrude and revolve, then export a clean STL —
+            no install, no account, nothing to configure.
+          </p>
+          <div class="cta">
+            <a class="btn btn-primary" href="%BASE_URL%app/" data-testid="cta-launch">
+              Launch the app
+            </a>
+            <a class="btn btn-ghost" href="#pricing">See pricing</a>
+          </div>
+          <p class="note">Runs 100% on your device · your models never leave the browser.</p>
+          <div class="demo">
+            <div class="demo-frame">
+              <!-- TODO(asset): replace with a 30–60s product demo (GIF/video). -->
+              <span>Product demo — coming soon</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="wrap">
+          <h2 class="section-title">Everything you need to model for print</h2>
+          <div class="features">
+            <div class="card">
+              <h3>Precise sketching</h3>
+              <p>
+                Numeric input and smart snapping — dimension as you draw, no constraint solver to
+                wrestle.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Extrude &amp; revolve</h3>
+              <p>
+                Turn profiles into solids, then finish with fillets, chamfers, shells and patterns.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Import reference geometry</h3>
+              <p>
+                Drop in SVG and DXF (blocks, arcs, ellipses) or a STEP solid and trace or build on
+                it.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Export print-ready STL</h3>
+              <p>
+                Watertight meshes at the resolution you choose — plus STEP for round-tripping to
+                other CAD.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Parametric timeline</h3>
+              <p>
+                Every operation is editable and re-runnable. Roll back, tweak a dimension,
+                regenerate.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Installable &amp; offline</h3>
+              <p>
+                Add it to your home screen. After the first visit it loads instantly and works
+                offline.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing">
+        <div class="wrap">
+          <h2 class="section-title">Simple, one-time pricing</h2>
+          <div class="pricing">
+            <div class="plan">
+              <h3>Free</h3>
+              <!-- TODO(confirm price): free/pro boundary + price per owner decision. -->
+              <div class="price">$0</div>
+              <ul>
+                <li>Full parametric modeling</li>
+                <li>SVG / DXF / STEP import</li>
+                <li>STL export (with watermark)</li>
+                <li>Runs fully offline</li>
+              </ul>
+              <a class="btn btn-ghost" href="%BASE_URL%app/">Start modeling</a>
+            </div>
+            <div class="plan featured">
+              <h3>Pro</h3>
+              <!-- TODO(confirm price): perpetual one-time license price. -->
+              <div class="price">$TBD</div>
+              <ul>
+                <li>Everything in Free</li>
+                <li>STEP &amp; 3MF export, no watermark</li>
+                <li>No model-complexity cap</li>
+                <li>One-time purchase — yours forever</li>
+              </ul>
+              <a class="btn btn-primary" href="%BASE_URL%app/">Get Pro</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="wrap">
+          <h2 class="section-title">Questions</h2>
+          <div class="faq">
+            <details>
+              <summary>Do I need to install anything?</summary>
+              <p>
+                No. NomaDim runs entirely in a modern browser (Chrome, Edge, Firefox). You can also
+                install it as an app from your browser for offline use.
+              </p>
+            </details>
+            <details>
+              <summary>Where are my files stored?</summary>
+              <p>
+                On your device. Models are saved as local <code>.nomadim.xml</code> files and
+                autosaved in your browser — nothing is uploaded to a server.
+              </p>
+            </details>
+            <details>
+              <summary>Is the Pro license a subscription?</summary>
+              <p>No — Pro is a one-time purchase (a perpetual license). Buy once, use forever.</p>
+            </details>
+            <details>
+              <summary>What can I import and export?</summary>
+              <p>
+                Import SVG, DXF and STEP; export STL (binary/ASCII) and STEP. 3MF export is on the
+                roadmap.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>© <span data-year>2026</span> Kacper / NomaDirection — all rights reserved</span>
+        <nav>
+          <a href="%BASE_URL%app/">Launch app</a>
+          <a href="%BASE_URL%legal/terms.html">Terms</a>
+          <a href="%BASE_URL%legal/privacy.html">Privacy</a>
+          <a href="%BASE_URL%legal/eula.html">License</a>
+          <a href="%BASE_URL%legal/refund.html">Refunds</a>
+        </nav>
+      </div>
+    </footer>
   </body>
 </html>

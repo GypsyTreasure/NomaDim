@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('pick a body face and sketch + extrude on it', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   // Build a 40×40×10 box centred on the origin (planar faces, easy to hit).
   await page.getByRole('button', { name: 'New Sketch' }).click();

@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('clicking a numeric field focuses it, then typing fills that field', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 

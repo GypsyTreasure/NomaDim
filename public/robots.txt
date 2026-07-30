@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gypsytreasure.github.io/nomadim/sitemap.xml

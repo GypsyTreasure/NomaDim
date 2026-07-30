@@ -17,7 +17,7 @@ async function typeSegment(page: Page, length: string, angleDeg: string): Promis
 }
 
 test('bracket drawn to exact dimensions via keyboard only', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 
@@ -42,7 +42,7 @@ test('bracket drawn to exact dimensions via keyboard only', async ({ page }) => 
 test('plate with hole: hexagon plate + circular cutout = profile with inner loop', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
 

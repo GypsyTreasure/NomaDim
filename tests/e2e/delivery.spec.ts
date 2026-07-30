@@ -15,7 +15,7 @@ test('boots the kernel from the gzipped .gzc payload, never the raw .wasm', asyn
       wasmFetches.push(url.endsWith('.gzc') ? 'gzc' : 'raw');
   });
 
-  await page.goto('/');
+  await page.goto('/app/');
   // The loading bar clears once the kernel is ready (initial regen done).
   await expect(page.getByTestId('kernel-loading')).toBeHidden({ timeout: 60_000 });
 
@@ -24,7 +24,7 @@ test('boots the kernel from the gzipped .gzc payload, never the raw .wasm', asyn
 });
 
 test('registers a service worker and links a web manifest', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
 
   const active = await page.evaluate(async () => {
     if (!('serviceWorker' in navigator)) return false;

@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 
 test('menu actions respond to their keyboard shortcuts', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByRole('button', { name: 'New Sketch' })).toBeVisible();
   // Focus the app so window keydown listeners receive the presses.
   await page.mouse.click(3, 3);

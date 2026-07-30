@@ -10,8 +10,10 @@ export {
   parseReferenceFile,
   parseSvg,
   parseDxf,
+  importLayers,
   type ImportPrimitive,
   type ImportResult,
+  type ImportLayer,
 } from './import';
 export * from './entities/queries';
 export * from './entities/topology';

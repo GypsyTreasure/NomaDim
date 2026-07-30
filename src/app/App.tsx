@@ -13,6 +13,7 @@ import {
 } from '../viewport';
 import { NumericHud } from './features/sketcher/NumericHud';
 import { PlanePicker } from './features/sketcher/PlanePicker';
+import { ImportLayersDialog } from './features/sketcher/ImportLayersDialog';
 import { ConstructMenu } from './features/construct/ConstructMenu';
 import { ConstructDialog } from './features/construct/ConstructDialog';
 import { buildDatumRenders } from './features/construct/datumRenders';
@@ -451,6 +452,13 @@ export function App(): React.JSX.Element {
             />
           )}
           <KeyboardShortcuts />
+          {sketcher.pendingImport && (
+            <ImportLayersDialog
+              pending={sketcher.pendingImport}
+              onConfirm={sketcher.confirmImport}
+              onCancel={sketcher.cancelImport}
+            />
+          )}
         </div>
 
         {/* Shared bottom tool dock (#3): the sketch tools and the 3D timeline

@@ -40,7 +40,12 @@ import {
   type SnapResult,
   type SketchToolId,
 } from '../../../sketch';
-import { parseReferenceFile } from '../../../sketch';
+import {
+  parseReferenceFile,
+  importLayers,
+  type ImportLayer,
+  type ImportPrimitive,
+} from '../../../sketch';
 import { sectionPlanePoints, type SketchModeProps } from '../../../viewport';
 import { sketchPlaneBasis } from './planeBasis';
 import { addImportedPrimitives } from './importGeometry';
@@ -128,6 +133,14 @@ export interface SketchPatternInput {
   readonly angleDeg: number;
 }
 
+/** A parsed multi-layer reference import awaiting the user's layer choice (ADR-0088). */
+export interface PendingImport {
+  readonly fileName: string;
+  readonly primitives: readonly ImportPrimitive[];
+  readonly layers: readonly ImportLayer[];
+  readonly warnings: readonly string[];
+}
+
 export interface SketcherApi {
   readonly activeSketch: Sketch | null;
   readonly viewportSketchMode: SketchModeProps | null;
@@ -169,6 +182,12 @@ export interface SketcherApi {
   readonly finishSketch: () => void;
   /** Import SVG/DXF reference geometry into the active sketch (#2). */
   readonly importReference: (fileName: string, text: string) => void;
+  /** A multi-layer DXF awaiting the user's layer choice (ADR-0088), else null. */
+  readonly pendingImport: PendingImport | null;
+  /** Import only the chosen source layers, then close the picker. */
+  readonly confirmImport: (selectedLayers: ReadonlySet<string>) => void;
+  /** Dismiss the layer picker without importing. */
+  readonly cancelImport: () => void;
   /** Delete the currently selected sketch entities (touch affordance for the Delete key). */
   readonly deleteSelection: () => void;
   /** Mirror the selected entities across the sketch X/Y axis or a selected line (#2). */
@@ -245,6 +264,8 @@ export function useSketcher(): SketcherApi {
   // Bumped after a reference import to request a one-shot zoom-to-fit, so a
   // large DXF/SVG is framed rather than left off-screen (pro import UX).
   const [fitNonce, setFitNonce] = useState(0);
+  // A parsed multi-layer import awaiting the user's layer selection (ADR-0088).
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [dimFirst, setDimFirst] = useState<PointId | null>(null);
   const dimFirstRef = useRef(dimFirst);
   useEffect(() => {
@@ -990,11 +1011,12 @@ export function useSketcher(): SketcherApi {
   // parse to neutral primitives → add as construction (reference) entities via
   // the same AddSketchGeometry path, so every vertex is snappable and each
   // shape is selectable. Warnings surface as a toast.
-  const importReference = useCallback(
-    (fileName: string, text: string) => {
+  // Adds already-chosen primitives to the sketch through the write path, frames
+  // them, and reports the outcome. Shared by the direct path and the layer picker.
+  const commitImportedPrimitives = useCallback(
+    (primitives: readonly ImportPrimitive[], warnings: readonly string[]) => {
       const current = liveSketch();
       if (!current) return;
-      const { primitives, warnings } = parseReferenceFile(fileName, text);
       if (primitives.length > 0) {
         const plan = new GeometryPlan(current);
         addImportedPrimitives(plan, primitives);
@@ -1014,6 +1036,41 @@ export function useSketcher(): SketcherApi {
     },
     [liveSketch]
   );
+
+  const importReference = useCallback(
+    (fileName: string, text: string) => {
+      const current = liveSketch();
+      if (!current) return;
+      const { primitives, warnings } = parseReferenceFile(fileName, text);
+      const layers = importLayers(primitives);
+      // A multi-layer DXF opens the layer picker so the user chooses what to
+      // import (ADR-0088); a single layer (or SVG, which has none) imports
+      // straight away.
+      if (layers.length >= 2) {
+        setPendingImport({ fileName, primitives, layers, warnings });
+        return;
+      }
+      commitImportedPrimitives(primitives, warnings);
+    },
+    [liveSketch, commitImportedPrimitives]
+  );
+
+  // Layer picker (ADR-0088): commit only the primitives whose source layer the
+  // user kept, then close the dialog.
+  const confirmImport = useCallback(
+    (selected: ReadonlySet<string>) => {
+      const pending = pendingImport;
+      if (!pending) return;
+      const chosen = pending.primitives.filter((p) => selected.has(p.layer ?? ''));
+      setPendingImport(null);
+      commitImportedPrimitives(chosen, pending.warnings);
+    },
+    [pendingImport, commitImportedPrimitives]
+  );
+
+  const cancelImport = useCallback(() => {
+    setPendingImport(null);
+  }, []);
 
   // While the Dim tool is armed, add a live preview annotation from the first
   // point to the cursor so the user sees the measurement before committing.
@@ -1099,6 +1156,9 @@ export function useSketcher(): SketcherApi {
     pickFace,
     finishSketch,
     importReference,
+    pendingImport,
+    confirmImport,
+    cancelImport,
     mirrorSelection,
     patternSelection,
     mirrorLineAvailable,

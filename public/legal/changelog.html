@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NomaDim — Changelog &amp; Roadmap</title>
+    <link rel="stylesheet" href="legal.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Changelog &amp; Roadmap</h1>
+      <p class="meta">NomaDim by Kacper / NomaDirection · last updated 2026-07-30</p>
+
+      <h2>Released</h2>
+      <p>Milestones ship in order; each is a self-contained release.</p>
+      <ul>
+        <li>
+          <strong>M0–M7</strong> — core parametric CAD: sketching (solver-free, snap + numeric
+          input), extrude / revolve / fillet / chamfer / shell / pattern / mirror / combine,
+          timeline history, undo/redo, XML document format, STL &amp; STEP export.
+        </li>
+        <li>
+          <strong>SVG / DXF import</strong> — reference geometry as assembly or split shapes, with
+          selectable key points; real AutoCAD DXF support (BLOCK/INSERT resolution, bulge arcs,
+          ellipses).
+        </li>
+        <li>
+          <strong>M8</strong> — faster startup: gzip-compressed kernel delivery, lazy kernel boot,
+          installable PWA.
+        </li>
+        <li>
+          <strong>M9</strong> — GUI hardening: tools gray out with a reason when unavailable;
+          descriptive tooltips with shortcuts everywhere.
+        </li>
+        <li><strong>M10</strong> — marketing landing page separate from the app.</li>
+        <li>
+          <strong>M11</strong> — offline license keys: Ed25519-signed, verified in-browser, no
+          runtime backend. Free tier watermarks STL; Pro unlocks exact STEP export.
+        </li>
+        <li>
+          <strong>M12</strong> — trust &amp; content: sample projects, legal pages, in-app support,
+          opt-in error reporting.
+        </li>
+      </ul>
+
+      <h2>Roadmap</h2>
+      <p>Planned, in no committed order:</p>
+      <ul>
+        <li>Fully trimmed OCCT kernel build (&lt; 8&nbsp;MB) for even faster loads.</li>
+        <li>3MF export for color / multi-material printing.</li>
+        <li>Constraint solver (v2) — the data model is already constraint-ready.</li>
+        <li>Assembly / multi-part documents.</li>
+        <li>Additional import formats and measurement tooling.</li>
+      </ul>
+      <p class="note">
+        Roadmap items are directional, not promises, and may change without notice.
+      </p>
+      <a class="back" href="../">← Back to NomaDim</a>
+    </main>
+  </body>
+</html>

@@ -245,6 +245,9 @@ nomadim/
 ## 10a. Monetization (M11, ADR-0081)
 One-time perpetual **Pro** license, verified **offline** — no runtime backend. A license is an Ed25519-signed token; the app carries only the public key and verifies it locally via WebCrypto (fails closed). **Free** = full modeling + STL export **with a watermark**; **Pro** = STEP/3MF export + no watermark. Enter a key in the **License** dialog; it persists and re-verifies on load, so Pro works offline across sessions. Keys are issued out-of-bundle (`tools/license-issuer/`, private key a server secret) from a Merchant-of-Record purchase webhook. Price / Free-Pro boundary / MoR are owner-confirm.
 
+## 10b. Trust, samples & support (M12, ADR-0082)
+**Sample projects:** three built-in `.nomadim.xml` projects (plate, plate-with-hole, bar) load in one click — from the **Samples** dialog or the first-run onboarding **Load a sample** button — through the ordinary File→Open path (no new write path), so a new user gets a real, editable parametric body immediately. **Legal:** real Terms, Privacy, EULA, Refund, and a Changelog/Roadmap page (`public/legal/*.html`) sit behind the landing footer (template pending counsel review). **Support:** a `mailto:` **Contact support** link in the help dialog and landing footer — no form, no backend. **Crash reporting:** opt-**in** and privacy-first — fully inert unless a Sentry DSN is set at build (`VITE_SENTRY_DSN`), user-disable toggle in the help dialog, PII-scrubbed (no design data or user text, stack paths reduced to basenames), a single stateless HTTPS POST with **no bundled SDK** and **no runtime backend**.
+
 ## 11. Out of scope (v1) — explicit
 Constraint solver & driving dimensions (v2) · assemblies · joints · drawings · parameters table/expressions · splines · loft/sweep/hole/thread · variable fillets · timeline reordering · Project/Include into sketch · multi-document · touch UI · slicer integration · dark theme.
 

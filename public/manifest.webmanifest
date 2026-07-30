@@ -1,7 +1,7 @@
 {
   "name": "NomaDim — Parametric 3D CAD",
   "short_name": "NomaDim",
-  "description": "Browser-based parametric 3D CAD for 3D-printing enthusiasts. Sketch, extrude, and export STL/STEP — entirely in your browser.",
+  "description": "Browser-based parametric 3D CAD for professional makers — workshops, manufacturers, and 3D-printing farms. Sketch, extrude, and export STL/STEP — entirely in your browser.",
   "start_url": "app/",
   "scope": ".",
   "display": "standalone",

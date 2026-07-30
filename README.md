@@ -1,6 +1,7 @@
 # NomaDim
 
-Source-available, browser-based parametric 3D CAD for 3D-printing enthusiasts.
+Source-available, browser-based parametric 3D CAD for professional makers —
+workshops, small manufacturers, and 3D-printing farms.
 Inspired by Autodesk Fusion 360's workflow — sketch on a plane, dimension
 precisely, extrude/revolve, finish with fillets/chamfers, export STL — running
 entirely client-side (WASM + WebGL2, no backend, no account) as a static site

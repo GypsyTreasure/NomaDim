@@ -164,6 +164,11 @@ export interface ViewportProps {
   onSelectBody?: (bodyId: BodyId | null) => void;
   /** Non-null while picking a body face to sketch on (F2). */
   facePick?: FacePickProps | null;
+  /**
+   * Bumping this integer requests a one-shot zoom-to-fit (e.g. after importing
+   * reference geometry, so a large DXF is framed instead of left off-screen).
+   */
+  fitNonce?: number;
 }
 
 const EDGE_COLOR = 0x0d1b2a; // navy
@@ -189,6 +194,7 @@ export function Viewport({
   bodies,
   previewBodies,
   sketchMode,
+  fitNonce,
   sectionView = false,
   edgePick = null,
   measure = null,
@@ -230,6 +236,15 @@ export function Viewport({
   const measureCandidatesRef = useRef<MeasureCandidate[]>([]);
   const onSelectBodyRef = useRef<((bodyId: BodyId | null) => void) | undefined>(undefined);
   const facePickRef = useRef<FacePickProps | null>(null);
+  // One-shot zoom-to-fit request (e.g. after a reference import). Wait a frame
+  // so the overlay reflects the just-added geometry, then frame it.
+  useEffect(() => {
+    if (!fitNonce) return undefined;
+    const id = requestAnimationFrame(() => fitRequestRef.current?.());
+    return () => {
+      cancelAnimationFrame(id);
+    };
+  }, [fitNonce]);
   // Intersect view (#1): whether it's on, plus the current section drawn as
   // plane-space segments + vertices (it lies ON the sketch plane, so the rAF
   // loop can stroke it thick on the 2D overlay and mark its pivot points).
@@ -373,8 +388,21 @@ export function Viewport({
 
     fitRequestRef.current = () => {
       const box = new THREE.Box3().setFromObject(scene);
+      // The 2D sketch overlay (imported reference geometry, drawn lines) is NOT
+      // part of the Three scene, so `setFromObject` misses it. When sketching,
+      // union in the overlay's world-space bounds so zoom-to-fit frames e.g. a
+      // freshly imported DXF instead of leaving it off-screen.
+      const mode = sketchModeRef.current;
+      if (mode) {
+        const mapping = mappingFromBasis(mode.basis);
+        // Pool points cover every vertex/endpoint — enough to frame the drawing.
+        for (const p of mode.overlay.points) {
+          box.expandByPoint(planeToWorld(mapping, p));
+        }
+      }
       rig.frameBox(box, controls.target);
       controls.update();
+      requestRenderRef.current();
     };
 
     // Toggle perspective↔orthographic (F11): rebind controls + render loop to

@@ -182,6 +182,8 @@ export interface SketcherApi {
   /** Intersect view (#1): clip the near half of bodies + show the plane section. */
   readonly intersect: boolean;
   readonly toggleIntersect: () => void;
+  /** Increments after a reference import to request a one-shot zoom-to-fit. */
+  readonly fitNonce: number;
 }
 
 export function useSketcher(): SketcherApi {
@@ -240,6 +242,9 @@ export function useSketcher(): SketcherApi {
   }, [dimensionKind]);
   // Intersect view (#1): clip the near body half + show the plane section.
   const [intersect, setIntersect] = useState(false);
+  // Bumped after a reference import to request a one-shot zoom-to-fit, so a
+  // large DXF/SVG is framed rather than left off-screen (pro import UX).
+  const [fitNonce, setFitNonce] = useState(0);
   const [dimFirst, setDimFirst] = useState<PointId | null>(null);
   const dimFirstRef = useRef(dimFirst);
   useEffect(() => {
@@ -997,6 +1002,9 @@ export function useSketcher(): SketcherApi {
           type: 'AddSketchGeometry',
           payload: { sketchId: current.id, ...plan.payload },
         });
+        // Frame the freshly imported geometry (it may be far from the origin /
+        // much larger than the current view — e.g. an architectural DXF).
+        setFitNonce((n) => n + 1);
       }
       if (warnings.length > 0) {
         pushToast(warnings.join(' '), primitives.length > 0 ? 'info' : 'error');
@@ -1081,6 +1089,7 @@ export function useSketcher(): SketcherApi {
     hasSelection: selectedEntityIds.length > 0,
     intersect,
     toggleIntersect,
+    fitNonce,
     newSketch,
     choosePlane,
     sketchOnDatum,

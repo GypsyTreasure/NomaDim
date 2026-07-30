@@ -242,6 +242,9 @@ nomadim/
 └─ .github/workflows/deploy.yml
 ```
 
+## 10a. Monetization (M11, ADR-0081)
+One-time perpetual **Pro** license, verified **offline** — no runtime backend. A license is an Ed25519-signed token; the app carries only the public key and verifies it locally via WebCrypto (fails closed). **Free** = full modeling + STL export **with a watermark**; **Pro** = STEP/3MF export + no watermark. Enter a key in the **License** dialog; it persists and re-verifies on load, so Pro works offline across sessions. Keys are issued out-of-bundle (`tools/license-issuer/`, private key a server secret) from a Merchant-of-Record purchase webhook. Price / Free-Pro boundary / MoR are owner-confirm.
+
 ## 11. Out of scope (v1) — explicit
 Constraint solver & driving dimensions (v2) · assemblies · joints · drawings · parameters table/expressions · splines · loft/sweep/hole/thread · variable fillets · timeline reordering · Project/Include into sketch · multi-document · touch UI · slicer integration · dark theme.
 

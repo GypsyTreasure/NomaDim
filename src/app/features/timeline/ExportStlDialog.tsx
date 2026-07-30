@@ -6,6 +6,8 @@ import { getKernelClient, useKernelStore } from '../../store/kernelStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { pushToast } from '../../store/toastStore';
 import { t } from '../../i18n/t';
+import { useEntitlement } from '../../store/entitlementStore';
+import { applyStlWatermark, FREE_WATERMARK } from '../licensing/watermark';
 import { DialogFrame, NumberRow, SelectRow, type SelectOption } from './dialogShared';
 import styles from './Timeline.module.css';
 
@@ -71,6 +73,12 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const bodyMeta = useDocumentStore((s) => s.document.bodyMeta);
   const selectedBodyId = useSessionStore((s) => s.selectedBodyId);
+
+  const entitlements = useEntitlement();
+  // STEP (exact B-rep) is a Pro format; free tier sees STL only.
+  const formatOptions = entitlements.canExportExact
+    ? FORMAT_OPTIONS
+    : FORMAT_OPTIONS.filter((o) => o.value !== 'step');
 
   const [scope, setScope] = useState<Scope>(selectedBodyId ? 'selected' : 'visible');
   const [format, setFormat] = useState<Format>('binary');
@@ -145,6 +153,10 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
       );
     };
     if (format === 'step') {
+      if (!entitlements.canExportExact) {
+        pushToast(t('license.proOnly'), 'info');
+        return;
+      }
       void client.exportStep([...bodyIds]).then((result) => {
         downloadBlob(result.data, result.fileName);
         onClose();
@@ -159,7 +171,11 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
         angularDeflectionDeg: angularDeg,
       })
       .then((result) => {
-        downloadBlob(result.stl, result.fileName);
+        // Free tier stamps a watermark into the STL (M11); Pro exports clean.
+        const stl = entitlements.watermark
+          ? applyStlWatermark(result.stl, format, FREE_WATERMARK)
+          : result.stl;
+        downloadBlob(stl, result.fileName);
         onClose();
       }, onError);
   };
@@ -175,7 +191,7 @@ export function ExportStlDialog({ onClose }: { onClose: () => void }): React.JSX
       <SelectRow<Format>
         labelKey="stl.format"
         value={format}
-        options={FORMAT_OPTIONS}
+        options={formatOptions}
         onChange={setFormat}
       />
       {isMesh && (

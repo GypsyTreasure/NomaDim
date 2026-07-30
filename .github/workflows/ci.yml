@@ -34,6 +34,11 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: License private key absent from bundle (M11)
+        run: |
+          if grep -rEl "NOMADIM_LICENSE_PRIVATE_KEY|BEGIN[A-Z ]*PRIVATE KEY|pkcs8" dist; then
+            echo "::error::License private-key material leaked into the built bundle"; exit 1
+          fi
 
   e2e:
     runs-on: ubuntu-latest

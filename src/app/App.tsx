@@ -40,6 +40,8 @@ import { usePreviewStore } from './store/previewStore';
 import { restorePersistedDocument, startAutosave } from './features/persistence/autosave';
 import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
+import { LicenseButton } from './features/licensing/LicenseButton';
+import { useEntitlementStore } from './store/entitlementStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
 import { useTimeline } from './features/timeline/useTimeline';
@@ -124,6 +126,8 @@ export function App(): React.JSX.Element {
   // the scheduler's initial regen rebuilds bodies from the restored timeline.
   useEffect(() => {
     restorePersistedDocument();
+    // Re-verify a persisted Pro license offline (M11) — free tier otherwise.
+    useEntitlementStore.getState().restore();
     // Defer the multi-MB WASM boot to idle so the shell + empty viewport paint
     // first (M8 lazy kernel). Restore stays synchronous and ordered before it.
     scheduleKernelBoot();
@@ -336,6 +340,7 @@ export function App(): React.JSX.Element {
                 <DocumentIO />
                 <ImportStepButton />
                 <ExportStlButton />
+                <LicenseButton />
                 <button
                   type="button"
                   className={sketcherStyles.button}

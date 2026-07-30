@@ -16,6 +16,7 @@ import {
   createGhostMesh,
   createGrid,
   createLighting,
+  createOriginMarker,
   createOriginPlanes,
   disposeSceneObjects,
   type DatumRender,
@@ -303,6 +304,7 @@ export function Viewport({
     const grid = createGrid();
     const originPlanes = createOriginPlanes();
     originPlanesRef.current = originPlanes;
+    const originMarker = createOriginMarker();
     const lighting = createLighting();
     const bodyGroup = new THREE.Group();
     bodyGroup.name = 'Bodies';
@@ -332,6 +334,7 @@ export function Viewport({
       originPlanes.XY,
       originPlanes.XZ,
       originPlanes.YZ,
+      originMarker,
       lighting,
       bodyGroup,
       previewGroup,

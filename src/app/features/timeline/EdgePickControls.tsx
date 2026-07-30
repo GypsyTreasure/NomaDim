@@ -17,9 +17,12 @@ import styles from './Timeline.module.css';
 export function EdgePickControls({
   bodyId,
   onBodyChange,
+  failedEdgeIndices,
 }: {
   bodyId: BodyId | null;
   onBodyChange: (id: BodyId) => void;
+  /** Indices (into the picked-edge list) the kernel could not build — flagged red (#8). */
+  failedEdgeIndices?: readonly number[];
 }): React.JSX.Element {
   const document = useDocumentStore((s) => s.document);
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
@@ -56,22 +59,31 @@ export function EdgePickControls({
           a mis-pick doesn't force starting the selection over. */}
       {pickedEdges.length > 0 && (
         <ul className={styles.edgeList} data-testid="edge-list">
-          {pickedEdges.map((edge, i) => (
-            <li key={edgeFingerprintKey(edge)} className={styles.edgeListItem}>
-              <span>{`${t('dialog.edges.item')} ${String(i + 1)}`}</span>
-              <button
-                type="button"
-                className={styles.edgeListRemove}
-                title={t('dialog.edges.remove')}
-                aria-label={t('dialog.edges.remove')}
-                onClick={() => {
-                  toggleEdge(edge); // present → removed
-                }}
+          {pickedEdges.map((edge, i) => {
+            const failed = failedEdgeIndices?.includes(i) ?? false;
+            return (
+              <li
+                key={edgeFingerprintKey(edge)}
+                className={`${styles.edgeListItem ?? ''} ${failed ? (styles.edgeListItemFailed ?? '') : ''}`}
               >
-                ×
-              </button>
-            </li>
-          ))}
+                <span title={failed ? t('dialog.edges.failed') : undefined}>
+                  {`${t('dialog.edges.item')} ${String(i + 1)}`}
+                  {failed ? ' ⚠' : ''}
+                </span>
+                <button
+                  type="button"
+                  className={styles.edgeListRemove}
+                  title={t('dialog.edges.remove')}
+                  aria-label={t('dialog.edges.remove')}
+                  onClick={() => {
+                    toggleEdge(edge); // present → removed
+                  }}
+                >
+                  ×
+                </button>
+              </li>
+            );
+          })}
           <li className={styles.edgeListClear}>
             <button
               type="button"

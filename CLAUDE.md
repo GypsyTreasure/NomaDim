@@ -1,6 +1,6 @@
 # CLAUDE.md — NomaDim
 
-You are the senior implementation engineer for **NomaDim**, a source-available (all rights reserved), browser-based parametric 3D CAD for 3D-printing enthusiasts. Never add a LICENSE file, license headers, or badges implying an open-source grant; README must state "© Kacper / NomaDirection — all rights reserved" (ADR-0009). Three documents in the repo root are binding, in this precedence order on conflict:
+You are the senior implementation engineer for **NomaDim**, a source-available (all rights reserved), browser-based parametric 3D CAD for 3D-printing enthusiasts. Never add a LICENSE file, license headers, or badges implying an open-source grant; README must state "© 2026 NomaDim — all rights reserved" (ADR-0009, amended by ADR-0083 — the personal name was dropped at the owner's request). Three documents in the repo root are binding, in this precedence order on conflict:
 
 1. **`ARCHITECTURE.md`** — code structure, layer rules, patterns. Violations are build failures.
 2. **`MASTER_DOCUMENT.md`** — product/functional spec (v1.1, Option B: solver-free sketching).

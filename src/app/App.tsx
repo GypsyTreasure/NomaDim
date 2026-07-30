@@ -22,6 +22,7 @@ import { SketchToolbar } from './features/sketcher/SketchToolbar';
 import { useSketcher } from './features/sketcher/useSketcher';
 import { buildSketchPreviews } from './features/sketcher/sketchPreviews';
 import { Logo } from './features/brand/Logo';
+import { ProjectNameField } from './features/project/ProjectNameField';
 import { UndoRedo } from './features/history/UndoRedo';
 import { BrowserTree } from './features/browser/BrowserTree';
 import { MeasureHud } from './features/measure/MeasureHud';
@@ -42,6 +43,7 @@ import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { LicenseButton } from './features/licensing/LicenseButton';
 import { SampleGallery } from './features/samples/SampleGallery';
+import { SettingsButton } from './features/admin/SettingsButton';
 import { useEntitlementStore } from './store/entitlementStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -217,9 +219,15 @@ export function App(): React.JSX.Element {
         </div>
       )}
       <header className={styles.header}>
-        <h1 className={styles.title}>
-          <Logo />
-        </h1>
+        <div className={styles.brandRow}>
+          <h1 className={styles.title}>
+            {/* Clicking the logo returns to the marketing/landing page (#1). */}
+            <a className={styles.homeLink} href={import.meta.env.BASE_URL} title={t('nav.home')}>
+              <Logo />
+            </a>
+          </h1>
+          <ProjectNameField />
+        </div>
         <UndoRedo />
       </header>
       <main className={styles.viewportArea}>
@@ -343,6 +351,7 @@ export function App(): React.JSX.Element {
                 <ImportStepButton />
                 <ExportStlButton />
                 <SampleGallery open={samplesOpen} onOpenChange={setSamplesOpen} />
+                <SettingsButton />
                 <LicenseButton />
                 <button
                   type="button"

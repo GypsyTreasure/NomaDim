@@ -141,6 +141,12 @@ export interface OpStatusReport {
   readonly status: OpRunStatus;
   readonly code?: string;
   readonly message?: string;
+  /**
+   * For a failed edge-based op (Fillet/Chamfer): indices — into the op's edge
+   * list — of the edges that could not be built, so the edit dialog can flag
+   * the offending edge(s) in red (#8).
+   */
+  readonly failedEdgeIndices?: readonly number[];
 }
 
 export type KernelRequest =

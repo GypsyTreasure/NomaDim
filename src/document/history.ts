@@ -55,8 +55,15 @@ export interface DatumPatch {
   readonly after: readonly Datum[];
 }
 
+/** Project-name replacement (F7) — a single scalar, undoable like any edit. */
+export interface DocumentNamePatch {
+  readonly kind: 'replaceName';
+  readonly before: string;
+  readonly after: string;
+}
+
 export type DocumentPatch =
-  SketchPatch | TimelinePatch | BodyMetaPatch | SketchMetaPatch | DatumPatch;
+  SketchPatch | TimelinePatch | BodyMetaPatch | SketchMetaPatch | DatumPatch | DocumentNamePatch;
 
 export interface Transaction {
   readonly label: string;
@@ -106,6 +113,10 @@ function applyPatches(
       }
       case 'replaceDatums': {
         next = { ...next, datums: direction === 'forward' ? patch.after : patch.before };
+        break;
+      }
+      case 'replaceName': {
+        next = { ...next, name: direction === 'forward' ? patch.after : patch.before };
         break;
       }
       default: {

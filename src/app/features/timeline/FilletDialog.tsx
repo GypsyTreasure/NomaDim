@@ -9,6 +9,7 @@ import type { OpDialogProps } from './dialogTypes';
 import { DialogFrame, NumberRow } from './dialogShared';
 import { EdgePickControls } from './EdgePickControls';
 import { existingIds, mintName, useEdgePickLifecycle } from './dialogData';
+import styles from './Timeline.module.css';
 
 /** Fillet create/edit dialog (F4): target body + picked edges + single radius. */
 export function FilletDialog({ editing, onClose }: OpDialogProps): React.JSX.Element {
@@ -19,6 +20,12 @@ export function FilletDialog({ editing, onClose }: OpDialogProps): React.JSX.Ele
 
   const [bodyId, setBodyId] = useState<BodyId | null>(prior?.bodyId ?? liveBodyIds[0] ?? null);
   const [radiusMm, setRadiusMm] = useState(prior?.radiusMm ?? 2);
+
+  // If this fillet last failed, surface which edge(s) the kernel couldn't build
+  // and flag them in red so the fix is obvious on re-open (#8).
+  const status = useKernelStore((s) => (prior ? s.statuses.get(prior.id) : undefined));
+  const failedEdgeIndices = status?.status === 'error' ? status.failedEdgeIndices : undefined;
+  const errorMessage = status?.status === 'error' ? status.message : undefined;
 
   useEdgePickLifecycle(prior?.bodyId ?? liveBodyIds[0] ?? null, prior?.edges ?? []);
 
@@ -49,7 +56,16 @@ export function FilletDialog({ editing, onClose }: OpDialogProps): React.JSX.Ele
 
   return (
     <DialogFrame title={t('op.fillet')} okDisabled={okDisabled} onOk={submit} onCancel={onClose}>
-      <EdgePickControls bodyId={bodyId} onBodyChange={changeBody} />
+      {errorMessage !== undefined && (
+        <p className={styles.opError} role="alert" data-testid="fillet-error">
+          {errorMessage}
+        </p>
+      )}
+      <EdgePickControls
+        bodyId={bodyId}
+        onBodyChange={changeBody}
+        failedEdgeIndices={failedEdgeIndices}
+      />
       <NumberRow labelKey="dialog.radius" value={radiusMm} onChange={setRadiusMm} />
     </DialogFrame>
   );

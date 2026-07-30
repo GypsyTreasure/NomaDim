@@ -25,8 +25,9 @@ test('phone: New Sketch stays visible; the rest collapse behind a hamburger', as
   await expect(page.getByRole('button', { name: 'Export', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Shortcuts' })).toBeVisible();
 
-  // Tapping outside (the canvas) closes the menu.
-  await page.mouse.click(195, 600);
+  // Tapping outside (the canvas, well below the menu) closes it. Tapped near
+  // the bottom so the point stays clear of the menu as it gains items.
+  await page.mouse.click(195, 820);
   await expect(page.getByRole('button', { name: 'Save' })).toBeHidden();
 });
 

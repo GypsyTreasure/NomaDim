@@ -57,7 +57,6 @@ import {
   setConstructionMode,
   toolClick,
   toolEnter,
-  toolEscape,
   toolPreview,
   nearestPointId,
   withStartPoint,
@@ -369,6 +368,7 @@ export function useSketcher(): SketcherApi {
     const transition = reduceInput(before, { type: 'enter' });
     setInputState(transition.state);
     if (transition.effect.kind === 'commit') {
+      // A typed segment commits and the chain continues (keyboard drawing).
       const start = startPointOf(before, effectiveCursor);
       const shapeValues = transition.effect.values.slice(
         0,
@@ -376,16 +376,32 @@ export function useSketcher(): SketcherApi {
       );
       const armed = start ? withStartPoint(toolState, start) : toolState;
       applyStep(toolEnter(armed, shapeValues, effectiveCursor));
+    } else if (activeTool === 'line' || activeTool === 'axis') {
+      // Enter with nothing to commit FINISHES the Line/Axis run and returns to
+      // Select so the view can be rotated (#5) — the segments drawn so far stay.
+      useSessionStore.getState().setActiveTool(null);
+      setToolState((prev) => ({
+        ...initialToolState('line'),
+        constructionMode: prev.constructionMode,
+      }));
+      setInputState(initialInputState([]));
+      lineStartRef.current = null;
     }
   }, [applyStep, toolState, effectiveCursor]);
 
+  // Esc always exits the active tool back to Select/navigate so the view can be
+  // rotated (#6): it clears any in-progress chain/dimension AND deactivates the
+  // tool (Line, Circle, …), rather than merely resetting the current tool.
   const cancelInput = useCallback(() => {
-    const cleared = toolEscape(toolState);
-    setToolState(cleared);
-    setInputState(initialInputState(fieldsForToolWithStart(cleared.tool, false)));
+    useSessionStore.getState().setActiveTool(null);
+    setToolState((prev) => ({
+      ...initialToolState('line'),
+      constructionMode: prev.constructionMode,
+    }));
+    setInputState(initialInputState([]));
     setDimFirst(null);
-    lineStartRef.current = null; // Escape ends any open line chain (#6)
-  }, [toolState]);
+    lineStartRef.current = null;
+  }, []);
 
   const setFieldText = useCallback((index: number, text: string) => {
     setInputState((s) => reduceInput(s, { type: 'setText', index, text }).state);

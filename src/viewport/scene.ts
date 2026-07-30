@@ -63,6 +63,23 @@ function makePlane(id: OriginPlaneId, color: number, rotation: THREE.Euler): THR
   return group;
 }
 
+const ORIGIN_MARKER_COLOR = 0xe5342e; // brand red — matches the logomark node
+const ORIGIN_MARKER_RADIUS_MM = 1.4;
+
+/**
+ * The world-origin marker (graphic identity): a small unlit red ball at (0,0,0),
+ * the 3D echo of the logomark's red node and the sketch-origin dot. Basic
+ * (unlit) material so it reads as a fixed marker regardless of lighting/angle.
+ */
+export function createOriginMarker(): THREE.Mesh {
+  const geometry = new THREE.SphereGeometry(ORIGIN_MARKER_RADIUS_MM, 16, 12);
+  const material = new THREE.MeshBasicMaterial({ color: ORIGIN_MARKER_COLOR });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'OriginMarker';
+  mesh.renderOrder = 2; // draw over the faint origin planes
+  return mesh;
+}
+
 /** XY / XZ / YZ origin planes, keyed by id so callers can toggle visibility per plane. */
 export function createOriginPlanes(): Record<OriginPlaneId, THREE.Group> {
   return {
@@ -161,14 +178,26 @@ export function createDatumObject(render: DatumRender): THREE.Group {
 
 const BODY_COLOR = 0x1a6b5a; // MASTER_DOCUMENT §12 brand teal — default body color.
 
-/** Basic shading rig (F11 "solid" shading) — plain ambient + one directional light. */
+/**
+ * Shading rig (F11 "solid" shading). A single directional light left many faces
+ * reading flat (#2); this is a small studio rig so a solid's orientation is
+ * legible from any camera angle:
+ *  - a Z-up hemisphere (sky/ground) so up- vs down-facing faces differ in tone,
+ *  - a low ambient floor so shadowed faces never crush to black,
+ *  - a key + a weaker fill from different directions for form definition.
+ * Still cheap (4 lights, Lambert shading) — the 100-body ≥30 fps floor holds.
+ */
 export function createLighting(): THREE.Group {
   const group = new THREE.Group();
   group.name = 'Lighting';
-  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-  const directional = new THREE.DirectionalLight(0xffffff, 1.2);
-  directional.position.set(1, 2, 1.5);
-  group.add(ambient, directional);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9aa4ad, 0.55);
+  hemi.position.set(0, 0, 1); // sky direction = world up (Z-up)
+  const ambient = new THREE.AmbientLight(0xffffff, 0.25);
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(1.5, 1, 2);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+  fill.position.set(-1.5, -1.2, 0.6);
+  group.add(hemi, ambient, key, fill);
   return group;
 }
 

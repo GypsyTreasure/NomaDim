@@ -40,6 +40,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'Ctrl+Y', desc: 'help.redo' },
       { keys: 'Ctrl+C', desc: 'help.copyBody' },
       { keys: 'Ctrl+V', desc: 'help.pasteBody' },
+      { keys: ',', desc: 'help.settings' },
       { keys: '?', desc: 'help.toggleHelp' },
     ],
   },

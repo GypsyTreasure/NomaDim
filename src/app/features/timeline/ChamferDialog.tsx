@@ -9,6 +9,7 @@ import type { OpDialogProps } from './dialogTypes';
 import { DialogFrame, NumberRow } from './dialogShared';
 import { EdgePickControls } from './EdgePickControls';
 import { existingIds, mintName, useEdgePickLifecycle } from './dialogData';
+import styles from './Timeline.module.css';
 
 /** Chamfer create/edit dialog (F4): target body + picked edges + equal distance. */
 export function ChamferDialog({ editing, onClose }: OpDialogProps): React.JSX.Element {
@@ -19,6 +20,11 @@ export function ChamferDialog({ editing, onClose }: OpDialogProps): React.JSX.El
 
   const [bodyId, setBodyId] = useState<BodyId | null>(prior?.bodyId ?? liveBodyIds[0] ?? null);
   const [distanceMm, setDistanceMm] = useState(prior?.distanceMm ?? 2);
+
+  // Surface which edge(s) the last build failed on, flagged red on re-open (#8).
+  const status = useKernelStore((s) => (prior ? s.statuses.get(prior.id) : undefined));
+  const failedEdgeIndices = status?.status === 'error' ? status.failedEdgeIndices : undefined;
+  const errorMessage = status?.status === 'error' ? status.message : undefined;
 
   useEdgePickLifecycle(prior?.bodyId ?? liveBodyIds[0] ?? null, prior?.edges ?? []);
 
@@ -49,7 +55,16 @@ export function ChamferDialog({ editing, onClose }: OpDialogProps): React.JSX.El
 
   return (
     <DialogFrame title={t('op.chamfer')} okDisabled={okDisabled} onOk={submit} onCancel={onClose}>
-      <EdgePickControls bodyId={bodyId} onBodyChange={changeBody} />
+      {errorMessage !== undefined && (
+        <p className={styles.opError} role="alert" data-testid="chamfer-error">
+          {errorMessage}
+        </p>
+      )}
+      <EdgePickControls
+        bodyId={bodyId}
+        onBodyChange={changeBody}
+        failedEdgeIndices={failedEdgeIndices}
+      />
       <NumberRow labelKey="dialog.chamferDistance" value={distanceMm} onChange={setDistanceMm} />
     </DialogFrame>
   );

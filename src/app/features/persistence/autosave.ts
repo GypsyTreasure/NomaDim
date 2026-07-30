@@ -1,5 +1,6 @@
 import { documentFromXml, documentToXml, type DocumentState } from '../../../document';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
+import { getSettings } from '../../store/settingsStore';
 
 /**
  * Client-side autosave (ARCHITECTURE §7: static-host, no backend). The whole
@@ -14,6 +15,9 @@ import { commandBus, useDocumentStore } from '../../store/documentStore';
  */
 
 const STORAGE_KEY = 'nomadim.document.v1';
+/** When the autosave was last written (epoch ms) — drives the retention TTL. */
+const SAVED_AT_KEY = 'nomadim.document.savedAt';
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Coalesce bursts of edits (keystroke-fast entry) into one write. */
 const DEBOUNCE_MS = 400;
@@ -34,8 +38,20 @@ function safeStorage(): Storage | null {
  * swallowed — better to start fresh than to crash on load.
  */
 export function restorePersistedDocument(): void {
-  const xml = safeStorage()?.getItem(STORAGE_KEY);
+  const storage = safeStorage();
+  const xml = storage?.getItem(STORAGE_KEY);
   if (!xml) return;
+  // Retention TTL (Admin panel): if the last save is older than the configured
+  // number of days, drop it so the user opens a fresh project instead of a
+  // stale one. `null` TTL (the default) keeps the project forever.
+  const ttlDays = getSettings().autosaveTtlDays;
+  if (ttlDays !== null && ttlDays > 0) {
+    const savedAt = Number(storage?.getItem(SAVED_AT_KEY) ?? '');
+    if (Number.isFinite(savedAt) && savedAt > 0 && Date.now() - savedAt > ttlDays * MS_PER_DAY) {
+      clearPersistedDocument();
+      return;
+    }
+  }
   const result = documentFromXml(xml);
   if (!result.ok) return;
   commandBus.loadDocument(result.value);
@@ -44,7 +60,9 @@ export function restorePersistedDocument(): void {
 /** Erase the autosaved document (New Project). The next load starts blank. */
 export function clearPersistedDocument(): void {
   try {
-    safeStorage()?.removeItem(STORAGE_KEY);
+    const storage = safeStorage();
+    storage?.removeItem(STORAGE_KEY);
+    storage?.removeItem(SAVED_AT_KEY);
   } catch {
     // Storage blocked — nothing to clear.
   }
@@ -55,6 +73,7 @@ function persist(doc: DocumentState): void {
   if (!storage) return;
   try {
     storage.setItem(STORAGE_KEY, documentToXml(doc));
+    storage.setItem(SAVED_AT_KEY, String(Date.now()));
   } catch {
     // Quota exceeded or storage blocked mid-session — autosave is best-effort.
   }

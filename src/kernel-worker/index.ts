@@ -144,6 +144,7 @@ async function handleRegen(
         status: 'error',
         code: error instanceof KernelExecError ? error.code : 'KERNEL_ERROR',
         message: error instanceof Error ? error.message : String(error),
+        failedEdgeIndices: error instanceof KernelExecError ? error.failedEdgeIndices : undefined,
       });
     }
 

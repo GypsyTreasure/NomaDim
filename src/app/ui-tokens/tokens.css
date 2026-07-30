@@ -34,6 +34,9 @@
   --color-error-red: #d5372c;
   --color-grey-muted: #8a8578;
   --color-amber: #d29a1f;
+  /* Brand origin/logo node — the red dot shared by the logomark and the world
+     origin marker in 3D + 2D sketch (graphic identity). */
+  --color-origin: #e5342e;
 
   /* Hairlines / scrims on dark surfaces (cream at low alpha) */
   --color-hairline: rgb(250 247 240 / 12%);

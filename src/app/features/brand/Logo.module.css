@@ -15,7 +15,7 @@
 }
 
 .node {
-  fill: var(--color-panel-fg);
+  fill: var(--color-origin);
 }
 
 .wordmark {

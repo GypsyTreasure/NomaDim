@@ -247,6 +247,23 @@
   border-radius: var(--radius-sm);
 }
 
+/* An edge the kernel could not fillet/chamfer — flagged red on re-open (#8). */
+.edgeListItemFailed {
+  color: var(--color-error-red);
+  border: var(--border-width) solid var(--color-error-red);
+}
+
+/* Op-failure banner in the edit dialog (#8). */
+.opError {
+  margin: 0;
+  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+  font-size: var(--text-sm);
+  color: var(--color-error-red);
+  background-color: var(--color-panel-input);
+  border-left: 3px solid var(--color-error-red);
+  border-radius: var(--radius-sm);
+}
+
 .edgeListRemove {
   width: 22px;
   height: 22px;

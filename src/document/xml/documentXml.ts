@@ -143,7 +143,9 @@ function datumFromRaw(raw: Raw): Datum | null {
 export function documentToXml(state: DocumentState): string {
   return writeXml({
     tag: 'nomadim',
-    attrs: { version: SCHEMA_VERSION, units: 'mm' },
+    // The project name is written only when set, so an unnamed document
+    // round-trips byte-identically (and older files without it still load).
+    attrs: { version: SCHEMA_VERSION, units: 'mm', ...(state.name ? { name: state.name } : {}) },
     children: [
       { tag: 'sketches', children: [...state.sketches].sort(byId).map(sketchElement) },
       timelineElement({ ops: state.ops, rollbackIndex: state.rollbackIndex }),
@@ -233,6 +235,7 @@ export function documentFromXml(xml: string): Result<DocumentState, ImportError>
   }
 
   return ok({
+    name: strAttr(root, 'name') ?? '',
     sketches,
     ops: timeline.value.ops,
     rollbackIndex: timeline.value.rollbackIndex,

@@ -5,6 +5,7 @@ import { withShortcut } from '../help/shortcuts';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { downloadDocument } from '../document-io/documentIO';
+import { exportFileName } from '../naming/exportName';
 import { clearPersistedDocument } from './autosave';
 import dialogStyles from './NewProject.module.css';
 import styles from '../sketcher/Sketcher.module.css';
@@ -87,7 +88,7 @@ export function NewProjectButton(): React.JSX.Element {
                 className={`${styles.button ?? ''} ${styles.buttonActive ?? ''}`}
                 data-testid="new-project-export"
                 onClick={() => {
-                  downloadDocument(doc);
+                  downloadDocument(doc, exportFileName('.nomadim.xml'));
                   startFresh();
                 }}
               >

@@ -73,6 +73,19 @@ const first = (codes: readonly Pair[], code: number): number | undefined => {
   return p ? Number.parseFloat(p.value) : undefined;
 };
 
+/** The entity's own layer (DXF group code 8), or '' if unset. */
+const layerOf = (codes: readonly Pair[]): string => codes.find((c) => c.code === 8)?.value ?? '';
+
+/**
+ * AutoCAD layer inheritance: an entity on layer "0" (or blank) inside a block
+ * takes the INSERT's layer; otherwise it keeps its own. At the top level the
+ * inherited layer is '' so the entity's own layer wins.
+ */
+function effectiveLayer(own: string, inherited: string): string {
+  if ((own === '' || own === '0') && inherited !== '') return inherited;
+  return own;
+}
+
 interface Vert {
   readonly p: Vec2;
   readonly bulge: number;
@@ -241,12 +254,16 @@ function resolve(
   xf: Affine,
   blocks: Map<string, Block>,
   depth: number,
-  skipped: Set<string>
+  skipped: Set<string>,
+  inheritedLayer: string
 ): ImportPrimitive[] {
   const out: ImportPrimitive[] = [];
+  const stamp = (prim: ImportPrimitive, layer: string): ImportPrimitive =>
+    transformPrimitive({ ...prim, layer }, xf);
   for (let i = 0; i < entities.length; i += 1) {
     const entity = entities[i];
     if (!entity) continue;
+    const eff = effectiveLayer(layerOf(entity.codes), inheritedLayer);
 
     // Old-style POLYLINE: absorb following VERTEX entities up to SEQEND.
     if (entity.type === 'POLYLINE') {
@@ -263,7 +280,7 @@ function resolve(
         }
       }
       i = j;
-      for (const prim of entityToPrimitives(entity, verts)) out.push(transformPrimitive(prim, xf));
+      for (const prim of entityToPrimitives(entity, verts)) out.push(stamp(prim, eff));
       continue;
     }
 
@@ -281,7 +298,8 @@ function resolve(
       for (let col = 0; col < cols; col += 1) {
         for (let row = 0; row < rows; row += 1) {
           const local = insertTransform(entity.codes, block.base, col * colSp, row * rowSp);
-          out.push(...resolve(block.entities, compose(xf, local), blocks, depth + 1, skipped));
+          // Block members on layer "0" inherit this INSERT's effective layer.
+          out.push(...resolve(block.entities, compose(xf, local), blocks, depth + 1, skipped, eff));
         }
       }
       continue;
@@ -294,7 +312,7 @@ function resolve(
       }
       continue;
     }
-    for (const prim of prims) out.push(transformPrimitive(prim, xf));
+    for (const prim of prims) out.push(stamp(prim, eff));
   }
   return out;
 }
@@ -304,7 +322,7 @@ export function parseDxf(text: string): ImportResult {
   const blocks = parseBlocks(pairs);
   const entities = entitiesInSection(pairs, 'ENTITIES');
   const skipped = new Set<string>();
-  const primitives = resolve(entities, IDENTITY, blocks, 0, skipped);
+  const primitives = resolve(entities, IDENTITY, blocks, 0, skipped, '');
 
   const warnings: string[] = [];
   if (skipped.size > 0) {

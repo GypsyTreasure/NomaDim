@@ -323,6 +323,13 @@ export const en = {
   'sketch.import': 'Import SVG/DXF',
   'sketch.import.done': 'Imported reference shapes:',
   'sketch.import.error': 'Could not read the file.',
+  // DXF layer picker (ADR-0088).
+  'import.layers.title': 'Choose layers to import',
+  'import.layers.hint': 'This DXF has multiple layers. Pick the ones to import.',
+  'import.layers.all': 'Select all',
+  'import.layers.none': 'Select none',
+  'import.layers.default': '(no layer)',
+  'import.layers.selected': 'Shapes to import:',
   'sketch.tool.dimension': 'Dimension',
   'sketch.dimensionKind.label': 'Dimension type',
   'sketch.dimensionKind.auto': 'Auto (H/V)',

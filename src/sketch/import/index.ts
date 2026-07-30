@@ -2,7 +2,8 @@ import { parseDxf } from './dxf';
 import { parseSvg } from './svg';
 import type { ImportResult } from './types';
 
-export type { ImportPrimitive, ImportResult } from './types';
+export type { ImportPrimitive, ImportResult, ImportLayer } from './types';
+export { importLayers } from './types';
 export { parseSvg } from './svg';
 export { parseDxf } from './dxf';
 

@@ -44,9 +44,14 @@ const lengthFactor = (t: Affine): number => Math.sqrt(Math.abs(det(t))) || 1;
 export function transformPrimitive(prim: ImportPrimitive, t: Affine): ImportPrimitive {
   switch (prim.kind) {
     case 'line':
-      return { kind: 'line', a: apply(t, prim.a), b: apply(t, prim.b) };
+      return { kind: 'line', a: apply(t, prim.a), b: apply(t, prim.b), layer: prim.layer };
     case 'circle':
-      return { kind: 'circle', center: apply(t, prim.center), r: prim.r * lengthFactor(t) };
+      return {
+        kind: 'circle',
+        center: apply(t, prim.center),
+        r: prim.r * lengthFactor(t),
+        layer: prim.layer,
+      };
     case 'arc':
       return {
         kind: 'arc',
@@ -55,9 +60,15 @@ export function transformPrimitive(prim: ImportPrimitive, t: Affine): ImportPrim
         end: apply(t, prim.end),
         // A reflection (negative determinant) flips the sweep direction.
         ccw: det(t) < 0 ? !prim.ccw : prim.ccw,
+        layer: prim.layer,
       };
     case 'polyline':
-      return { kind: 'polyline', points: prim.points.map((p) => apply(t, p)), closed: prim.closed };
+      return {
+        kind: 'polyline',
+        points: prim.points.map((p) => apply(t, p)),
+        closed: prim.closed,
+        layer: prim.layer,
+      };
     default: {
       const exhaustive: never = prim;
       return exhaustive;

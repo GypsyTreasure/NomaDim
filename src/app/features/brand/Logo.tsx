@@ -2,28 +2,21 @@ import { t } from '../../i18n/t';
 import styles from './Logo.module.css';
 
 /**
- * NomaDim logotype (BRAND.md): the geometric "N" mark — a plotted vector path
- * with a start node echoing a sketch origin — plus the wordmark. Inline SVG so
- * it inherits brand tokens and needs no network fetch (C1). The wordmark text
- * comes from the i18n catalog; the mark is decorative.
+ * NomaDim logotype (BRAND.md) — mirrors the NomaDirection wordmark: "Noma" in
+ * Barlow Light + "Dim" in Barlow Medium, tight tracking, with the brand red
+ * node sitting just after the wordmark (the same red dot as the sketch/world
+ * origin). Rendered as live text so the dot always lands at the true end of the
+ * word regardless of the resolved font. The mark is decorative; the accessible
+ * name comes from the i18n catalog.
  */
 export function Logo(): React.JSX.Element {
   return (
     <span className={styles.logo}>
-      <svg className={styles.mark} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-        <path
-          className={styles.stroke}
-          d="M8 23 L8 10 L13 10 L24 23 L24 10"
-          fill="none"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle className={styles.node} cx="8" cy="10" r="2" />
-      </svg>
       <span className={styles.wordmark} aria-hidden="true">
-        NomaDim
+        <span className={styles.noma}>Noma</span>
+        <span className={styles.dim}>Dim</span>
       </span>
+      <span className={styles.dot} aria-hidden="true" />
       <span className={styles.srOnly}>{t('app.title')}</span>
     </span>
   );

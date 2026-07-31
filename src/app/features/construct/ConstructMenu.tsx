@@ -1,39 +1,34 @@
 import { useConstructStore } from '../../store/constructStore';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
-import sketcherStyles from '../sketcher/Sketcher.module.css';
+import { IconButton } from '../ui/IconButton';
 
 /**
  * Construct menu (Fusion "Construct"): create a reusable construction plane or
  * axis. Lives in the modeling app-action cluster; each button carries its
- * keyboard shortcut as a title (master rule, ADR-0032).
+ * keyboard shortcut as a title (master rule, ADR-0032) and an icon (ADR-0090).
  */
 export function ConstructMenu(): React.JSX.Element {
   const openCreate = useConstructStore((s) => s.openCreate);
   return (
     <>
-      <button
-        type="button"
-        className={sketcherStyles.button}
-        title={withShortcut(t('construct.plane'), 'G')}
-        data-testid="construct-plane"
+      <IconButton
+        icon="plane"
+        label={t('construct.plane')}
+        shortcut="G"
+        testid="construct-plane"
         onClick={() => {
           openCreate('plane');
         }}
-      >
-        {t('construct.plane')}
-      </button>
-      <button
-        type="button"
-        className={sketcherStyles.button}
-        title={withShortcut(t('construct.axis'), 'J')}
-        data-testid="construct-axis"
+      />
+      <IconButton
+        icon="axis"
+        label={t('construct.axis')}
+        shortcut="J"
+        testid="construct-axis"
         onClick={() => {
           openCreate('axis');
         }}
-      >
-        {t('construct.axis')}
-      </button>
+      />
     </>
   );
 }

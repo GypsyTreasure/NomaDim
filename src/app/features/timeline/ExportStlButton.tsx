@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
 import { useKernelStore } from '../../store/kernelStore';
+import { IconButton } from '../ui/IconButton';
 import { ExportStlDialog } from './ExportStlDialog';
-import styles from './Timeline.module.css';
 
 /**
  * Opens the export dialog (F6): body scope and format — STL (binary/ASCII,
@@ -32,17 +31,16 @@ export function ExportStlButton(): React.JSX.Element {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.button}
-        title={hasBodies ? withShortcut(t('kernel.exportStl'), 'Ctrl+E') : t('guard.needBody')}
+      <IconButton
+        icon="exportStl"
+        label={t('kernel.exportStl')}
+        shortcut="Ctrl+E"
+        title={hasBodies ? undefined : t('guard.needBody')}
         disabled={!hasBodies}
         onClick={() => {
           setOpen(true);
         }}
-      >
-        {t('kernel.exportStl')}
-      </button>
+      />
       {open && (
         <ExportStlDialog
           onClose={() => {

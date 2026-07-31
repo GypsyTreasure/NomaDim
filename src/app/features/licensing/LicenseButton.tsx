@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { t } from '../../i18n/t';
 import { pushToast } from '../../store/toastStore';
 import { useEntitlementStore } from '../../store/entitlementStore';
+import { IconButton } from '../ui/IconButton';
 import { DialogFrame } from '../timeline/dialogShared';
 import styles from '../sketcher/Sketcher.module.css';
 
@@ -35,17 +36,15 @@ export function LicenseButton(): React.JSX.Element {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.button}
-        title={t('license.title')}
-        data-testid="license-open"
+      <IconButton
+        icon="license"
+        label={`${t('license.menu')} · ${isPro ? t('license.pro') : t('license.free')}`}
+        active={isPro}
+        testid="license-open"
         onClick={() => {
           setOpen(true);
         }}
-      >
-        {t('license.menu')} · {isPro ? t('license.pro') : t('license.free')}
-      </button>
+      />
       {open && (
         <DialogFrame
           title={t('license.title')}

@@ -55,5 +55,9 @@ test('import a DXF whose geometry is inside a block (INSERT)', async ({ page }) 
     buffer: Buffer.from(dxf, 'utf-8'),
   });
 
+  // Every DXF now opens the layer picker (ADR-0089); confirm to import.
+  await expect(page.getByTestId('import-layer-list')).toBeVisible();
+  await page.getByRole('button', { name: 'OK' }).click();
+
   await expect(page.getByTestId('toast')).toContainText('Imported reference shapes: 2');
 });

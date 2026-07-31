@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { documentToXml } from '../../../document';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
 import { useDocumentStore } from '../../store/documentStore';
 import { pushToast } from '../../store/toastStore';
 import { loadDocumentText } from '../document-io/documentIO';
+import { IconButton } from '../ui/IconButton';
 import { DialogFrame } from '../timeline/dialogShared';
 import sketcherStyles from '../sketcher/Sketcher.module.css';
 import {
@@ -122,17 +122,15 @@ export function ProjectsButton(): React.JSX.Element {
 
   return (
     <>
-      <button
-        type="button"
-        className={sketcherStyles.button}
-        title={withShortcut(t('projects.open'), 'Shift+P')}
-        data-testid="projects-open"
+      <IconButton
+        icon="projects"
+        label={t('projects.menu')}
+        shortcut="Shift+P"
+        testid="projects-open"
         onClick={() => {
           setOpen(true);
         }}
-      >
-        {t('projects.menu')}
-      </button>
+      />
       {open && (
         <DialogFrame
           title={t('projects.title')}

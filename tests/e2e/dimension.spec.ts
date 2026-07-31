@@ -18,7 +18,7 @@ test('the Dim tool is selectable, offers a kind chooser, is HUD-less and catalog
 
   // Select the Dim tool by its shortcut; its button reads active…
   await page.keyboard.press('d');
-  await expect(page.getByRole('button', { name: 'Dimension' })).toHaveClass(/buttonActive/);
+  await expect(page.getByRole('button', { name: 'Dimension' })).toHaveClass(/iconBtnActive/);
   // …the numeric HUD hides (it annotates existing points, not new geometry)…
   await expect(page.getByTestId('numeric-hud')).toBeHidden();
 

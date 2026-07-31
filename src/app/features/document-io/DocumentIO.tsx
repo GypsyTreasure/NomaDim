@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
 import { useDocumentStore } from '../../store/documentStore';
 import { pushToast } from '../../store/toastStore';
+import { IconButton } from '../ui/IconButton';
 import { downloadDocument, loadDocumentText } from './documentIO';
 import { exportFileName } from '../naming/exportName';
-import styles from '../timeline/Timeline.module.css';
 
 /**
  * Save / Open a `.nomadim.xml` document (F7): Save serializes the current
@@ -53,24 +52,20 @@ export function DocumentIO(): React.JSX.Element {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.button}
-        title={withShortcut(t('io.save'), 'Ctrl+S')}
+      <IconButton
+        icon="save"
+        label={t('io.save')}
+        shortcut="Ctrl+S"
         onClick={save}
-        data-testid="doc-save"
-      >
-        {t('io.save')}
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        title={withShortcut(t('io.open'), 'Ctrl+O')}
+        testid="doc-save"
+      />
+      <IconButton
+        icon="open"
+        label={t('io.open')}
+        shortcut="Ctrl+O"
         onClick={() => inputRef.current?.click()}
-        data-testid="doc-open"
-      >
-        {t('io.open')}
-      </button>
+        testid="doc-open"
+      />
       <input
         ref={inputRef}
         type="file"

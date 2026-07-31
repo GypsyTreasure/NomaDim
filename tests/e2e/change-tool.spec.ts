@@ -16,7 +16,7 @@ test('the Change tool is selectable, HUD-less, and catalogued', async ({ page })
 
   // Select the Change tool by its shortcut; its button reads active…
   await page.keyboard.press('m');
-  await expect(page.getByRole('button', { name: 'Change' })).toHaveClass(/buttonActive/);
+  await expect(page.getByRole('button', { name: 'Change' })).toHaveClass(/iconBtnActive/);
   // …and the numeric HUD hides (it edits existing points, not new dimensions).
   await expect(page.getByTestId('numeric-hud')).toBeHidden();
 

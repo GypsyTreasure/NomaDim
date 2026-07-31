@@ -1,12 +1,12 @@
 import { useRef } from 'react';
 import { pushToast } from '../../store/toastStore';
 import { t } from '../../i18n/t';
-import styles from './Sketcher.module.css';
+import { IconButton } from '../ui/IconButton';
 
 /**
  * Import SVG/DXF reference geometry into the active sketch (#2, ADR-0076).
- * Reads the file as text and hands it to the sketcher, which parses it to
- * construction geometry. Lives in the sketch toolbar.
+ * Reads the file as text and hands it to the sketcher, which imports it as real
+ * (extrudable) sketch geometry. Lives in the sketch toolbar.
  */
 export function SketchImportButton(props: {
   onImport: (fileName: string, text: string) => void;
@@ -29,15 +29,12 @@ export function SketchImportButton(props: {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.button}
-        title="Import SVG / DXF reference"
-        data-testid="sketch-import"
+      <IconButton
+        icon="importSketch"
+        label={t('sketch.import')}
+        testid="sketch-import"
         onClick={() => inputRef.current?.click()}
-      >
-        {t('sketch.import')}
-      </button>
+      />
       <input
         ref={inputRef}
         type="file"

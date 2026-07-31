@@ -1,40 +1,43 @@
 import type { SketchToolId } from '../../../sketch';
 import type { TranslationKey } from '../../i18n/en';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
 import { useSessionStore } from '../../store/sessionStore';
+import { IconButton } from '../ui/IconButton';
+import type { IconName } from '../icons/Icon';
 import type { DimensionToolKind, SketcherApi } from './useSketcher';
 import { SketchImportButton } from './SketchImportButton';
 import { SketchTransformControls } from './SketchTransformControls';
 import styles from './Sketcher.module.css';
+import toolbarStyles from '../ui/Toolbar.module.css';
 
-const TOOLS: readonly SketchToolId[] = [
-  'line',
-  'axis',
-  'rectangle-2p',
-  'rectangle-center',
-  'circle-center-diameter',
-  'arc-3p',
-  'arc-center',
-  'point',
-  'polygon',
-  'spline',
+/** Draw tools in toolbar order, each with its label key, icon and shortcut. */
+const TOOLS: readonly {
+  readonly id: SketchToolId;
+  readonly labelKey: TranslationKey;
+  readonly icon: IconName;
+  readonly shortcut: string;
+}[] = [
+  { id: 'line', labelKey: 'sketch.tool.line', icon: 'line', shortcut: 'L' },
+  { id: 'axis', labelKey: 'sketch.tool.axis', icon: 'centerline', shortcut: 'I' },
+  { id: 'rectangle-2p', labelKey: 'sketch.tool.rectangle-2p', icon: 'rectangle', shortcut: 'R' },
+  {
+    id: 'rectangle-center',
+    labelKey: 'sketch.tool.rectangle-center',
+    icon: 'rectangleCenter',
+    shortcut: 'Shift+R',
+  },
+  {
+    id: 'circle-center-diameter',
+    labelKey: 'sketch.tool.circle-center-diameter',
+    icon: 'circle',
+    shortcut: 'C',
+  },
+  { id: 'arc-3p', labelKey: 'sketch.tool.arc-3p', icon: 'arc', shortcut: 'A' },
+  { id: 'arc-center', labelKey: 'sketch.tool.arc-center', icon: 'arcCenter', shortcut: 'Shift+A' },
+  { id: 'point', labelKey: 'sketch.tool.point', icon: 'point', shortcut: 'P' },
+  { id: 'polygon', labelKey: 'sketch.tool.polygon', icon: 'polygon', shortcut: 'G' },
+  { id: 'spline', labelKey: 'sketch.tool.spline', icon: 'spline', shortcut: 'B' },
 ];
-
-const TOOL_LABEL_KEYS = {
-  line: 'sketch.tool.line',
-  axis: 'sketch.tool.axis',
-  'rectangle-2p': 'sketch.tool.rectangle-2p',
-  'rectangle-center': 'sketch.tool.rectangle-center',
-  'circle-center-diameter': 'sketch.tool.circle-center-diameter',
-  'arc-3p': 'sketch.tool.arc-3p',
-  'arc-center': 'sketch.tool.arc-center',
-  point: 'sketch.tool.point',
-  polygon: 'sketch.tool.polygon',
-  spline: 'sketch.tool.spline',
-  change: 'sketch.tool.change',
-  dimension: 'sketch.tool.dimension',
-} as const;
 
 /**
  * Dim-tool kinds (F2) with their i18n label keys, in menu order. `auto` is a
@@ -60,141 +63,136 @@ const DIMENSION_KIND_LABEL_KEYS: Record<DimensionToolKind, TranslationKey> = {
   diameter: 'sketch.dimensionKind.diameter',
 };
 
-/** Keyboard shortcut per tool, shown as a tooltip (master rule, ADR-0032). */
-const TOOL_SHORTCUT: Record<SketchToolId, string> = {
-  line: 'L',
-  axis: 'I',
-  'rectangle-2p': 'R',
-  'rectangle-center': 'Shift+R',
-  'circle-center-diameter': 'C',
-  'arc-3p': 'A',
-  'arc-center': 'Shift+A',
-  point: 'P',
-  polygon: 'G',
-  spline: 'B',
-  change: 'M',
-  dimension: 'D',
-};
+const Divider = (): React.JSX.Element => (
+  <span className={toolbarStyles.divider} aria-hidden="true" />
+);
 
+/**
+ * Sketch tool dock (ADR-0090): icon-only tools grouped into blocks — primary
+ * Finish, then modes (Select/Change/Dimension), draw tools, toggles, and edit —
+ * separated by hairline dividers. Every button keeps its accessible name
+ * (aria-label) and "label (shortcut)" tooltip (master rule, ADR-0032).
+ */
 export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JSX.Element {
   const snapEnabled = useSessionStore((s) => s.snapEnabled);
   const setSnapEnabled = useSessionStore((s) => s.setSnapEnabled);
 
-  const buttonClass = (active: boolean): string =>
-    active ? `${styles.button ?? ''} ${styles.buttonActive ?? ''}` : (styles.button ?? '');
-
   return (
     <div className={styles.toolbar}>
-      {/* Finish leads the toolbar (#3b) as the primary exit action. */}
-      <button
-        type="button"
-        className={`${styles.button ?? ''} ${styles.primaryAction ?? ''}`}
-        title={withShortcut(t('sketch.finish'), 'F')}
-        data-testid="finish-sketch"
-        onClick={sketcher.finishSketch}
-      >
-        {t('sketch.finish')}
-      </button>
-      <button
-        type="button"
-        className={buttonClass(sketcher.tool === null)}
-        title={withShortcut(t('sketch.tool.select'), 'S')}
-        onClick={() => {
-          sketcher.setTool(null);
-        }}
-      >
-        {t('sketch.tool.select')}
-      </button>
-      <button
-        type="button"
-        className={buttonClass(sketcher.tool === 'change')}
-        title={withShortcut(t('sketch.tool.change'), TOOL_SHORTCUT.change)}
-        onClick={() => {
-          sketcher.setTool('change');
-        }}
-      >
-        {t('sketch.tool.change')}
-      </button>
-      <button
-        type="button"
-        className={buttonClass(sketcher.tool === 'dimension')}
-        title={withShortcut(t('sketch.tool.dimension'), TOOL_SHORTCUT.dimension)}
-        onClick={() => {
-          sketcher.setTool('dimension');
-        }}
-      >
-        {t('sketch.tool.dimension')}
-      </button>
-      {sketcher.tool === 'dimension' && (
-        <select
-          className={styles.select}
-          value={sketcher.dimensionKind}
-          title={t('sketch.dimensionKind.label')}
-          aria-label={t('sketch.dimensionKind.label')}
-          onChange={(event) => {
-            sketcher.setDimensionKind(event.target.value as DimensionToolKind);
-          }}
-        >
-          {DIMENSION_KINDS.map((kind) => (
-            <option key={kind} value={kind}>
-              {t(DIMENSION_KIND_LABEL_KEYS[kind])}
-            </option>
-          ))}
-        </select>
-      )}
-      {TOOLS.map((tool) => (
-        <button
-          key={tool}
-          type="button"
-          className={buttonClass(sketcher.tool === tool)}
-          title={withShortcut(t(TOOL_LABEL_KEYS[tool]), TOOL_SHORTCUT[tool])}
+      <div className={toolbarStyles.block}>
+        <IconButton
+          icon="finish"
+          label={t('sketch.finish')}
+          shortcut="F"
+          primary
+          testid="finish-sketch"
+          onClick={sketcher.finishSketch}
+        />
+      </div>
+      <Divider />
+      <div className={toolbarStyles.block}>
+        <IconButton
+          icon="select"
+          label={t('sketch.tool.select')}
+          shortcut="S"
+          active={sketcher.tool === null}
           onClick={() => {
-            sketcher.setTool(tool);
+            sketcher.setTool(null);
           }}
-        >
-          {t(TOOL_LABEL_KEYS[tool])}
-        </button>
-      ))}
-      <button
-        type="button"
-        className={buttonClass(sketcher.constructionMode)}
-        title={withShortcut(t('sketch.construction'), 'X')}
-        onClick={sketcher.toggleConstruction}
-      >
-        {t('sketch.construction')}
-      </button>
-      <button
-        type="button"
-        className={buttonClass(snapEnabled)}
-        title={withShortcut(t('sketch.snap'), 'Q')}
-        onClick={() => {
-          setSnapEnabled(!snapEnabled);
-        }}
-      >
-        {t('sketch.snap')}
-      </button>
-      <button
-        type="button"
-        className={buttonClass(sketcher.intersect)}
-        title={`${t('sketch.intersect')} (J)`}
-        data-testid="sketch-intersect"
-        aria-pressed={sketcher.intersect}
-        onClick={sketcher.toggleIntersect}
-      >
-        {t('sketch.intersect')}
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        title={t('sketch.delete')}
-        data-testid="sketch-delete"
-        disabled={!sketcher.hasSelection}
-        onClick={sketcher.deleteSelection}
-      >
-        {t('sketch.delete')}
-      </button>
-      <SketchImportButton onImport={sketcher.importReference} />
-      <SketchTransformControls sketcher={sketcher} />
+        />
+        <IconButton
+          icon="change"
+          label={t('sketch.tool.change')}
+          shortcut="M"
+          active={sketcher.tool === 'change'}
+          onClick={() => {
+            sketcher.setTool('change');
+          }}
+        />
+        <IconButton
+          icon="dimension"
+          label={t('sketch.tool.dimension')}
+          shortcut="D"
+          active={sketcher.tool === 'dimension'}
+          onClick={() => {
+            sketcher.setTool('dimension');
+          }}
+        />
+        {sketcher.tool === 'dimension' && (
+          <select
+            className={styles.select}
+            value={sketcher.dimensionKind}
+            title={t('sketch.dimensionKind.label')}
+            aria-label={t('sketch.dimensionKind.label')}
+            onChange={(event) => {
+              sketcher.setDimensionKind(event.target.value as DimensionToolKind);
+            }}
+          >
+            {DIMENSION_KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {t(DIMENSION_KIND_LABEL_KEYS[kind])}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      <Divider />
+      <div className={toolbarStyles.block}>
+        {TOOLS.map((tool) => (
+          <IconButton
+            key={tool.id}
+            icon={tool.icon}
+            label={t(tool.labelKey)}
+            shortcut={tool.shortcut}
+            active={sketcher.tool === tool.id}
+            onClick={() => {
+              sketcher.setTool(tool.id);
+            }}
+          />
+        ))}
+      </div>
+      <Divider />
+      <div className={toolbarStyles.block}>
+        <IconButton
+          icon="construction"
+          label={t('sketch.construction')}
+          shortcut="X"
+          active={sketcher.constructionMode}
+          ariaPressed={sketcher.constructionMode}
+          onClick={sketcher.toggleConstruction}
+        />
+        <IconButton
+          icon="snap"
+          label={t('sketch.snap')}
+          shortcut="Q"
+          active={snapEnabled}
+          ariaPressed={snapEnabled}
+          onClick={() => {
+            setSnapEnabled(!snapEnabled);
+          }}
+        />
+        <IconButton
+          icon="intersect"
+          label={t('sketch.intersect')}
+          shortcut="J"
+          active={sketcher.intersect}
+          ariaPressed={sketcher.intersect}
+          testid="sketch-intersect"
+          onClick={sketcher.toggleIntersect}
+        />
+      </div>
+      <Divider />
+      <div className={toolbarStyles.block}>
+        <IconButton
+          icon="delete"
+          label={t('sketch.delete')}
+          disabled={!sketcher.hasSelection}
+          testid="sketch-delete"
+          onClick={sketcher.deleteSelection}
+        />
+        <SketchImportButton onImport={sketcher.importReference} />
+        <SketchTransformControls sketcher={sketcher} />
+      </div>
     </div>
   );
 }

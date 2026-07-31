@@ -29,5 +29,6 @@ test('menu actions respond to their keyboard shortcuts', async ({ page }) => {
   await page.keyboard.press('n');
   await page.getByTestId('plane-choice-XY').click();
   await page.keyboard.press('i');
-  await expect(page.getByRole('button', { name: 'Axis' })).toHaveClass(/buttonActive/);
+  // Active tool shows the shared icon-button "active" tint (ADR-0090).
+  await expect(page.getByRole('button', { name: 'Axis' })).toHaveClass(/iconBtnActive/);
 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
+import { IconButton } from '../ui/IconButton';
 import type { SketcherApi } from './useSketcher';
 import styles from './Sketcher.module.css';
 
@@ -28,51 +28,44 @@ export function SketchTransformControls({
 
   return (
     <div className={styles.planePickerRow} data-testid="sketch-transform">
-      <button
-        type="button"
-        className={styles.button}
-        data-testid="mirror-x"
-        title={withShortcut(t('sketch.mirrorX'), 'K')}
+      <IconButton
+        icon="mirror"
+        label={t('sketch.mirrorX')}
+        shortcut="K"
+        testid="mirror-x"
         onClick={() => {
           sketcher.mirrorSelection('x');
         }}
-      >
-        {t('sketch.mirrorX')}
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        data-testid="mirror-y"
-        title={withShortcut(t('sketch.mirrorY'), 'Shift+K')}
+      />
+      <IconButton
+        icon="mirrorY"
+        label={t('sketch.mirrorY')}
+        shortcut="Shift+K"
+        testid="mirror-y"
         onClick={() => {
           sketcher.mirrorSelection('y');
         }}
-      >
-        {t('sketch.mirrorY')}
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        data-testid="mirror-line"
-        disabled={!sketcher.mirrorLineAvailable}
+      />
+      <IconButton
+        icon="mirror"
+        label={t('sketch.mirrorLine')}
         title={`K — ${t('sketch.mirrorLineHint')}`}
+        disabled={!sketcher.mirrorLineAvailable}
+        testid="mirror-line"
         onClick={() => {
           sketcher.mirrorSelection('line');
         }}
-      >
-        {t('sketch.mirrorLine')}
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        data-testid="pattern-toggle"
-        aria-pressed={open}
+      />
+      <IconButton
+        icon="pattern"
+        label={t('sketch.pattern')}
+        ariaPressed={open}
+        active={open}
+        testid="pattern-toggle"
         onClick={() => {
           setOpen((v) => !v);
         }}
-      >
-        {t('sketch.pattern')}
-      </button>
+      />
       {open && (
         <>
           <label className={styles.field}>

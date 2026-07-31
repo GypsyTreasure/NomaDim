@@ -31,7 +31,6 @@ import { useMeasure } from './features/measure/useMeasure';
 import { DocumentIO } from './features/document-io/DocumentIO';
 import { ImportStepButton } from './features/document-io/ImportStepButton';
 import { KeyboardShortcuts } from './features/help/KeyboardShortcuts';
-import { withShortcut } from './features/help/shortcuts';
 import { OnboardingHint } from './features/onboarding/OnboardingHint';
 import { Toaster } from './features/toast/Toaster';
 import { useOpErrorToasts } from './features/toast/useOpErrorToasts';
@@ -46,6 +45,8 @@ import { LicenseButton } from './features/licensing/LicenseButton';
 import { SettingsButton } from './features/admin/SettingsButton';
 import { ProjectsButton } from './features/projects/ProjectsButton';
 import { useFolderStore } from './features/projects/folderStore';
+import { IconButton } from './features/ui/IconButton';
+import toolbarStyles from './features/ui/Toolbar.module.css';
 import { useEntitlementStore } from './store/entitlementStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -274,62 +275,57 @@ export function App(): React.JSX.Element {
               present so bodies/origin planes can be hidden even while sketching
               (#4); View + the app-action menu are modeling-only. */}
           <div className={sketcherStyles.appBar} ref={appBarRef}>
-            <button
-              type="button"
-              className={
-                treeOpen
-                  ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
-                  : (sketcherStyles.button ?? '')
-              }
-              aria-pressed={treeOpen}
-              data-testid="browser-toggle"
-              onClick={() => {
-                setTreeOpen((open) => !open);
-              }}
-            >
-              {t('menu.browser')}{' '}
-              <span className={sketcherStyles.badge} data-testid="body-count">
-                {liveBodyIds.length}
-              </span>
-            </button>
-            {!inSketch && (
-              <button
-                type="button"
-                className={
-                  viewOpen
-                    ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
-                    : (sketcherStyles.button ?? '')
+            {/* Always-visible cluster: Browser (both modes) + View + hamburger. */}
+            <div className={toolbarStyles.bar}>
+              <IconButton
+                icon="browser"
+                label={t('menu.browser')}
+                active={treeOpen}
+                ariaPressed={treeOpen}
+                testid="browser-toggle"
+                badge={
+                  <span className={toolbarStyles.badge} data-testid="body-count">
+                    {liveBodyIds.length}
+                  </span>
                 }
-                aria-pressed={viewOpen}
-                data-testid="view-toggle"
                 onClick={() => {
-                  setViewOpen((open) => !open);
+                  setTreeOpen((open) => !open);
                 }}
-              >
-                {t('menu.view')}
-              </button>
-            )}
-            {!inSketch && (
-              <button
-                type="button"
-                className={sketcherStyles.menuToggle}
-                aria-label={t('menu.toggle')}
-                aria-expanded={actionsOpen}
-                data-testid="app-menu-toggle"
-                onClick={() => {
-                  setActionsOpen((open) => !open);
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-                  <path
-                    d="M3 5h14M3 10h14M3 15h14"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            )}
+              />
+              {!inSketch && (
+                <IconButton
+                  icon="view"
+                  label={t('menu.view')}
+                  active={viewOpen}
+                  ariaPressed={viewOpen}
+                  testid="view-toggle"
+                  onClick={() => {
+                    setViewOpen((open) => !open);
+                  }}
+                />
+              )}
+              {!inSketch && (
+                <button
+                  type="button"
+                  className={sketcherStyles.menuToggle}
+                  aria-label={t('menu.toggle')}
+                  aria-expanded={actionsOpen}
+                  data-testid="app-menu-toggle"
+                  onClick={() => {
+                    setActionsOpen((open) => !open);
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+                    <path
+                      d="M3 5h14M3 10h14M3 15h14"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
             {!inSketch && (
               <div
                 className={`${sketcherStyles.menuPanel ?? ''} ${
@@ -337,37 +333,42 @@ export function App(): React.JSX.Element {
                 }`}
                 data-testid="app-actions"
               >
-                <button
-                  type="button"
-                  title={withShortcut(t('measure.toggle'), 'M')}
-                  className={
-                    measure.active
-                      ? `${sketcherStyles.button ?? ''} ${sketcherStyles.buttonActive ?? ''}`
-                      : (sketcherStyles.button ?? '')
-                  }
-                  onClick={measure.toggle}
-                >
-                  {t('measure.toggle')}
-                </button>
-                <ConstructMenu />
-                <NewProjectButton />
-                <DocumentIO />
-                <ImportStepButton />
-                <ExportStlButton />
-                <ProjectsButton />
-                <SettingsButton />
-                <LicenseButton />
-                <button
-                  type="button"
-                  className={sketcherStyles.button}
-                  title={withShortcut(t('help.openButton'), '?')}
-                  data-testid="shortcuts-open"
-                  onClick={() => {
-                    setHelpOpen(true);
-                  }}
-                >
-                  {t('help.openButton')}
-                </button>
+                {/* File block. */}
+                <div className={toolbarStyles.block}>
+                  <NewProjectButton />
+                  <DocumentIO />
+                  <ImportStepButton />
+                  <ExportStlButton />
+                  <ProjectsButton />
+                </div>
+                <span className={toolbarStyles.divider} aria-hidden="true" />
+                {/* Create + inspect block. */}
+                <div className={toolbarStyles.block}>
+                  <ConstructMenu />
+                  <IconButton
+                    icon="measure"
+                    label={t('measure.toggle')}
+                    shortcut="M"
+                    active={measure.active}
+                    ariaPressed={measure.active}
+                    onClick={measure.toggle}
+                  />
+                </div>
+                <span className={toolbarStyles.divider} aria-hidden="true" />
+                {/* System block. */}
+                <div className={toolbarStyles.block}>
+                  <SettingsButton />
+                  <LicenseButton />
+                  <IconButton
+                    icon="help"
+                    label={t('help.openButton')}
+                    shortcut="?"
+                    testid="shortcuts-open"
+                    onClick={() => {
+                      setHelpOpen(true);
+                    }}
+                  />
+                </div>
                 {kernelError && (
                   <span className={sketcherStyles.summary} role="alert">
                     {t('kernel.status.error')} {kernelError}{' '}

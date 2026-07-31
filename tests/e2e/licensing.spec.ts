@@ -11,7 +11,8 @@ test('free tier: License menu opens and STEP export is hidden', async ({ page })
 
   // The action cluster shows the license status (free by default).
   const license = page.getByTestId('license-open');
-  await expect(license).toContainText('Free');
+  // Icon-only button (ADR-0090): the tier lives in the accessible name / tooltip.
+  await expect(license).toHaveAttribute('aria-label', /Free/);
   await license.click();
   await expect(page.getByTestId('license-status')).toBeVisible();
   await expect(page.getByTestId('license-key')).toBeVisible(); // paste field
@@ -21,5 +22,5 @@ test('free tier: License menu opens and STEP export is hidden', async ({ page })
   await license.click();
   await page.getByTestId('license-key').fill('not.a.valid.token');
   await page.getByRole('button', { name: 'OK' }).click();
-  await expect(page.getByTestId('license-open')).toContainText('Free');
+  await expect(page.getByTestId('license-open')).toHaveAttribute('aria-label', /Free/);
 });

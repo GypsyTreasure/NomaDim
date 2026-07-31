@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
-import sketcherStyles from '../sketcher/Sketcher.module.css';
+import { IconButton } from '../ui/IconButton';
 import { AdminPanel } from './AdminPanel';
 
 /**
@@ -29,17 +28,15 @@ export function SettingsButton(): React.JSX.Element {
 
   return (
     <>
-      <button
-        type="button"
-        className={sketcherStyles.button}
-        title={withShortcut(t('admin.open'), ',')}
-        data-testid="admin-open"
+      <IconButton
+        icon="settings"
+        label={t('admin.menu')}
+        shortcut=","
+        testid="admin-open"
         onClick={() => {
           setOpen(true);
         }}
-      >
-        {t('admin.menu')}
-      </button>
+      />
       <AdminPanel
         open={open}
         onClose={() => {

@@ -6,7 +6,7 @@ import { getKernelClient } from '../../store/kernelStore';
 import { pushToast } from '../../store/toastStore';
 import { t } from '../../i18n/t';
 import { existingIds, mintName } from '../timeline/dialogData';
-import styles from '../timeline/Timeline.module.css';
+import { IconButton } from '../ui/IconButton';
 
 /**
  * Import a STEP file as a base body (roadmap P1). The worker parses it to a
@@ -52,14 +52,12 @@ export function ImportStepButton(): React.JSX.Element {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.button}
+      <IconButton
+        icon="importStep"
+        label={t('io.import')}
         onClick={() => inputRef.current?.click()}
-        data-testid="doc-import-step"
-      >
-        {t('io.import')}
-      </button>
+        testid="doc-import-step"
+      />
       <input
         ref={inputRef}
         type="file"

@@ -1,0 +1,172 @@
+/* Unified toolbar language (ADR-0090): icon-only controls grouped into blocks
+   with hairline dividers, floating on soft "glass" surfaces — a calm, Apple-
+   like system shared by the modeling top bar and the sketch dock. Colours are
+   tokens only (no hardcoded values). */
+
+/* A floating cluster of control blocks. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--grid-unit) * 0.25);
+  padding: calc(var(--grid-unit) * 0.35);
+  background-color: var(--color-panel-bg);
+  border: var(--border-width) solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
+}
+
+/* A group of related icon buttons inside a bar. */
+.block {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid-unit) * 0.15);
+}
+
+/* Hairline separator between blocks. */
+.divider {
+  flex: 0 0 auto;
+  width: var(--border-width);
+  align-self: stretch;
+  min-height: 22px;
+  margin: 0 calc(var(--grid-unit) * 0.35);
+  background-color: var(--color-hairline);
+}
+
+/* The core icon button: square, borderless, quiet until hovered. */
+.iconBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.iconBtn:hover:not(:disabled) {
+  background-color: var(--color-panel-raised);
+}
+
+.iconBtn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.iconBtn:focus-visible {
+  outline: none;
+  border-color: var(--color-focus-ring);
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Toggled-on state: a soft teal tint (not a hard fill) — SF-Symbols style. */
+.iconBtnActive,
+.iconBtnActive:hover {
+  background-color: var(--color-teal-alpha-40);
+  color: var(--color-teal-bright);
+}
+
+/* Primary action (Finish, New Sketch): filled teal, always the clear entry. */
+.iconBtnPrimary,
+.iconBtnPrimary:hover {
+  background-color: var(--color-primary);
+  color: var(--color-canvas);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Small count pill (live body count on the Browser button). */
+.badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary);
+  color: var(--color-canvas);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* Touch targets grow on phones. */
+@media (max-width: 560px) {
+  .iconBtn {
+    width: var(--control-h-touch);
+    height: var(--control-h-touch);
+  }
+}
+
+/* Rolling-hamburger popover: a floating list of labelled icon rows. */
+.popover {
+  position: absolute;
+  top: calc(100% + var(--grid-unit) * 0.5);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 210px;
+  padding: calc(var(--grid-unit) * 0.4);
+  background-color: var(--color-panel-bg);
+  border: var(--border-width) solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--grid-unit);
+  width: 100%;
+  min-height: var(--control-h);
+  padding: calc(var(--grid-unit) * 0.4) calc(var(--grid-unit) * 0.6);
+  background-color: transparent;
+  color: var(--color-panel-fg);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled) {
+  background-color: var(--color-panel-raised);
+}
+
+.menuItem:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.menuItemActive {
+  color: var(--color-teal-bright);
+}
+
+.menuLabel {
+  flex: 1 1 auto;
+}
+
+.menuShortcut {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-grey-muted);
+}

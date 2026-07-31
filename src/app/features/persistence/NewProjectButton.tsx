@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { emptyDocument, type DocumentState } from '../../../document';
 import { t } from '../../i18n/t';
-import { withShortcut } from '../help/shortcuts';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { downloadDocument } from '../document-io/documentIO';
 import { exportFileName } from '../naming/exportName';
+import { IconButton } from '../ui/IconButton';
 import { clearPersistedDocument } from './autosave';
 import dialogStyles from './NewProject.module.css';
 import styles from '../sketcher/Sketcher.module.css';
@@ -62,16 +62,14 @@ export function NewProjectButton(): React.JSX.Element {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.button}
-        title={withShortcut(t('project.new'), 'Shift+N')}
+      <IconButton
+        icon="newProject"
+        label={t('project.new')}
+        shortcut="Shift+N"
         disabled={empty}
         onClick={requestNew}
-        data-testid="new-project"
-      >
-        {t('project.new')}
-      </button>
+        testid="new-project"
+      />
       {confirming && (
         <div className={dialogStyles.backdrop} data-testid="new-project-dialog">
           <div

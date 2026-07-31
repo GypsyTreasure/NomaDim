@@ -893,15 +893,16 @@ export function Viewport({
     if (!bodyGroup) return;
     disposeSceneObjects(bodyGroup);
     bodyGroup.clear();
-    // Intersect view (#1): clip the near half of every body at the sketch
-    // plane so the cut is exposed. The sketch camera sits on the +normal side,
-    // so removing that half reveals the interior. Applied at mesh creation
-    // (fresh local material) and rebuilt when the toggle/plane changes.
+    // Intersect view (#1, #9): clip away the half BEHIND the sketch plane
+    // (the −normal side) and keep the camera-side half, so the cut face reads
+    // front-on. A THREE.Plane keeps the side where normal·(p−origin) ≥ 0, so
+    // the un-negated plane normal keeps the +normal (camera) side. Applied at
+    // mesh creation (fresh local material) and rebuilt when toggle/plane change.
     const basis = sketchMode ? sketchModeRef.current?.basis : null;
     const clip =
       basis && sectionView
         ? new THREE.Plane().setFromNormalAndCoplanarPoint(
-            new THREE.Vector3(basis.normal[0], basis.normal[1], basis.normal[2]).negate(),
+            new THREE.Vector3(basis.normal[0], basis.normal[1], basis.normal[2]),
             new THREE.Vector3(basis.origin[0], basis.origin[1], basis.origin[2])
           )
         : null;

@@ -33,6 +33,29 @@ export interface DimensionRender {
   /** Where the label text is anchored (plane-space mm), centred by the drawer. */
   readonly labelAnchor: Vec2;
   readonly label: string;
+  /** True when this dimension is the current selection (drawn highlighted). */
+  readonly selected?: boolean;
+}
+
+/** Perpendicular distance (mm) from `p` to the segment a–b. */
+function pointToSegment(p: Vec2, a: Vec2, b: Vec2): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return distance(p, a);
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/**
+ * Closest distance (mm) from a plane-space point to a rendered dimension — the
+ * nearest of its lines or its label anchor. Used to click-select a dimension
+ * for deletion (pure, DOM-free, R11).
+ */
+export function distanceToDimension(render: DimensionRender, p: Vec2): number {
+  let best = distance(p, render.labelAnchor);
+  for (const [a, b] of render.segments) best = Math.min(best, pointToSegment(p, a, b));
+  return best;
 }
 
 /** Fallback dimension-line offset (mm) when a dimension has none stored. */

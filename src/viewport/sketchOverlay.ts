@@ -35,6 +35,7 @@ const COLOR_GUIDE = '#4fae63';
 const COLOR_SNAP = '#e0554f';
 const COLOR_POINT = '#0d1b2a';
 const COLOR_DIMENSION = '#1a6b5a'; // teal — reference-dimension annotations
+const COLOR_DIMENSION_SELECTED = '#e5342e'; // brand red — a picked dimension
 const COLOR_DIMENSION_HALO = '#f4f5f6'; // light halo so labels read over geometry
 const COLOR_ORIGIN = '#e5342e'; // brand red — origin node (matches logomark + 3D marker)
 
@@ -132,6 +133,9 @@ export function drawSketchOverlay(
   ctx.textBaseline = 'middle';
   ctx.font = '12px Barlow, system-ui, sans-serif';
   for (const dim of state.dimensions) {
+    const color = dim.selected ? COLOR_DIMENSION_SELECTED : COLOR_DIMENSION;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = dim.selected ? 2.25 : 1;
     ctx.beginPath();
     for (const [a, b] of dim.segments) {
       const sa = toScreen(a);
@@ -144,7 +148,7 @@ export function drawSketchOverlay(
     ctx.lineWidth = 3;
     ctx.strokeStyle = COLOR_DIMENSION_HALO;
     ctx.strokeText(dim.label, anchor.x, anchor.y);
-    ctx.fillStyle = COLOR_DIMENSION;
+    ctx.fillStyle = color;
     ctx.fillText(dim.label, anchor.x, anchor.y);
     ctx.strokeStyle = COLOR_DIMENSION;
     ctx.lineWidth = 1;

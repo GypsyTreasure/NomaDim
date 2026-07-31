@@ -24,6 +24,7 @@ import {
   detectProfiles,
   dimensionRender,
   dimensionEndpoints,
+  distanceToDimension,
   mirrorEntities,
   patternEntities,
   distanceToCurve,
@@ -107,6 +108,22 @@ function startPointOf(state: NumericInputState, fallback: Vec2): Vec2 | null {
   const y = parseField(yDef, state.values[n - 1] ?? '');
   if (x === null && y === null) return null;
   return vec2(x ?? fallback.x, y ?? fallback.y);
+}
+
+/** Reference dimensions of a sketch, each paired with its id and live geometry. */
+function dimensionHitsFor(sketch: Sketch): { id: DimensionId; render: DimensionRender }[] {
+  const byId = new Map(sketch.points.map((pt) => [pt.id, pt]));
+  const entById = new Map(sketch.entities.map((e) => [e.id, e]));
+  const pointPos = (id: PointId): Vec2 | undefined => {
+    const pt = byId.get(id);
+    return pt ? vec2(pt.x, pt.y) : undefined;
+  };
+  const out: { id: DimensionId; render: DimensionRender }[] = [];
+  for (const dim of sketch.dimensions) {
+    const ends = dimensionEndpoints(dim, pointPos, (id) => entById.get(id));
+    if (ends) out.push({ id: dim.id, render: dimensionRender(dim, ends[0], ends[1]) });
+  }
+  return out;
 }
 
 /** World-space basis of a sketch's plane (origin plane, or a body-face snapshot). */
@@ -211,6 +228,7 @@ export function useSketcher(): SketcherApi {
   const activeTool = useSessionStore((s) => s.activeTool);
   const snapEnabled = useSessionStore((s) => s.snapEnabled);
   const selectedEntityIds = useSessionStore((s) => s.selectedEntityIds);
+  const selectedDimensionIds = useSessionStore((s) => s.selectedDimensionIds);
 
   const sketch = activeSketchId ? (findSketch(document, activeSketchId) ?? null) : null;
   const bodies = useKernelStore((s) => s.bodies);
@@ -295,21 +313,9 @@ export function useSketcher(): SketcherApi {
 
   // Reference-dimension geometry, measured live from the (possibly dragged)
   // point positions so annotations track the geometry (associative, ADR-0002).
-  const dimensionRenders = useMemo<DimensionRender[]>(() => {
+  const dimensionHits = useMemo(() => {
     const src = displaySketch ?? sketch;
-    if (!src) return [];
-    const byId = new Map(src.points.map((pt) => [pt.id, pt]));
-    const entById = new Map(src.entities.map((e) => [e.id, e]));
-    const pointPos = (id: PointId): Vec2 | undefined => {
-      const pt = byId.get(id);
-      return pt ? vec2(pt.x, pt.y) : undefined;
-    };
-    const out: DimensionRender[] = [];
-    for (const dim of src.dimensions) {
-      const ends = dimensionEndpoints(dim, pointPos, (id) => entById.get(id));
-      if (ends) out.push(dimensionRender(dim, ends[0], ends[1]));
-    }
-    return out;
+    return src ? dimensionHitsFor(src) : [];
   }, [displaySketch, sketch]);
 
   // Snap targets from the Intersect view's section / on-plane outline (#5): the
@@ -464,6 +470,21 @@ export function useSketcher(): SketcherApi {
             bestDist = d;
             bestId = entity.entityId;
           }
+        }
+        // A reference dimension can be picked too (so it can be deleted).
+        // Whichever is nearest within tolerance — geometry or dimension — wins.
+        let bestDimId: DimensionId | null = null;
+        let bestDimDist = tolMm;
+        for (const hit of dimensionHitsFor(current)) {
+          const d = distanceToDimension(hit.render, p);
+          if (d <= bestDimDist) {
+            bestDimDist = d;
+            bestDimId = hit.id;
+          }
+        }
+        if (bestDimId && bestDimDist <= bestDist) {
+          useSessionStore.getState().setSelectedDimensions([bestDimId]);
+          return;
         }
         const selection = bestId
           ? tool === 'change'
@@ -705,6 +726,14 @@ export function useSketcher(): SketcherApi {
         setToolState((s) => setConstructionMode(s, !s.constructionMode));
         return;
       }
+      if (event.key === 'Delete' && session.selectedDimensionIds.length > 0) {
+        commandBus.dispatch({
+          type: 'DeleteSketchDimensions',
+          payload: { sketchId: sketch.id, dimensionIds: session.selectedDimensionIds },
+        });
+        session.setSelectedDimensions([]);
+        return;
+      }
       if (event.key === 'Delete' && session.selectedEntityIds.length > 0) {
         commandBus.dispatch({
           type: 'DeleteSketchEntities',
@@ -797,7 +826,16 @@ export function useSketcher(): SketcherApi {
   const deleteSelection = useCallback(() => {
     const current = liveSketch();
     const session = useSessionStore.getState();
-    if (!current || session.selectedEntityIds.length === 0) return;
+    if (!current) return;
+    if (session.selectedDimensionIds.length > 0) {
+      commandBus.dispatch({
+        type: 'DeleteSketchDimensions',
+        payload: { sketchId: current.id, dimensionIds: session.selectedDimensionIds },
+      });
+      session.setSelectedDimensions([]);
+      return;
+    }
+    if (session.selectedEntityIds.length === 0) return;
     commandBus.dispatch({
       type: 'DeleteSketchEntities',
       payload: { sketchId: current.id, entityIds: session.selectedEntityIds },
@@ -1076,6 +1114,10 @@ export function useSketcher(): SketcherApi {
 
   // While the Dim tool is armed, add a live preview annotation from the first
   // point to the cursor so the user sees the measurement before committing.
+  const selectedDimSet = new Set<string>(selectedDimensionIds);
+  const dimensionRenders: DimensionRender[] = dimensionHits.map((h) =>
+    selectedDimSet.has(h.id) ? { ...h.render, selected: true } : h.render
+  );
   const overlayDimensions: DimensionRender[] = (() => {
     if (activeTool !== 'dimension' || !dimFirst) return dimensionRenders;
     const src = displaySketch ?? sketch;
@@ -1145,7 +1187,7 @@ export function useSketcher(): SketcherApi {
     cycleField,
     toggleConstruction,
     deleteSelection,
-    hasSelection: selectedEntityIds.length > 0,
+    hasSelection: selectedEntityIds.length > 0 || selectedDimensionIds.length > 0,
     intersect,
     toggleIntersect,
     fitNonce,

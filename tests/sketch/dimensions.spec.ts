@@ -7,6 +7,7 @@ import {
   dimensionLabel,
   dimensionMeasure,
   dimensionRender,
+  distanceToDimension,
 } from '../../src/sketch';
 
 const dim = (kind: SketchDimensionKind, offset = 10): SketchDimension => ({
@@ -152,5 +153,22 @@ describe('dimensionRender', () => {
     expect(chord?.[0].y).toBeCloseTo(-12);
     expect(chord?.[1].y).toBeCloseTo(12);
     expect(r.label).toBe('⌀24');
+  });
+});
+
+describe('distanceToDimension (click-to-select for deletion)', () => {
+  // A horizontal linear dimension from (0,0) to (10,0), dropped 10mm below.
+  const render = dimensionRender(dim('linear', -10), vec2(0, 0), vec2(10, 0));
+
+  it('is ~0 on the dimension line and small near the label', () => {
+    // The dimension line runs along y = -10 between the extension lines.
+    expect(distanceToDimension(render, vec2(5, -10))).toBeLessThan(0.001);
+    // Near the label anchor (also around the mid-span) it is close, not far.
+    expect(distanceToDimension(render, render.labelAnchor)).toBeLessThan(0.001);
+  });
+
+  it('grows with perpendicular distance away from every segment', () => {
+    // Far from all lines and the label → a large distance.
+    expect(distanceToDimension(render, vec2(100, 100))).toBeGreaterThan(50);
   });
 });

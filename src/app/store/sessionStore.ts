@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BodyId, EntityId, SketchId, Vec2 } from '../../core';
+import type { BodyId, DimensionId, EntityId, SketchId, Vec2 } from '../../core';
 import type { EdgeFingerprint } from '../../document';
 
 /**
@@ -32,6 +32,8 @@ interface SessionStore {
   readonly activeSketchId: SketchId | null;
   readonly activeTool: SketchToolId | null;
   readonly selectedEntityIds: readonly EntityId[];
+  /** Selected reference dimensions (mutually exclusive with entity selection). */
+  readonly selectedDimensionIds: readonly DimensionId[];
   readonly snapEnabled: boolean;
   /** True while a Fillet/Chamfer dialog is in edge-pick mode (F4). */
   readonly edgePicking: boolean;
@@ -52,6 +54,7 @@ interface SessionStore {
   readonly exitSketch: () => void;
   readonly setActiveTool: (tool: SketchToolId | null) => void;
   readonly setSelection: (entityIds: readonly EntityId[]) => void;
+  readonly setSelectedDimensions: (dimensionIds: readonly DimensionId[]) => void;
   readonly setSnapEnabled: (enabled: boolean) => void;
   readonly setEdgePicking: (on: boolean) => void;
   readonly setEdgePickBodyId: (bodyId: BodyId | null) => void;
@@ -68,6 +71,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   activeSketchId: null,
   activeTool: null,
   selectedEntityIds: [],
+  selectedDimensionIds: [],
   snapEnabled: true,
   edgePicking: false,
   edgePickBodyId: null,
@@ -80,16 +84,31 @@ export const useSessionStore = create<SessionStore>((set) => ({
   enterSketch: (sketchId) => {
     // Start in Select/navigate mode (activeTool null), not a drawing tool, so
     // the first drag pans/orbits the view instead of laying down stray lines.
-    set({ activeSketchId: sketchId, activeTool: null, selectedEntityIds: [] });
+    set({
+      activeSketchId: sketchId,
+      activeTool: null,
+      selectedEntityIds: [],
+      selectedDimensionIds: [],
+    });
   },
   exitSketch: () => {
-    set({ activeSketchId: null, activeTool: null, selectedEntityIds: [] });
+    set({
+      activeSketchId: null,
+      activeTool: null,
+      selectedEntityIds: [],
+      selectedDimensionIds: [],
+    });
   },
   setActiveTool: (tool) => {
-    set({ activeTool: tool, selectedEntityIds: [] });
+    set({ activeTool: tool, selectedEntityIds: [], selectedDimensionIds: [] });
   },
+  // Entity and dimension selection are mutually exclusive — selecting one clears
+  // the other so a single Delete acts on exactly what the user picked.
   setSelection: (entityIds) => {
-    set({ selectedEntityIds: entityIds });
+    set({ selectedEntityIds: entityIds, selectedDimensionIds: [] });
+  },
+  setSelectedDimensions: (dimensionIds) => {
+    set({ selectedDimensionIds: dimensionIds, selectedEntityIds: [] });
   },
   setSnapEnabled: (enabled) => {
     set({ snapEnabled: enabled });

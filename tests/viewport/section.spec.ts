@@ -121,10 +121,18 @@ describe('sectionPlanePoints (snap targets, #5)', () => {
 describe('coplanarFaceOutline (#10 face-pick preview)', () => {
   // A unit square on the plane z=0, two triangles sharing the diagonal.
   const positions = new Float32Array([
-    0, 0, 0, // 0
-    2, 0, 0, // 1
-    2, 2, 0, // 2
-    0, 2, 0, // 3
+    0,
+    0,
+    0, // 0
+    2,
+    0,
+    0, // 1
+    2,
+    2,
+    0, // 2
+    0,
+    2,
+    0, // 3
   ]);
   const indices = new Uint32Array([0, 1, 2, 0, 2, 3]);
 

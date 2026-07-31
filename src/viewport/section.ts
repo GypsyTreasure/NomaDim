@@ -162,14 +162,7 @@ export function coplanarFaceOutline(
     string,
     { n: number; c: readonly [number, number, number, number, number, number] }
   >();
-  const add = (
-    x0: number,
-    y0: number,
-    z0: number,
-    x1: number,
-    y1: number,
-    z1: number
-  ): void => {
+  const add = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): void => {
     const k0 = coordKey(x0, y0, z0);
     const k1 = coordKey(x1, y1, z1);
     const key = k0 < k1 ? `${k0}|${k1}` : `${k1}|${k0}`;

@@ -9,6 +9,25 @@ import {
 } from './license';
 
 /**
+ * Universal evaluation key (ADR-0089). While the real signed-token issuer is
+ * not yet live, this single fixed string unlocks Pro so the owner and testers
+ * can exercise the full feature set. It is intentionally NOT a valid signed
+ * token — it is matched literally, before any crypto — and returns a synthetic
+ * perpetual Pro payload. Remove once the issuer ships.
+ */
+export const UNIVERSAL_TEST_KEY = 'GYP$Y';
+
+function syntheticTestPayload(): LicensePayload {
+  return {
+    email: 'test@nomadirection.pl',
+    orderId: 'UNIVERSAL-TEST',
+    product: PRODUCT,
+    tier: 'pro',
+    issuedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Verifies a Pro license token entirely offline (M11): WebCrypto Ed25519
  * signature check against the baked public key, then product/expiry guards.
  * **Fails closed** — any malformed input, bad signature, wrong product, or
@@ -20,6 +39,8 @@ export async function verifyLicense(
   token: string,
   publicKeyB64: string = LICENSE_PUBLIC_KEY_B64
 ): Promise<Result<LicensePayload, LicenseError>> {
+  if (token.trim() === UNIVERSAL_TEST_KEY) return ok(syntheticTestPayload());
+
   const decoded = decodeToken(token);
   if (!decoded.ok) return decoded;
   const { payload, signedBytes, signature } = decoded.value;

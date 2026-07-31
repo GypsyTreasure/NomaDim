@@ -7,9 +7,16 @@ import type { EdgeFingerprint } from '../../document';
  * (F3 preview): the selected profile loops (and a revolve axis) drawn bright
  * in the viewport. Sketch-local polylines + the plane; the viewport maps them.
  */
+export interface ProfileHighlightArea {
+  readonly outer: readonly Vec2[];
+  readonly holes: readonly (readonly Vec2[])[];
+}
+
 export interface ProfileHighlight {
   readonly plane: 'XY' | 'XZ' | 'YZ';
   readonly loops: readonly (readonly Vec2[])[];
+  /** Selected regions filled translucently in the viewport (#4). */
+  readonly areas: readonly ProfileHighlightArea[];
   readonly axis: readonly Vec2[] | null;
 }
 import { edgeFingerprintKey } from '../../kernel';

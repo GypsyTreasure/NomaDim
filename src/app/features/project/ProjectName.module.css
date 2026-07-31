@@ -23,6 +23,9 @@
 
 .field:focus {
   outline: none;
-  background-color: var(--color-canvas-bg);
+  /* Dark input surface so the cream text stays readable while editing (#5) —
+     the previous cream-on-cream made the name invisible. */
+  background-color: var(--color-panel-input);
+  color: var(--color-panel-fg);
   border-color: var(--color-primary);
 }

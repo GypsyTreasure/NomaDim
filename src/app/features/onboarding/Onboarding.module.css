@@ -55,28 +55,11 @@
   background-color: var(--color-teal-bright);
 }
 
-/* First-run actions row (M12): Load-sample + dismiss. */
+/* First-run actions row. */
 .actions {
   display: flex;
   gap: var(--grid-unit);
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-}
-
-.sample {
-  /* The card is pointer-events:none — each live control must opt back in. */
-  pointer-events: auto;
-  min-height: var(--control-h-touch);
-  padding: calc(var(--grid-unit) * 0.75) calc(var(--grid-unit) * 1.5);
-  border-radius: var(--radius-pill);
-  border: var(--border-width) solid var(--color-primary);
-  background-color: transparent;
-  color: var(--color-primary);
-  font: inherit;
-  cursor: pointer;
-}
-
-.sample:hover {
-  background-color: var(--color-selection);
 }

@@ -58,15 +58,20 @@ describe('computeProfileHighlight', () => {
     expect(hl?.plane).toBe('XY');
     expect(hl?.loops).toHaveLength(1);
     expect(hl?.loops[0]?.length ?? 0).toBeGreaterThan(2);
+    // A filled region (#4): outer boundary, no holes for a plain square.
+    expect(hl?.areas).toHaveLength(1);
+    expect(hl?.areas[0]?.outer.length ?? 0).toBeGreaterThan(2);
+    expect(hl?.areas[0]?.holes).toHaveLength(0);
     expect(hl?.axis).toBeNull();
   });
 
-  it('emits no loops when nothing is selected', () => {
+  it('emits no loops or areas when nothing is selected', () => {
     const sketch = squareSketch();
     const profile = detectProfiles(sketch).profiles[0];
     if (!profile) return;
     const hl = computeProfileHighlight(sketch, new Set<ProfileId>(), [profile], null);
     expect(hl?.loops).toHaveLength(0);
+    expect(hl?.areas).toHaveLength(0);
   });
 
   it('includes the axis line endpoints when an axis entity is given', () => {

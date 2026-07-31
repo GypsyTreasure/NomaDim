@@ -124,9 +124,17 @@ export interface SketchPreview {
  * sketch-local mm on the given plane. Drawn depth-test-free so it reads even
  * through a solid body.
  */
+/** A filled profile region: outer boundary minus any hole loops (sketch coords). */
+export interface OpHighlightArea {
+  readonly outer: readonly Vec2[];
+  readonly holes: readonly (readonly Vec2[])[];
+}
+
 export interface OpHighlight {
   readonly plane: OriginPlaneId;
   readonly loops: readonly (readonly Vec2[])[];
+  /** Selected profile regions, drawn as a translucent amber fill (#4). */
+  readonly areas: readonly OpHighlightArea[];
   readonly axis: readonly Vec2[] | null;
 }
 
@@ -1033,6 +1041,37 @@ export function Viewport({
       line.renderOrder = 999;
       group.add(line);
     };
+    // Translucent amber fill of each selected region (#4) — shows WHICH area
+    // the op consumes, not just its outline. Built in sketch-plane 2D then
+    // lifted to world with the same mapping as the outlines.
+    const addArea = (area: OpHighlight['areas'][number]): void => {
+      if (area.outer.length < 3) return;
+      const shape = new THREE.Shape(area.outer.map((p) => new THREE.Vector2(p.x, p.y)));
+      for (const hole of area.holes) {
+        if (hole.length >= 3) {
+          shape.holes.push(new THREE.Path(hole.map((p) => new THREE.Vector2(p.x, p.y))));
+        }
+      }
+      const geometry = new THREE.ShapeGeometry(shape);
+      const pos = geometry.getAttribute('position') as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i += 1) {
+        const world = planeToWorld(mapping, { x: pos.getX(i), y: pos.getY(i) });
+        pos.setXYZ(i, world.x, world.y, world.z);
+      }
+      pos.needsUpdate = true;
+      const material = new THREE.MeshBasicMaterial({
+        color: OP_HIGHLIGHT_COLOR,
+        transparent: true,
+        opacity: 0.22,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.renderOrder = 998; // under the bright outlines (999)
+      group.add(mesh);
+    };
+    for (const area of opHighlight.areas) addArea(area);
     for (const loop of opHighlight.loops) addPolyline(loop, true);
     if (opHighlight.axis) addPolyline(opHighlight.axis, false);
   }, [opHighlight]);

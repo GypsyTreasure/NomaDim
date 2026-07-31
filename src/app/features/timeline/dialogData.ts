@@ -56,10 +56,16 @@ export function computeProfileHighlight(
   // Face-plane sketches (not shipped yet) have no origin-plane placement here.
   if (sketch?.plane.kind !== 'origin') return null;
   const loops: Vec2[][] = [];
+  const areas: { outer: Vec2[]; holes: Vec2[][] }[] = [];
   for (const profile of profiles) {
     if (!selected.has(profile.id)) continue;
     loops.push([...profile.outer.polygon]);
-    for (const inner of profile.inner) loops.push([...inner.polygon]);
+    const holes: Vec2[][] = [];
+    for (const inner of profile.inner) {
+      loops.push([...inner.polygon]);
+      holes.push([...inner.polygon]);
+    }
+    areas.push({ outer: [...profile.outer.polygon], holes });
   }
   let axis: readonly Vec2[] | null = null;
   if (axisEntityId) {
@@ -75,7 +81,7 @@ export function computeProfileHighlight(
         ];
     }
   }
-  return { plane: sketch.plane.plane, loops, axis };
+  return { plane: sketch.plane.plane, loops, areas, axis };
 }
 
 export function useProfileHighlight(

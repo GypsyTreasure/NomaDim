@@ -43,8 +43,9 @@ import { restorePersistedDocument, startAutosave } from './features/persistence/
 import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { LicenseButton } from './features/licensing/LicenseButton';
-import { SampleGallery } from './features/samples/SampleGallery';
 import { SettingsButton } from './features/admin/SettingsButton';
+import { ProjectsButton } from './features/projects/ProjectsButton';
+import { useFolderStore } from './features/projects/folderStore';
 import { useEntitlementStore } from './store/entitlementStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
@@ -93,7 +94,6 @@ export function App(): React.JSX.Element {
   // collapsed behind their own toggles in the top-right menu cluster.
   const [treeOpen, setTreeOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
-  const [samplesOpen, setSamplesOpen] = useState(false);
   const appBarRef = useRef<HTMLDivElement>(null);
 
   // Tapping outside the app bar closes the menu — but NOT on item clicks, so a
@@ -133,6 +133,8 @@ export function App(): React.JSX.Element {
     restorePersistedDocument();
     // Re-verify a persisted Pro license offline (M11) — free tier otherwise.
     useEntitlementStore.getState().restore();
+    // Silently re-authorize the saved local project folder, if any (ADR-0089).
+    void useFolderStore.getState().restore();
     // Defer the multi-MB WASM boot to idle so the shell + empty viewport paint
     // first (M8 lazy kernel). Restore stays synchronous and ordered before it.
     scheduleKernelBoot();
@@ -352,7 +354,7 @@ export function App(): React.JSX.Element {
                 <DocumentIO />
                 <ImportStepButton />
                 <ExportStlButton />
-                <SampleGallery open={samplesOpen} onOpenChange={setSamplesOpen} />
+                <ProjectsButton />
                 <SettingsButton />
                 <LicenseButton />
                 <button
@@ -401,13 +403,7 @@ export function App(): React.JSX.Element {
             </>
           ) : (
             <>
-              {!sketcher.choosingPlane && !sketcher.pickingFace && (
-                <OnboardingHint
-                  onLoadSample={() => {
-                    setSamplesOpen(true);
-                  }}
-                />
-              )}
+              {!sketcher.choosingPlane && !sketcher.pickingFace && <OnboardingHint />}
               {sketcher.choosingPlane && (
                 <PlanePicker
                   onChoose={sketcher.choosePlane}

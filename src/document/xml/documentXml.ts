@@ -54,9 +54,13 @@ function datumElement(datum: Datum): XmlElement {
         ...common,
         kind: 'plane',
         base: datum.base,
+        // Optional datum references (ADR-0089) written only when present, so
+        // origin-based datums round-trip byte-identically as before.
+        ...(datum.baseDatumId ? { baseDatum: datum.baseDatumId } : {}),
         offset: datum.offsetMm,
         tilt: datum.tiltDeg,
         tiltAxis: datum.tiltAxis,
+        ...(datum.tiltAxisDatumId ? { tiltAxisDatum: datum.tiltAxisDatumId } : {}),
       },
     };
   }
@@ -66,11 +70,13 @@ function datumElement(datum: Datum): XmlElement {
       ...common,
       kind: 'axis',
       base: datum.base,
+      ...(datum.baseDatumId ? { baseDatum: datum.baseDatumId } : {}),
       ox: datum.offset[0],
       oy: datum.offset[1],
       oz: datum.offset[2],
       angle: datum.angleDeg,
       angleAxis: datum.angleAxis,
+      ...(datum.angleAxisDatumId ? { angleAxisDatum: datum.angleAxisDatumId } : {}),
     },
   };
 }
@@ -100,13 +106,17 @@ function datumFromRaw(raw: Raw): Datum | null {
     ) {
       return null;
     }
+    const baseDatum = strAttr(raw, 'baseDatum');
+    const tiltAxisDatum = strAttr(raw, 'tiltAxisDatum');
     return {
       ...common,
       kind: 'plane',
       base: base as DatumBasePlane,
+      ...(baseDatum !== null ? { baseDatumId: baseDatum as DatumId } : {}),
       offsetMm: offset,
       tiltDeg: tilt,
       tiltAxis: tiltAxis as DatumBaseAxis,
+      ...(tiltAxisDatum !== null ? { tiltAxisDatumId: tiltAxisDatum as DatumId } : {}),
     };
   }
   if (kind === 'axis') {
@@ -128,13 +138,17 @@ function datumFromRaw(raw: Raw): Datum | null {
     ) {
       return null;
     }
+    const baseDatum = strAttr(raw, 'baseDatum');
+    const angleAxisDatum = strAttr(raw, 'angleAxisDatum');
     return {
       ...common,
       kind: 'axis',
       base: base as DatumBaseAxis,
+      ...(baseDatum !== null ? { baseDatumId: baseDatum as DatumId } : {}),
       offset: [ox, oy, oz],
       angleDeg: angle,
       angleAxis: angleAxis as DatumBaseAxis,
+      ...(angleAxisDatum !== null ? { angleAxisDatumId: angleAxisDatum as DatumId } : {}),
     };
   }
   return null;

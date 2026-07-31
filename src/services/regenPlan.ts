@@ -83,7 +83,7 @@ function resolveMirrorPlane(doc: DocumentState, op: MirrorOp): WorldPlane {
   if (op.datumId) {
     const datum = getDatum(doc, op.datumId);
     if (datum && isDatumPlane(datum)) {
-      const w = datumPlaneWorld(datum);
+      const w = datumPlaneWorld(datum, doc.datums);
       return { origin: w.origin, normal: w.normal };
     }
   }
@@ -127,7 +127,7 @@ function resolveAxis(doc: DocumentState, op: RevolveOp): WorldAxis | undefined {
   if (axis.kind === 'datum') {
     const datum = getDatum(doc, axis.datumId);
     if (!datum || !isDatumAxis(datum)) return undefined;
-    const w = datumAxisWorld(datum);
+    const w = datumAxisWorld(datum, doc.datums);
     return { origin: w.origin, direction: w.direction };
   }
   const entity = getEntity(sketch, axis.entityId);

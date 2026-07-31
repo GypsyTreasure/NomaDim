@@ -148,3 +148,39 @@
   font-size: 12px;
   color: var(--color-grey-muted);
 }
+
+/* Project folder (ADR-0089): current folder name + Choose/Forget actions. */
+.folderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--grid-unit);
+  flex-wrap: wrap;
+}
+
+.folderName {
+  flex: 1 1 auto;
+  min-width: 10ch;
+  font-size: 13px;
+  color: var(--color-panel-fg);
+  word-break: break-word;
+}
+
+.folderName[data-empty='true'] {
+  color: var(--color-grey-muted);
+}
+
+.folderBtn {
+  min-height: var(--control-h);
+  padding: calc(var(--grid-unit) * 0.5) var(--grid-unit);
+  background-color: var(--color-panel-raised);
+  color: var(--color-panel-fg);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.folderBtn:hover {
+  border-color: var(--color-primary);
+}

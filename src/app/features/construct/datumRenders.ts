@@ -7,9 +7,13 @@ import type { DatumRender } from '../../../viewport';
  * document layer (pure, no THREE); the viewport just draws what it's handed.
  * Hidden datums are dropped (unless it's the live preview).
  */
-export function datumRender(datum: Datum, ghost = false): DatumRender {
+export function datumRender(
+  datum: Datum,
+  datums: readonly Datum[],
+  ghost = false
+): DatumRender {
   if (isDatumPlane(datum)) {
-    const w = datumPlaneWorld(datum);
+    const w = datumPlaneWorld(datum, datums);
     return {
       id: datum.id,
       kind: 'plane',
@@ -20,7 +24,7 @@ export function datumRender(datum: Datum, ghost = false): DatumRender {
       ghost,
     };
   }
-  const w = datumAxisWorld(datum);
+  const w = datumAxisWorld(datum, datums);
   return { id: datum.id, kind: 'axis', origin: w.origin, direction: w.direction, ghost };
 }
 
@@ -28,6 +32,9 @@ export function buildDatumRenders(
   datums: readonly Datum[],
   preview: Datum | null
 ): readonly DatumRender[] {
-  const rendered = datums.filter((d) => d.visible).map((d) => datumRender(d, false));
-  return preview ? [...rendered, datumRender(preview, true)] : rendered;
+  // The preview may reference a committed datum as its base, so resolve every
+  // render against the full committed list (plus the preview itself).
+  const withPreview = preview ? [...datums, preview] : datums;
+  const rendered = datums.filter((d) => d.visible).map((d) => datumRender(d, withPreview, false));
+  return preview ? [...rendered, datumRender(preview, withPreview, true)] : rendered;
 }

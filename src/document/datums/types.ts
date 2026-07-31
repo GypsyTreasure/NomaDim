@@ -31,11 +31,19 @@ interface DatumBase {
 export interface DatumPlane extends DatumBase {
   readonly kind: 'plane';
   readonly base: DatumBasePlane;
+  /**
+   * Optional parent construction plane this datum is built ON (ADR-0089). When
+   * set, `base` is ignored and the offset/tilt apply relative to the parent's
+   * world frame. Absent = built on the origin `base` plane (the default).
+   */
+  readonly baseDatumId?: DatumId;
   /** Offset (mm) along the base plane's normal. */
   readonly offsetMm: number;
   /** Tilt (deg) of the plane frame about `tiltAxis`. */
   readonly tiltDeg: number;
   readonly tiltAxis: DatumBaseAxis;
+  /** Optional user-created axis to tilt about instead of the origin `tiltAxis`. */
+  readonly tiltAxisDatumId?: DatumId;
 }
 
 /**
@@ -46,11 +54,19 @@ export interface DatumPlane extends DatumBase {
 export interface DatumAxis extends DatumBase {
   readonly kind: 'axis';
   readonly base: DatumBaseAxis;
-  /** Through-point of the axis line (mm from the world origin). */
+  /**
+   * Optional parent construction axis this datum is built ON (ADR-0089). When
+   * set, `base` is ignored and the direction/offset apply relative to the
+   * parent axis. Absent = built on the origin `base` axis (the default).
+   */
+  readonly baseDatumId?: DatumId;
+  /** Through-point of the axis line (mm, relative to the base origin). */
   readonly offset: readonly [number, number, number];
   /** Rotation (deg) of the base direction about `angleAxis`. */
   readonly angleDeg: number;
   readonly angleAxis: DatumBaseAxis;
+  /** Optional user-created axis to rotate about instead of the origin `angleAxis`. */
+  readonly angleAxisDatumId?: DatumId;
 }
 
 export type Datum = DatumPlane | DatumAxis;

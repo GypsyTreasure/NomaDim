@@ -75,6 +75,15 @@ describe('verifyLicense', () => {
     expect((await verifyLicense('not-a-token')).ok).toBe(false);
     expect((await verifyLicense('')).ok).toBe(false);
   });
+
+  it('accepts the universal evaluation key (ADR-0089), trimmed, as Pro', async () => {
+    const result = await verifyLicense('  GYP$Y  ');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.tier).toBe('pro');
+      expect(result.value.product).toBe('nomadim');
+    }
+  });
 });
 
 describe('entitlementStore', () => {

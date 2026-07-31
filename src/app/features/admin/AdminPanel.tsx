@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { t } from '../../i18n/t';
 import { useDocumentStore } from '../../store/documentStore';
+import { isFolderAccessSupported, useFolderStore } from '../projects/folderStore';
 import { useSettings, useSettingsStore, type StlFormat } from '../../store/settingsStore';
 import { buildExportBaseName } from '../naming/exportName';
 import {
@@ -39,6 +40,10 @@ export function AdminPanel({
   const update = useSettingsStore((s) => s.update);
   const reset = useSettingsStore((s) => s.reset);
   const projectName = useDocumentStore((s) => s.document.name);
+  const folderName = useFolderStore((s) => s.name);
+  const chooseFolder = useFolderStore((s) => s.choose);
+  const clearFolder = useFolderStore((s) => s.clear);
+  const folderSupported = isFolderAccessSupported();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -225,6 +230,49 @@ export function AdminPanel({
             <p className={styles.preview} data-testid="admin-name-preview">
               {t('admin.namingPreview')} <code>{previewName}</code>
             </p>
+          </section>
+
+          {/* Project folder (ADR-0089) */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>{t('admin.folder')}</h3>
+            {folderSupported ? (
+              <>
+                <div className={styles.folderRow}>
+                  <span
+                    className={styles.folderName}
+                    data-empty={folderName === null}
+                    data-testid="admin-folder-name"
+                  >
+                    {folderName ?? t('admin.folderNone')}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.folderBtn}
+                    data-testid="admin-folder-choose"
+                    onClick={() => {
+                      void chooseFolder();
+                    }}
+                  >
+                    {folderName ? t('admin.folderChange') : t('admin.folderChoose')}
+                  </button>
+                  {folderName && (
+                    <button
+                      type="button"
+                      className={styles.folderBtn}
+                      data-testid="admin-folder-clear"
+                      onClick={() => {
+                        void clearFolder();
+                      }}
+                    >
+                      {t('admin.folderClear')}
+                    </button>
+                  )}
+                </div>
+                <p className={styles.hint}>{t('admin.folderHint')}</p>
+              </>
+            ) : (
+              <p className={styles.hint}>{t('admin.folderUnsupported')}</p>
+            )}
           </section>
 
           {/* Privacy */}

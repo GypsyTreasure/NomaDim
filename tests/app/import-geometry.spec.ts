@@ -12,7 +12,7 @@ function plan(): GeometryPlan {
 }
 
 describe('addImportedPrimitives', () => {
-  it('imports every primitive as construction (reference) geometry', () => {
+  it('imports every primitive as real (extrudable) sketch geometry (#3)', () => {
     const p = plan();
     const prims: ImportPrimitive[] = [
       { kind: 'line', a: { x: 0, y: 0 }, b: { x: 10, y: 0 } },
@@ -27,7 +27,9 @@ describe('addImportedPrimitives', () => {
     ];
     addImportedPrimitives(p, prims);
     expect(p.entities).toHaveLength(3);
-    expect(p.entities.every((e) => e.construction)).toBe(true);
+    // Imported geometry is normal, profile-forming geometry — Finish → Extrude
+    // works directly — so nothing is flagged construction (ADR-0089).
+    expect(p.entities.every((e) => e.construction)).toBe(false);
     expect(p.entities.map((e) => e.type).sort()).toEqual(['arc', 'circle', 'line']);
   });
 
@@ -50,7 +52,7 @@ describe('addImportedPrimitives', () => {
     expect(p.payload.points).toHaveLength(3);
   });
 
-  it('imports a lone point as a construction point entity', () => {
+  it('imports a lone point as a point entity', () => {
     const p = plan();
     addImportedPrimitives(p, [{ kind: 'polyline', closed: false, points: [{ x: 2, y: 3 }] }]);
     expect(p.entities).toHaveLength(1);

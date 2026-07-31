@@ -74,6 +74,38 @@ describe('datumAxisWorld', () => {
   });
 });
 
+describe('datum-on-datum bases (ADR-0089)', () => {
+  it('stacks a plane on a parent plane: offsets accumulate along the parent normal', () => {
+    const parent = plane({ id: 'p1' as DatumId, offsetMm: 10 }); // XY at z=10
+    const child = plane({ id: 'p2' as DatumId, baseDatumId: 'p1' as DatumId, offsetMm: 5 });
+    near(datumPlaneWorld(child, [parent, child]).origin, [0, 0, 15]);
+  });
+
+  it('inherits a tilted parent frame (child normal follows the parent)', () => {
+    const parent = plane({ id: 'p1' as DatumId, offsetMm: 0, tiltDeg: 90, tiltAxis: 'X' });
+    const child = plane({ id: 'p2' as DatumId, baseDatumId: 'p1' as DatumId, offsetMm: 0 });
+    near(datumPlaneWorld(child, [parent, child]).normal, [0, -1, 0]);
+  });
+
+  it('builds an axis on a parent axis: offset is relative to the parent origin', () => {
+    const parent = axis({ id: 'a1' as DatumId, base: 'Z', offset: [0, 0, 5] });
+    const child = axis({ id: 'a2' as DatumId, baseDatumId: 'a1' as DatumId, offset: [1, 0, 0] });
+    const w = datumAxisWorld(child, [parent, child]);
+    near(w.origin, [1, 0, 5]);
+    near(w.direction, [0, 0, 1]);
+  });
+
+  it('rotates about a user axis and degrades safely on a missing/cyclic reference', () => {
+    // A plane tilting about a user Z-axis by 90°: +X → +Y.
+    const zAxis = axis({ id: 'a1' as DatumId, base: 'Z' });
+    const p = plane({ id: 'p1' as DatumId, offsetMm: 0, tiltDeg: 90, tiltAxisDatumId: 'a1' as DatumId });
+    near(datumPlaneWorld(p, [zAxis, p]).xAxis, [0, 1, 0]);
+    // Dangling baseDatumId with no datums list → falls back to the origin base.
+    const orphan = plane({ id: 'p2' as DatumId, baseDatumId: 'zz' as DatumId, offsetMm: 10 });
+    near(datumPlaneWorld(orphan).origin, [0, 0, 10]);
+  });
+});
+
 describe('datum commands', () => {
   it('adds, edits, hides, renames and removes a datum (each undoable)', () => {
     const d: Datum = plane();

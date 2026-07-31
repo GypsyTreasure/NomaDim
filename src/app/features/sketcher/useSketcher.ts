@@ -944,9 +944,10 @@ export function useSketcher(): SketcherApi {
   // ref, reusing the face/datum placement path downstream.
   const sketchOnDatum = useCallback(
     (datumId: DatumId) => {
-      const datum = getDatum(useDocumentStore.getState().document, datumId);
+      const doc = useDocumentStore.getState().document;
+      const datum = getDatum(doc, datumId);
       if (!datum || !isDatumPlane(datum)) return;
-      const w = datumPlaneWorld(datum);
+      const w = datumPlaneWorld(datum, doc.datums);
       createSketch({
         kind: 'datum',
         base: datum.base,
@@ -1043,10 +1044,11 @@ export function useSketcher(): SketcherApi {
       if (!current) return;
       const { primitives, warnings } = parseReferenceFile(fileName, text);
       const layers = importLayers(primitives);
-      // A multi-layer DXF opens the layer picker so the user chooses what to
-      // import (ADR-0088); a single layer (or SVG, which has none) imports
+      // Any DXF (its primitives carry a layer) opens the layer picker so the
+      // user chooses what to import (ADR-0088); SVG has no layers and imports
       // straight away.
-      if (layers.length >= 2) {
+      const isDxf = primitives.some((p) => p.layer !== undefined);
+      if (isDxf && layers.length > 0) {
         setPendingImport({ fileName, primitives, layers, warnings });
         return;
       }

@@ -20,11 +20,7 @@ function readDismissed(): boolean {
  * button and remembered in localStorage so it never nags a returning user; it
  * also falls away on its own once the first sketch or body exists.
  */
-export function OnboardingHint({
-  onLoadSample,
-}: {
-  onLoadSample?: () => void;
-}): React.JSX.Element | null {
+export function OnboardingHint(): React.JSX.Element | null {
   const [dismissed, setDismissed] = useState(readDismissed);
   const sketchCount = useDocumentStore((s) => s.document.sketches.length);
   const bodyCount = useKernelStore((s) => s.liveBodyIds.length);
@@ -49,19 +45,6 @@ export function OnboardingHint({
         <li>{t('onboarding.step3')}</li>
       </ol>
       <div className={styles.actions}>
-        {onLoadSample && (
-          <button
-            type="button"
-            className={styles.sample}
-            data-testid="onboarding-load-sample"
-            onClick={() => {
-              onLoadSample();
-              dismiss();
-            }}
-          >
-            {t('onboard.loadSample')}
-          </button>
-        )}
         <button
           type="button"
           className={styles.dismiss}

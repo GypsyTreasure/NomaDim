@@ -443,12 +443,15 @@
   color: var(--color-panel-fg);
 }
 
-/* Sample gallery (M12). */
+/* Project browser (ADR-0089): list of saved .nomadim.xml files from the
+   user-chosen local folder. Shares the card look the sample gallery had. */
 .sampleList {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   min-width: 280px;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 .sampleCard {

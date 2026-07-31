@@ -46,7 +46,16 @@ export type IconName =
   | 'importSketch'
   | 'mirror'
   | 'mirrorY'
-  | 'pattern';
+  | 'pattern'
+  | 'newSketch'
+  | 'extrude'
+  | 'revolve'
+  | 'fillet'
+  | 'chamfer'
+  | 'combine'
+  | 'copyBody'
+  | 'shell'
+  | 'move';
 
 const P = ({ d }: { d: string }): React.JSX.Element => (
   <path
@@ -129,6 +138,28 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   mirror: <P d="M12 3v18M7 7 4 12l3 5V7Zm5 0 3-5-3 5m5 0 3 5-3 5V7Z" />,
   mirrorY: <P d="M3 12h18M7 7 12 4l5 3H7Zm0 10 5 3 5-3H7Z" />,
   pattern: <P d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" />,
+  newSketch: <P d="M4 20h16M6 16 15 7l2 2-9 9H6v-2Zm10-11 1.5-1.5a1.4 1.4 0 0 1 2 2L18 7z" />,
+  extrude: <P d="M6 20h8v-8H6zM6 12l3-3h8v8l-3 3M9 9V4h8v8h-3M12 9l3-3" />,
+  revolve: (
+    <>
+      <P d="M4 3v18" />
+      <P d="M9 5c7 0 7 14 0 14" />
+      <ellipse cx="9" cy="12" rx="2.5" ry="7" fill="none" stroke="currentColor" strokeWidth="1.7" />
+    </>
+  ),
+  fillet: <P d="M5 5v6a8 8 0 0 0 8 8h6M5 5h4M19 19v-4" />,
+  chamfer: <P d="M5 5v6l8 8h6M5 5h4M19 19v-4M9 11l4 4" />,
+  combine: (
+    <>
+      <circle cx="9" cy="12" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="15" cy="12" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
+    </>
+  ),
+  copyBody: <P d="M9 9h9v9H9zM6 15H4V4h11v2" />,
+  shell: <P d="M4 6h16v12H4zM8 10h8v4H8z" />,
+  move: (
+    <P d="M12 3v18M3 12h18M12 3 9 6m3-3 3 3M12 21l-3-3m3 3 3-3M3 12l3-3m-3 3 3 3M21 12l-3-3m3 3-3 3" />
+  ),
 };
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }): React.JSX.Element {

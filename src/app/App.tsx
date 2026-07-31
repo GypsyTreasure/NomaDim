@@ -50,6 +50,7 @@ import toolbarStyles from './features/ui/Toolbar.module.css';
 import { useEntitlementStore } from './store/entitlementStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
+import { CreateOpsBar } from './features/timeline/CreateOpsBar';
 import { useTimeline } from './features/timeline/useTimeline';
 import { t } from './i18n/t';
 import { scheduleKernelBoot, useKernelStore } from './store/kernelStore';
@@ -349,6 +350,9 @@ export function App(): React.JSX.Element {
         </div>
       </header>
       <main className={styles.viewportArea}>
+        {/* 3D-operation launcher docked at the top in modeling mode (#4); the
+            timeline history stays in the bottom dock. */}
+        {!inSketch && <CreateOpsBar timeline={timeline} onNewSketch={sketcher.newSketch} />}
         <div
           className={styles.canvasRegion}
           onDragOver={(e) => {
@@ -460,11 +464,7 @@ export function App(): React.JSX.Element {
             sibling of the canvas (not floating over it), the model is never
             hidden behind it. */}
         <div className={styles.toolDock} data-testid="tool-dock">
-          {inSketch ? (
-            <SketchToolbar sketcher={sketcher} />
-          ) : (
-            <TimelineBar timeline={timeline} onNewSketch={sketcher.newSketch} />
-          )}
+          {inSketch ? <SketchToolbar sketcher={sketcher} /> : <TimelineBar timeline={timeline} />}
         </div>
       </main>
       <Toaster />

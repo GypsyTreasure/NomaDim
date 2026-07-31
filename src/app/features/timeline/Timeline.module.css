@@ -30,6 +30,20 @@
   overflow-x: auto;
 }
 
+/* 3D-operation launcher strip (#4, ADR-0094): a slim top bar just under the
+   header holding the create-op icon grid. A layout sibling of the canvas, so
+   the model is never covered. */
+.createRowTop {
+  flex: 0 0 auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: calc(var(--grid-unit) * 0.35) var(--grid-unit);
+  background-color: var(--color-navy-800);
+  border-bottom: var(--border-width) solid var(--color-hairline);
+  box-shadow: var(--shadow-sm);
+}
+
 .button {
   display: inline-flex;
   align-items: center;

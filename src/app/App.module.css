@@ -14,7 +14,10 @@
 
 .header {
   flex: 0 0 auto;
-  z-index: 2; /* the elevation shadow sits above the viewport panels' top edge */
+  /* Positioned so the header (and its mobile menu dropdown) stacks ABOVE the
+     3D-op launcher strip that now sits just below it in `main` (#4). */
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: space-between;

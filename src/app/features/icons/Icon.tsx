@@ -49,7 +49,14 @@ export type IconName =
   | 'pattern';
 
 const P = ({ d }: { d: string }): React.JSX.Element => (
-  <path d={d} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  <path
+    d={d}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
 );
 
 const GLYPHS: Record<IconName, React.JSX.Element> = {
@@ -64,12 +71,18 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   plane: <P d="M3 8l9-4 9 4-9 4-9-4Zm0 0v8l9 4 9-4V8" />,
   axis: <P d="M4 20 20 4M6 4H4v2M20 18v2h-2" />,
   construct: <P d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13" />,
-  newProject: <P d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9zM13 3v6h6M12 12v5M9.5 14.5h5" />,
+  newProject: (
+    <P d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9zM13 3v6h6M12 12v5M9.5 14.5h5" />
+  ),
   save: <P d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14" />,
   open: <P d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
-  importStep: <P d="M3 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M13 21H5a2 2 0 0 1-2-2v-9m18 4h-9m0 0 3-3m-3 3 3 3" />,
+  importStep: (
+    <P d="M3 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M13 21H5a2 2 0 0 1-2-2v-9m18 4h-9m0 0 3-3m-3 3 3 3" />
+  ),
   exportStl: <P d="M12 15V4m0 0 4 4m-4-4-4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />,
-  projects: <P d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM8 13h8M8 16h5" />,
+  projects: (
+    <P d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM8 13h8M8 16h5" />
+  ),
   settings: <P d="M6 7h12M6 12h12M6 17h12M9 5v4M15 10v4M11 15v4" />,
   license: (
     <>
@@ -77,7 +90,9 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
       <P d="M11 12h9m-3 0v3m-3-3v2" />
     </>
   ),
-  help: <P d="M9.2 9a2.8 2.8 0 1 1 3.7 2.7c-.9.4-1.4 1-1.4 2M12 17h.01M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z" />,
+  help: (
+    <P d="M9.2 9a2.8 2.8 0 1 1 3.7 2.7c-.9.4-1.4 1-1.4 2M12 17h.01M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z" />
+  ),
   menu: <P d="M4 7h16M4 12h16M4 17h16" />,
   undo: <P d="M9 7 4 12l5 5M4 12h11a5 5 0 0 1 0 10h-1" />,
   redo: <P d="m15 7 5 5-5 5M20 12H9a5 5 0 0 0 0 10h1" />,
@@ -116,13 +131,7 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   pattern: <P d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" />,
 };
 
-export function Icon({
-  name,
-  size = 20,
-}: {
-  name: IconName;
-  size?: number;
-}): React.JSX.Element {
+export function Icon({ name, size = 20 }: { name: IconName; size?: number }): React.JSX.Element {
   return (
     <svg
       width={size}

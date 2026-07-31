@@ -128,11 +128,11 @@ export function ConstructDialog(): React.JSX.Element | null {
       return {
         ...identity,
         kind: 'plane',
-        base: (baseRef.datumId ? 'XY' : (planeBaseSel as DatumBasePlane)),
+        base: baseRef.datumId ? 'XY' : (planeBaseSel as DatumBasePlane),
         ...(baseRef.datumId ? { baseDatumId: baseRef.datumId } : {}),
         offsetMm,
         tiltDeg,
-        tiltAxis: (tiltRef.datumId ? 'X' : (tiltAxisSel as DatumBaseAxis)),
+        tiltAxis: tiltRef.datumId ? 'X' : (tiltAxisSel as DatumBaseAxis),
         ...(tiltRef.datumId ? { tiltAxisDatumId: tiltRef.datumId } : {}),
       } satisfies DatumPlane;
     }
@@ -142,11 +142,11 @@ export function ConstructDialog(): React.JSX.Element | null {
     return {
       ...identity,
       kind: 'axis',
-      base: (baseRef.datumId ? 'Z' : (axisBaseSel as DatumBaseAxis)),
+      base: baseRef.datumId ? 'Z' : (axisBaseSel as DatumBaseAxis),
       ...(baseRef.datumId ? { baseDatumId: baseRef.datumId } : {}),
       offset: [ox, oy, oz],
       angleDeg,
-      angleAxis: (angleRef.datumId ? 'Y' : (angleAxisSel as DatumBaseAxis)),
+      angleAxis: angleRef.datumId ? 'Y' : (angleAxisSel as DatumBaseAxis),
       ...(angleRef.datumId ? { angleAxisDatumId: angleRef.datumId } : {}),
     } satisfies DatumAxis;
   }, [

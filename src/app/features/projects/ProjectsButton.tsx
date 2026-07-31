@@ -24,7 +24,10 @@ import {
 
 /** Turns a project name into a filesystem-safe base name for `<name>.nomadim.xml`. */
 function fileNameFor(projectName: string): string {
-  const base = projectName.trim().replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '');
+  const base = projectName
+    .trim()
+    .replace(/[^\w.-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
   return `${base || 'MyPart'}${PROJECT_EXT}`;
 }
 

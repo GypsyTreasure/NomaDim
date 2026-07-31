@@ -7,11 +7,7 @@ import type { DatumRender } from '../../../viewport';
  * document layer (pure, no THREE); the viewport just draws what it's handed.
  * Hidden datums are dropped (unless it's the live preview).
  */
-export function datumRender(
-  datum: Datum,
-  datums: readonly Datum[],
-  ghost = false
-): DatumRender {
+export function datumRender(datum: Datum, datums: readonly Datum[], ghost = false): DatumRender {
   if (isDatumPlane(datum)) {
     const w = datumPlaneWorld(datum, datums);
     return {

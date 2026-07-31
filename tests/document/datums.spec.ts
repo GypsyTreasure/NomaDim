@@ -98,7 +98,12 @@ describe('datum-on-datum bases (ADR-0089)', () => {
   it('rotates about a user axis and degrades safely on a missing/cyclic reference', () => {
     // A plane tilting about a user Z-axis by 90°: +X → +Y.
     const zAxis = axis({ id: 'a1' as DatumId, base: 'Z' });
-    const p = plane({ id: 'p1' as DatumId, offsetMm: 0, tiltDeg: 90, tiltAxisDatumId: 'a1' as DatumId });
+    const p = plane({
+      id: 'p1' as DatumId,
+      offsetMm: 0,
+      tiltDeg: 90,
+      tiltAxisDatumId: 'a1' as DatumId,
+    });
     near(datumPlaneWorld(p, [zAxis, p]).xAxis, [0, 1, 0]);
     // Dangling baseDatumId with no datums list → falls back to the origin base.
     const orphan = plane({ id: 'p2' as DatumId, baseDatumId: 'zz' as DatumId, offsetMm: 10 });

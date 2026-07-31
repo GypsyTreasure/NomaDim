@@ -335,7 +335,15 @@ export function Viewport({
       MIDDLE: THREE.MOUSE.PAN,
       RIGHT: THREE.MOUSE.ROTATE,
     } as const;
+    // Touch maps. Modeling: one finger orbits, two pan/zoom (default).
+    const NAV_TOUCHES = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    // Sketch (mobile fix): a SINGLE finger always draws / drags a point (the
+    // overlay handles it), never orbits — so touch is predictable. Orbiting +
+    // zoom is a deliberate TWO-finger gesture. `ONE: -1` is an unhandled value,
+    // so OrbitControls leaves single-finger touches to the sketch overlay.
+    const SKETCH_TOUCHES = { ONE: -1 as unknown as THREE.TOUCH, TWO: THREE.TOUCH.DOLLY_ROTATE };
     controls.mouseButtons = { ...NAV_BUTTONS };
+    controls.touches = { ...NAV_TOUCHES };
     controlsRef.current = controls;
 
     const grid = createGrid();
@@ -538,6 +546,7 @@ export function Viewport({
       // but with the RIGHT button (left draws), so drawing is never hijacked (#8).
       controls.enableRotate = edgePickRef.current === null && measureRef.current === null;
       controls.mouseButtons = mode === null ? { ...NAV_BUTTONS } : { ...SKETCH_BUTTONS };
+      controls.touches = mode === null ? { ...NAV_TOUCHES } : { ...SKETCH_TOUCHES };
       if (!mode) {
         animatedPlaneKey = null;
         cameraTarget = null;

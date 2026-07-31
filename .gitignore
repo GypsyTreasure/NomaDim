@@ -10,6 +10,8 @@ dist-ssr
 coverage
 playwright-report
 test-results
+# Local-only Playwright config pinning the env's Chromium build (never CI)
+pw.local.config.ts
 
 # Editors
 .vscode/*

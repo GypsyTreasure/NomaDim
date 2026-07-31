@@ -62,6 +62,9 @@ export interface PlanProfile {
   readonly plane: PlanePlacement;
   readonly outer: LoopGeometry;
   readonly inner: readonly LoopGeometry[];
+  /** True for an OPEN chain swept as a zero-thickness surface (#12): the outer
+   * loop is an open wire, so it must never be turned into a face (solid). */
+  readonly open?: boolean;
 }
 
 /** World-space revolve axis, resolved on the main thread (same-sketch line → 3D). */

@@ -33,6 +33,7 @@ import {
   targetOptions,
   useProfileHighlight,
   useSketchProfiles,
+  useSketchOpenProfiles,
   BODY_TYPE_OPTIONS,
   initialBodyType,
   type BodyType,
@@ -88,6 +89,19 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const effectiveOperation: BooleanOperation = asSurface ? 'NewBody' : operation;
 
   const profiles = useSketchProfiles(sketchId);
+  const openProfiles = useSketchOpenProfiles(sketchId);
+  // Open chains are pickable only for a Surface body (#12); the effective
+  // selection is derived, dropping any open id when not Surface.
+  // Memoized (stable identity) so the highlight effect doesn't re-fire every
+  // render — it writes sessionStore, which re-renders App (loop otherwise).
+  const pickable = useMemo(
+    () => (asSurface ? [...profiles, ...openProfiles] : profiles),
+    [asSurface, profiles, openProfiles]
+  );
+  const effectiveSelected = useMemo(() => {
+    const ids = new Set(pickable.map((p) => p.id));
+    return new Set([...selected].filter((id) => ids.has(id)));
+  }, [selected, pickable]);
   const parsedAxis = parseAxis(axis);
   const toggle = useCallback((id: ProfileId): void => {
     setSelected((prev) => {
@@ -99,8 +113,8 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   }, []);
   useProfileHighlight(
     sketchId,
-    selected,
-    profiles,
+    effectiveSelected,
+    pickable,
     parsedAxis.kind === 'entity' ? parsedAxis.entityId : null,
     toggle
   );
@@ -147,7 +161,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const needsTarget = !asSurface && operation !== 'NewBody';
   const okDisabled =
     sketchId === null ||
-    selected.size === 0 ||
+    effectiveSelected.size === 0 ||
     !(Math.abs(angleDeg) > 0) ||
     Math.abs(angleDeg) > 360 ||
     (needsTarget && targetBodyId === null) ||
@@ -164,7 +178,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           name: 'preview',
           suppressed: false,
           sketchId: previewSketchId,
-          profileIds: [...selected],
+          profileIds: [...effectiveSelected],
           axis: parsedAxis,
           angleDeg,
           operation: effectiveOperation,
@@ -184,7 +198,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       name: prior?.name ?? mintName(document, 'Revolve'),
       suppressed: prior?.suppressed ?? false,
       sketchId,
-      profileIds: [...selected],
+      profileIds: [...effectiveSelected],
       axis: parseAxis(axis),
       angleDeg,
       operation: effectiveOperation,
@@ -210,7 +224,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           setSelected(new Set());
         }}
       />
-      <ProfileChecklist profiles={profiles} selected={selected} onToggle={toggle} />
+      <ProfileChecklist profiles={pickable} selected={effectiveSelected} onToggle={toggle} />
       <NumberRow labelKey="dialog.angle" value={angleDeg} onChange={setAngleDeg} />
       <SelectRow<string>
         labelKey="dialog.axis"

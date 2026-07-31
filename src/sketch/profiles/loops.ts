@@ -25,10 +25,22 @@ export interface TraversedLoop {
   readonly segments: LoopGeometry;
 }
 
+/** A connected chain of open (non-loop) entities — the input for a surface
+ * body swept from open geometry (#12, ADR-0097). Ordered a→…→b; NOT closed. */
+export interface OpenChain {
+  readonly entityIds: readonly EntityId[];
+  /** Ordered polyline of the whole chain (arcs sampled) — display/preview only. */
+  readonly polygon: readonly Vec2[];
+  /** Travel-ordered oriented segments — the worker builds an open wire from these. */
+  readonly segments: LoopGeometry;
+}
+
 export interface LoopExtraction {
   readonly loops: readonly TraversedLoop[];
   /** Curve entities on no closed region boundary: dangling chains, bridges. */
   readonly openEntityIds: readonly EntityId[];
+  /** Open entities grouped into ordered connected chains (#12). */
+  readonly openChains: readonly OpenChain[];
 }
 
 /** Chord tolerance for polygon approximation of arcs (containment/area tests). */
@@ -189,6 +201,81 @@ function shoelace(polygon: readonly Vec2[]): number {
 }
 
 /**
+ * Groups the open (non-loop) edges into ordered connected chains (#12). Each
+ * chain is a maximal walk over shared endpoints: we start from a free end
+ * (degree 1) where possible so a simple polyline yields one correctly ordered
+ * chain, and consume every open edge (a branch point splits into more chains).
+ */
+function buildOpenChains(
+  edges: readonly GraphEdge[],
+  closedEntities: ReadonlySet<EntityId>
+): OpenChain[] {
+  const openIdx = edges
+    .map((_, i) => i)
+    .filter((i) => !closedEntities.has(edges[i]?.entityId ?? ('' as EntityId)));
+  const incident = new Map<PointId, number[]>();
+  for (const i of openIdx) {
+    const e = edges[i];
+    if (!e) continue;
+    incident.set(e.aId, [...(incident.get(e.aId) ?? []), i]);
+    incident.set(e.bId, [...(incident.get(e.bId) ?? []), i]);
+  }
+  const used = new Set<number>();
+  const unusedDegree = (node: PointId): number =>
+    (incident.get(node) ?? []).filter((i) => !used.has(i)).length;
+
+  const chains: OpenChain[] = [];
+  while (used.size < openIdx.length) {
+    // Prefer a free end (degree 1) so the chain runs end-to-end; else any node.
+    let node: PointId | null = null;
+    for (const i of openIdx) {
+      if (used.has(i)) continue;
+      const e = edges[i];
+      if (!e) continue;
+      if (unusedDegree(e.aId) === 1) {
+        node = e.aId;
+        break;
+      }
+      if (unusedDegree(e.bId) === 1) {
+        node = e.bId;
+        break;
+      }
+    }
+    if (node === null) {
+      const seed = openIdx.find((i) => !used.has(i));
+      if (seed === undefined) break;
+      node = edges[seed]?.aId ?? null;
+    }
+    if (node === null) break;
+
+    const segments: LoopSegment[] = [];
+    const entityIds: EntityId[] = [];
+    const polygon: Vec2[] = [];
+    let current: PointId = node;
+    let first = true;
+    for (;;) {
+      const nextEdge = (incident.get(current) ?? []).find((i) => !used.has(i));
+      if (nextEdge === undefined) break;
+      used.add(nextEdge);
+      const e = edges[nextEdge];
+      if (!e) break;
+      const forward = e.aId === current;
+      const travel = forward ? e.samplesAB : [...e.samplesAB].reverse();
+      for (let s = first ? 0 : 1; s < travel.length; s += 1) {
+        const p = travel[s];
+        if (p) polygon.push(p);
+      }
+      segments.push(forward ? e.segmentAB : reverseSegment(e.segmentAB));
+      entityIds.push(e.entityId);
+      current = forward ? e.bId : e.aId;
+      first = false;
+    }
+    if (segments.length > 0) chains.push({ entityIds: [...new Set(entityIds)], polygon, segments });
+  }
+  return chains;
+}
+
+/**
  * Extracts closed loops from a sketch's line/arc connectivity.
  * Half-edge encoding: edge i → half-edges 2i (a→b) and 2i+1 (b→a).
  */
@@ -271,6 +358,7 @@ export function extractLoops(sketch: Sketch): LoopExtraction {
   }
 
   const openEntityIds = edges.map((edge) => edge.entityId).filter((id) => !closedEntities.has(id));
+  const openChains = buildOpenChains(edges, closedEntities);
 
-  return { loops, openEntityIds: [...new Set(openEntityIds)] };
+  return { loops, openEntityIds: [...new Set(openEntityIds)], openChains };
 }

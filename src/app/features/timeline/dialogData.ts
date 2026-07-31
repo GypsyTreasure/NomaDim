@@ -123,6 +123,16 @@ export function useSketchProfiles(sketchId: SketchId | null): readonly SketchPro
   }, [document, sketchId]);
 }
 
+/** Open chains offered ONLY for Surface bodies (#12) — swept as open wires. */
+export function useSketchOpenProfiles(sketchId: SketchId | null): readonly SketchProfile[] {
+  const document = useDocumentStore((s) => s.document);
+  return useMemo(() => {
+    if (!sketchId) return [];
+    const sketch = findSketch(document, sketchId);
+    return sketch ? detectProfiles(sketch).openProfiles : [];
+  }, [document, sketchId]);
+}
+
 /** Shared data helpers for the op dialogs — no per-op switches (R4). */
 
 /** Every id currently in use (sketches, ops, produced bodies) for minting. */

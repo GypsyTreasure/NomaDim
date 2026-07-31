@@ -255,6 +255,7 @@ export const en = {
   'dialog.sketch': 'Sketch',
   'dialog.profiles': 'Profiles',
   'dialog.profile.withHoles': '(with holes)',
+  'dialog.profile.open': 'Open profile (surface)',
   'dialog.distance': 'Distance (mm)',
   'dialog.distance2': 'Second Distance (mm)',
   'dialog.direction': 'Direction',

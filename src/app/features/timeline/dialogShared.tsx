@@ -155,8 +155,14 @@ export function ProfileChecklist(props: {
             }}
           />
           <span>
-            {profile.outer.area.toFixed(2)} mm²{' '}
-            {profile.inner.length > 0 ? t('dialog.profile.withHoles') : ''}
+            {profile.open ? (
+              t('dialog.profile.open')
+            ) : (
+              <>
+                {profile.outer.area.toFixed(2)} mm²{' '}
+                {profile.inner.length > 0 ? t('dialog.profile.withHoles') : ''}
+              </>
+            )}
           </span>
         </label>
       ))}

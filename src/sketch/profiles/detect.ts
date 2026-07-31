@@ -19,10 +19,17 @@ export interface SketchProfile {
   readonly id: ProfileId;
   readonly outer: TraversedLoop;
   readonly inner: readonly TraversedLoop[];
+  /** True for an OPEN chain (no enclosed area) — only usable as a Surface body
+   * (#12, ADR-0097); the outer loop's `segments` form an open wire. */
+  readonly open?: boolean;
 }
 
 export interface ProfileDetectionResult {
   readonly profiles: readonly SketchProfile[];
+  /** Open chains offered ONLY for Surface bodies (#12): a swept open wire → a
+   * zero-thickness surface. Kept separate so the closed-profile flow (solids,
+   * booleans, holes) is completely unchanged. */
+  readonly openProfiles: readonly SketchProfile[];
   /** Non-construction curve entities on no closed boundary (F2: flagged, allowed). */
   readonly openEntityIds: readonly EntityId[];
 }
@@ -133,5 +140,21 @@ export function detectProfiles(sketch: Sketch): ProfileDetectionResult {
   });
 
   profiles.sort((a, b) => (a.id < b.id ? -1 : 1));
-  return { profiles, openEntityIds: extraction.openEntityIds };
+
+  // Open chains → surface-only profiles (#12): each becomes a zero-area profile
+  // whose outer "loop" is the open wire; no inner loops, no closed-region role.
+  const openProfiles: SketchProfile[] = extraction.openChains.map((chain) => ({
+    id: profileIdFor(sketch.id, chain.entityIds),
+    outer: {
+      entityIds: chain.entityIds,
+      polygon: chain.polygon,
+      area: 0,
+      segments: chain.segments,
+    },
+    inner: [],
+    open: true,
+  }));
+  openProfiles.sort((a, b) => (a.id < b.id ? -1 : 1));
+
+  return { profiles, openProfiles, openEntityIds: extraction.openEntityIds };
 }

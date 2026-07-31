@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createId, type BodyId, type OpId, type ProfileId, type SketchId } from '../../../core';
 import type { BooleanOperation, ExtrudeDirection, ExtrudeOp } from '../../../document';
 import { usePreview } from './usePreview';
@@ -20,6 +20,7 @@ import {
   targetOptions,
   useProfileHighlight,
   useSketchProfiles,
+  useSketchOpenProfiles,
   BODY_TYPE_OPTIONS,
   initialBodyType,
   type BodyType,
@@ -59,6 +60,20 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const effectiveOperation: BooleanOperation = asSurface ? 'NewBody' : operation;
 
   const profiles = useSketchProfiles(sketchId);
+  const openProfiles = useSketchOpenProfiles(sketchId);
+  // Open chains are pickable only for a Surface body (#12); closed profiles
+  // always. The effective selection is derived (never an effect): any open id
+  // is dropped when not Surface, so a solid can't reference an open profile.
+  // Memoized so their identity is stable across renders — the highlight effect
+  // (which writes sessionStore, re-rendering App) must not re-fire every render.
+  const pickable = useMemo(
+    () => (asSurface ? [...profiles, ...openProfiles] : profiles),
+    [asSurface, profiles, openProfiles]
+  );
+  const effectiveSelected = useMemo(() => {
+    const ids = new Set(pickable.map((p) => p.id));
+    return new Set([...selected].filter((id) => ids.has(id)));
+  }, [selected, pickable]);
   const toggle = useCallback((id: ProfileId): void => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -68,7 +83,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     });
   }, []);
   // Highlight all profile regions; a 3D-view click toggles one (#11).
-  useProfileHighlight(sketchId, selected, profiles, null, toggle);
+  useProfileHighlight(sketchId, effectiveSelected, pickable, null, toggle);
 
   const targets = targetOptions(document, liveBodyIds, prior?.bodyId);
   // Choosing a boolean op auto-selects a target body so OK is immediately
@@ -87,7 +102,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const throughAll = direction === 'all';
   const okDisabled =
     sketchId === null ||
-    selected.size === 0 ||
+    effectiveSelected.size === 0 ||
     (!throughAll && (!Number.isFinite(distanceMm) || distanceMm === 0)) ||
     (direction === 'two-sides' && !(distance2Mm > 0)) ||
     (needsTarget && targetBodyId === null) ||
@@ -105,7 +120,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           name: 'preview',
           suppressed: false,
           sketchId: previewSketchId,
-          profileIds: [...selected],
+          profileIds: [...effectiveSelected],
           distanceMm,
           direction,
           distance2Mm,
@@ -126,7 +141,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       name: prior?.name ?? mintName(document, 'Extrude'),
       suppressed: prior?.suppressed ?? false,
       sketchId,
-      profileIds: [...selected],
+      profileIds: [...effectiveSelected],
       distanceMm,
       direction,
       distance2Mm,
@@ -153,7 +168,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           setSelected(new Set());
         }}
       />
-      <ProfileChecklist profiles={profiles} selected={selected} onToggle={toggle} />
+      <ProfileChecklist profiles={pickable} selected={effectiveSelected} onToggle={toggle} />
       {!throughAll && (
         <NumberRow labelKey="dialog.distance" value={distanceMm} onChange={setDistanceMm} />
       )}

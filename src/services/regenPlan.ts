@@ -104,13 +104,17 @@ function resolveProfiles(
   if (!sketch) return [];
   const placement = placementForPlane(sketch.plane);
   const wanted = new Set(profileIds);
-  return detectProfiles(sketch)
-    .profiles.filter((p) => wanted.has(p.id))
+  const detection = detectProfiles(sketch);
+  // Closed profiles AND open chains (#12) are both resolvable — an op referencing
+  // an open profile is a Surface swept from an open wire.
+  return [...detection.profiles, ...detection.openProfiles]
+    .filter((p) => wanted.has(p.id))
     .map((p) => ({
       id: p.id,
       plane: placement,
       outer: p.outer.segments,
       inner: p.inner.map((loop) => loop.segments),
+      open: p.open ?? false,
     }));
 }
 

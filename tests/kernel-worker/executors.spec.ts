@@ -215,6 +215,38 @@ describe('extrude executor', () => {
     freeBodies(bodies);
   });
 
+  it('surface extrude of an OPEN profile makes a wall shell (#12)', () => {
+    const bodies: BodyStateMap = new Map();
+    // An open L-wire (0,0)→(20,0)→(20,10) — no enclosed area.
+    const open: PlanProfile = {
+      id: pid('open'),
+      plane: XY,
+      outer: [
+        { kind: 'line', a: { x: 0, y: 0 }, b: { x: 20, y: 0 } },
+        { kind: 'line', a: { x: 20, y: 0 }, b: { x: 20, y: 10 } },
+      ],
+      inner: [],
+      open: true,
+    };
+    executeExtrude(
+      ctxFor(bodies, [open]),
+      extrude({ profileIds: [open.id], distanceMm: 5, asSurface: true })
+    );
+    const shape = bodies.get(bid('B'));
+    expect(shape).toBeDefined();
+    if (shape) {
+      // Two swept walls, not a solid → tessellate flags it open (double-sided),
+      // and the open wire still produces triangles.
+      const mesh = tessellateShape(oc, bid('B'), shape, {
+        linearDeflectionMm: 0.25,
+        angularDeflectionDeg: 20,
+      });
+      expect(mesh.open).toBe(true);
+      expect(mesh.indices.length).toBeGreaterThan(0);
+    }
+    freeBodies(bodies);
+  });
+
   it('symmetric direction straddles the plane (same total volume)', () => {
     const bodies: BodyStateMap = new Map();
     const profile = rectProfile('p', 0, 0, 10, 10);

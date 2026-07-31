@@ -127,6 +127,52 @@ describe('detectProfiles', () => {
     expect([...result.openEntityIds].sort()).toEqual(['e5', 'e6']);
   });
 
+  it('groups connected open lines into a single ordered open profile (#12)', () => {
+    // An open L: (0,0)→(20,0)→(20,20). Not closed → no closed profile, but one
+    // open chain surface-swept as a wire.
+    const sketch = sketchWith(
+      [pt('a', 0, 0), pt('b', 20, 0), pt('c', 20, 20)],
+      [line('e1', 'a', 'b'), line('e2', 'b', 'c')]
+    );
+    const result = detectProfiles(sketch);
+    expect(result.profiles).toHaveLength(0);
+    expect(result.openProfiles).toHaveLength(1);
+    const open = result.openProfiles[0];
+    expect(open?.open).toBe(true);
+    expect(open?.outer.area).toBe(0);
+    expect(open?.outer.segments).toHaveLength(2);
+    expect([...(open?.outer.entityIds ?? [])].sort()).toEqual(['e1', 'e2']);
+    // Ordered end-to-end: first segment starts at (0,0), last ends at (20,20).
+    const segs = open?.outer.segments ?? [];
+    const firstSeg = segs[0];
+    const lastSeg = segs[segs.length - 1];
+    if (firstSeg?.kind === 'line') {
+      expect(firstSeg.a.x).toBe(0);
+      expect(firstSeg.a.y).toBe(0);
+    }
+    if (lastSeg?.kind === 'line') {
+      expect(lastSeg.b.x).toBe(20);
+      expect(lastSeg.b.y).toBe(20);
+    }
+    // Same id from the same entity set on re-detection (R7a, stable persistence).
+    expect(open?.id).toBe(profileIdFor(skId, [eid('e1'), eid('e2')]));
+  });
+
+  it('a single open line is a valid open profile (#12)', () => {
+    const sketch = sketchWith([pt('a', 0, 0), pt('b', 30, 0)], [line('e1', 'a', 'b')]);
+    const result = detectProfiles(sketch);
+    expect(result.profiles).toHaveLength(0);
+    expect(result.openProfiles).toHaveLength(1);
+    expect(result.openProfiles[0]?.outer.segments).toHaveLength(1);
+  });
+
+  it('closed profiles produce no open profiles (closed path unchanged)', () => {
+    const { points, entities } = rectangle();
+    const result = detectProfiles(sketchWith(points, entities));
+    expect(result.profiles).toHaveLength(1);
+    expect(result.openProfiles).toHaveLength(0);
+  });
+
   it('construction geometry participates in nothing', () => {
     const { points, entities } = rectangle();
     const sketch = sketchWith([...points, pt('cc', 20, 10)], [

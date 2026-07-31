@@ -65,13 +65,18 @@ describe('computeProfileHighlight', () => {
     expect(hl?.axis).toBeNull();
   });
 
-  it('emits no loops or areas when nothing is selected', () => {
+  it('draws no bright loops when nothing is selected, but keeps all regions clickable (#11)', () => {
     const sketch = squareSketch();
     const profile = detectProfiles(sketch).profiles[0];
     if (!profile) return;
     const hl = computeProfileHighlight(sketch, new Set<ProfileId>(), [profile], null);
+    // No selection → no bright outline loops…
     expect(hl?.loops).toHaveLength(0);
-    expect(hl?.areas).toHaveLength(0);
+    // …but every profile is still an (unselected) hit-testable region so a
+    // 3D-view click can toggle it (#11).
+    expect(hl?.areas).toHaveLength(1);
+    expect(hl?.areas[0]?.selected).toBe(false);
+    expect(hl?.areas[0]?.id).toBe(profile.id);
   });
 
   it('includes the axis line endpoints when an axis entity is given', () => {

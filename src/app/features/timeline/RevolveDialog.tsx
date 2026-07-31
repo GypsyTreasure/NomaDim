@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   createId,
   type BodyId,
@@ -89,11 +89,20 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
 
   const profiles = useSketchProfiles(sketchId);
   const parsedAxis = parseAxis(axis);
+  const toggle = useCallback((id: ProfileId): void => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   useProfileHighlight(
     sketchId,
     selected,
     profiles,
-    parsedAxis.kind === 'entity' ? parsedAxis.entityId : null
+    parsedAxis.kind === 'entity' ? parsedAxis.entityId : null,
+    toggle
   );
 
   const targets = targetOptions(document, liveBodyIds, prior?.bodyId);
@@ -134,15 +143,6 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       .map((d) => ({ value: `datum:${d.id}`, label: d.name }));
     return [...axisOpts, ...constructionOpts, ...ORIGIN_AXES, ...datumOpts];
   }, [document, sketchId]);
-
-  const toggle = (id: ProfileId): void => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const needsTarget = !asSurface && operation !== 'NewBody';
   const okDisabled =

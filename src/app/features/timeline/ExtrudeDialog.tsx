@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { createId, type BodyId, type OpId, type ProfileId, type SketchId } from '../../../core';
 import type { BooleanOperation, ExtrudeDirection, ExtrudeOp } from '../../../document';
 import { usePreview } from './usePreview';
@@ -59,7 +59,16 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const effectiveOperation: BooleanOperation = asSurface ? 'NewBody' : operation;
 
   const profiles = useSketchProfiles(sketchId);
-  useProfileHighlight(sketchId, selected, profiles);
+  const toggle = useCallback((id: ProfileId): void => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  // Highlight all profile regions; a 3D-view click toggles one (#11).
+  useProfileHighlight(sketchId, selected, profiles, null, toggle);
 
   const targets = targetOptions(document, liveBodyIds, prior?.bodyId);
   // Choosing a boolean op auto-selects a target body so OK is immediately
@@ -72,15 +81,6 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     } else {
       setTargetBodyId(null);
     }
-  };
-
-  const toggle = (id: ProfileId): void => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const needsTarget = !asSurface && operation !== 'NewBody';

@@ -56,16 +56,19 @@ export function computeProfileHighlight(
   // Face-plane sketches (not shipped yet) have no origin-plane placement here.
   if (sketch?.plane.kind !== 'origin') return null;
   const loops: Vec2[][] = [];
-  const areas: { outer: Vec2[]; holes: Vec2[][] }[] = [];
+  // Every profile is a hit-testable region for click-to-pick (#11); `selected`
+  // ones also draw their bright outline. The viewport fills selected regions and
+  // faint-outlines the rest so all clickable areas are visible.
+  const areas: { id: string; selected: boolean; outer: Vec2[]; holes: Vec2[][] }[] = [];
   for (const profile of profiles) {
-    if (!selected.has(profile.id)) continue;
-    loops.push([...profile.outer.polygon]);
+    const isSelected = selected.has(profile.id);
     const holes: Vec2[][] = [];
-    for (const inner of profile.inner) {
-      loops.push([...inner.polygon]);
-      holes.push([...inner.polygon]);
+    for (const inner of profile.inner) holes.push([...inner.polygon]);
+    if (isSelected) {
+      loops.push([...profile.outer.polygon]);
+      for (const inner of profile.inner) loops.push([...inner.polygon]);
     }
-    areas.push({ outer: [...profile.outer.polygon], holes });
+    areas.push({ id: profile.id, selected: isSelected, outer: [...profile.outer.polygon], holes });
   }
   let axis: readonly Vec2[] | null = null;
   if (axisEntityId) {
@@ -88,7 +91,8 @@ export function useProfileHighlight(
   sketchId: SketchId | null,
   selected: ReadonlySet<ProfileId>,
   profiles: readonly SketchProfile[],
-  axisEntityId: EntityId | null = null
+  axisEntityId: EntityId | null = null,
+  onToggle?: (id: ProfileId) => void
 ): void {
   const document = useDocumentStore((s) => s.document);
   useEffect(() => {
@@ -100,6 +104,13 @@ export function useProfileHighlight(
       useSessionStore.getState().setProfileHighlight(null);
     };
   }, [document, sketchId, selected, profiles, axisEntityId]);
+  // Register the profile-pick handler so a 3D-view click toggles a profile (#11).
+  useEffect(() => {
+    useSessionStore.getState().setProfilePick(onToggle ?? null);
+    return () => {
+      useSessionStore.getState().setProfilePick(null);
+    };
+  }, [onToggle]);
 }
 
 /** Resolves the selectable profiles of a sketch (area-labelled, R7a ids). */

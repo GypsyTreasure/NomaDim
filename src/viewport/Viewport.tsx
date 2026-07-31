@@ -32,7 +32,7 @@ import {
   type SketchPlaneBasis,
 } from './planeMapping';
 import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
-import { sliceMesh, coplanarFaceOutline, MAX_SECTION_SEGMENTS } from './section';
+import { sliceMesh, coplanarFaceOutline, pointInArea, MAX_SECTION_SEGMENTS } from './section';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
@@ -126,6 +126,9 @@ export interface SketchPreview {
  */
 /** A filled profile region: outer boundary minus any hole loops (sketch coords). */
 export interface OpHighlightArea {
+  /** Profile id, for click-to-pick in the 3D view (#11). */
+  readonly id: string;
+  readonly selected: boolean;
   readonly outer: readonly Vec2[];
   readonly holes: readonly (readonly Vec2[])[];
 }
@@ -133,7 +136,7 @@ export interface OpHighlightArea {
 export interface OpHighlight {
   readonly plane: OriginPlaneId;
   readonly loops: readonly (readonly Vec2[])[];
-  /** Selected profile regions, drawn as a translucent amber fill (#4). */
+  /** Profile regions: selected ones fill amber (#4), all are clickable (#11). */
   readonly areas: readonly OpHighlightArea[];
   readonly axis: readonly Vec2[] | null;
 }
@@ -168,6 +171,8 @@ export interface ViewportProps {
   datums?: readonly DatumRender[];
   /** Geometry an open Extrude/Revolve dialog will act on, highlighted (F3). */
   opHighlight?: OpHighlight | null;
+  /** While a profile dialog is open, a click on a profile region toggles it (#11). */
+  onPickProfile?: (id: string) => void;
   /** A body was clicked in the viewport (null = empty space) — tree sync (F8). */
   onSelectBody?: (bodyId: BodyId | null) => void;
   /** Non-null while picking a body face to sketch on (F2). */
@@ -211,6 +216,7 @@ export function Viewport({
   sketchPreviews,
   datums,
   opHighlight,
+  onPickProfile,
   onSelectBody,
   facePick = null,
 }: ViewportProps): React.JSX.Element {
@@ -245,10 +251,16 @@ export function Viewport({
   const measureCandidatesRef = useRef<MeasureCandidate[]>([]);
   const onSelectBodyRef = useRef<((bodyId: BodyId | null) => void) | undefined>(undefined);
   const facePickRef = useRef<FacePickProps | null>(null);
+  const opHighlightRef = useRef<OpHighlight | null>(null);
+  const onPickProfileRef = useRef<((id: string) => void) | undefined>(undefined);
   const bodiesRef = useRef<MeshTransfer[]>([]);
   useEffect(() => {
     bodiesRef.current = bodies;
   }, [bodies]);
+  useEffect(() => {
+    opHighlightRef.current = opHighlight ?? null;
+    onPickProfileRef.current = onPickProfile;
+  }, [opHighlight, onPickProfile]);
   // One-shot zoom-to-fit request (e.g. after a reference import). Wait a frame
   // so the overlay reflects the just-added geometry, then frame it.
   useEffect(() => {
@@ -821,6 +833,34 @@ export function Viewport({
         if (hit) face.onPick(hit.bodyId, hit.point);
         return;
       }
+      // While an op dialog is open, a click on a highlighted profile region in
+      // the 3D view toggles it (Fusion-style pick, #11) — raycast the sketch
+      // plane, then point-in-region test each area (holes excluded).
+      const pickProfile = onPickProfileRef.current;
+      const highlight = opHighlightRef.current;
+      if (pickProfile && highlight && highlight.areas.length > 0) {
+        const rect = overlayCanvas.getBoundingClientRect();
+        const ndc = new THREE.Vector2(
+          ((event.clientX - rect.left) / rect.width) * 2 - 1,
+          -((event.clientY - rect.top) / rect.height) * 2 + 1
+        );
+        raycaster.setFromCamera(ndc, camera);
+        const mapping = planeMapping(highlight.plane);
+        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+          mapping.normal,
+          mapping.origin
+        );
+        const world = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+        if (world) {
+          const uv = worldToPlane(mapping, world);
+          for (const area of highlight.areas) {
+            if (pointInArea(uv.x, uv.y, area.outer, area.holes)) {
+              pickProfile(area.id);
+              return;
+            }
+          }
+        }
+      }
       onSelectBodyRef.current?.(raycastBody(event));
     };
     overlayCanvas.addEventListener('pointermove', onPointerMove);
@@ -1151,7 +1191,9 @@ export function Viewport({
       const material = new THREE.MeshBasicMaterial({
         color: OP_HIGHLIGHT_COLOR,
         transparent: true,
-        opacity: 0.22,
+        // Selected regions read clearly; unselected ones are a faint hint so it's
+        // obvious they're clickable (#11) without cluttering the view.
+        opacity: area.selected ? 0.24 : 0.07,
         side: THREE.DoubleSide,
         depthTest: false,
         depthWrite: false,

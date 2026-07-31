@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   sliceMesh,
   sectionPlanePoints,
+  pointInArea,
   MAX_SECTION_SEGMENTS,
   type PlaneBasisLite,
   type Triple,
@@ -147,5 +148,37 @@ describe('coplanarFaceOutline (#10 face-pick preview)', () => {
   it('returns nothing when the plane misses the face', async () => {
     const { coplanarFaceOutline } = await import('../../src/viewport/section');
     expect(coplanarFaceOutline(positions, indices, [0, 0, 5], [0, 0, 1])).toHaveLength(0);
+  });
+});
+
+describe('pointInArea (#11 click-to-pick)', () => {
+  const square = [
+    { x: 0, y: 0 },
+    { x: 10, y: 0 },
+    { x: 10, y: 10 },
+    { x: 0, y: 10 },
+  ];
+  const hole = [
+    { x: 4, y: 4 },
+    { x: 6, y: 4 },
+    { x: 6, y: 6 },
+    { x: 4, y: 6 },
+  ];
+
+  it('is inside the outer loop', () => {
+    expect(pointInArea(5, 2, square, [])).toBe(true);
+  });
+
+  it('is outside the outer loop', () => {
+    expect(pointInArea(-1, 5, square, [])).toBe(false);
+    expect(pointInArea(11, 5, square, [])).toBe(false);
+  });
+
+  it('excludes points inside a hole', () => {
+    expect(pointInArea(5, 5, square, [hole])).toBe(false);
+  });
+
+  it('includes points between the hole and the outer boundary', () => {
+    expect(pointInArea(1, 1, square, [hole])).toBe(true);
   });
 });

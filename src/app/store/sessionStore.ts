@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BodyId, DimensionId, EntityId, SketchId, Vec2 } from '../../core';
+import type { BodyId, DimensionId, EntityId, ProfileId, SketchId, Vec2 } from '../../core';
 import type { EdgeFingerprint } from '../../document';
 
 /**
@@ -8,6 +8,9 @@ import type { EdgeFingerprint } from '../../document';
  * in the viewport. Sketch-local polylines + the plane; the viewport maps them.
  */
 export interface ProfileHighlightArea {
+  /** Profile id, so a viewport click on this region can toggle it (#11). */
+  readonly id: string;
+  readonly selected: boolean;
   readonly outer: readonly Vec2[];
   readonly holes: readonly (readonly Vec2[])[];
 }
@@ -47,6 +50,9 @@ interface SessionStore {
   readonly planeVisibility: Readonly<Record<'XY' | 'XZ' | 'YZ', boolean>>;
   /** Geometry an open Extrude/Revolve dialog will act on, highlighted (F3). */
   readonly profileHighlight: ProfileHighlight | null;
+  /** While a profile-consuming dialog is open, toggles a profile by id when the
+   *  user clicks its region in the 3D view (#11); null when no dialog is open. */
+  readonly profilePick: ((id: ProfileId) => void) | null;
   /** Keyboard-shortcuts help overlay visibility (F11). */
   readonly helpOpen: boolean;
 
@@ -64,6 +70,7 @@ interface SessionStore {
   readonly setSelectedBody: (bodyId: BodyId | null) => void;
   readonly togglePlane: (plane: 'XY' | 'XZ' | 'YZ') => void;
   readonly setProfileHighlight: (highlight: ProfileHighlight | null) => void;
+  readonly setProfilePick: (pick: ((id: ProfileId) => void) | null) => void;
   readonly setHelpOpen: (open: boolean) => void;
 }
 
@@ -79,6 +86,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   selectedBodyId: null,
   planeVisibility: { XY: true, XZ: true, YZ: true },
   profileHighlight: null,
+  profilePick: null,
   helpOpen: false,
 
   enterSketch: (sketchId) => {
@@ -146,6 +154,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
   },
   setProfileHighlight: (highlight) => {
     set({ profileHighlight: highlight });
+  },
+  setProfilePick: (pick) => {
+    set({ profilePick: pick });
   },
   setHelpOpen: (open) => {
     set({ helpOpen: open });

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BodyId } from '../core';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { BodyId, ProfileId } from '../core';
 import { edgeFingerprintKey } from '../kernel';
 import { defaultBodyMeta, isDatumPlane, type DatumPlane } from '../document';
 import {
@@ -89,6 +89,11 @@ export function App(): React.JSX.Element {
   const profileHighlight = useSessionStore((s) => s.profileHighlight);
   const setSelectedBody = useSessionStore((s) => s.setSelectedBody);
   const setHelpOpen = useSessionStore((s) => s.setHelpOpen);
+  // Clicking a highlighted profile region in the 3D view toggles it in the open
+  // op dialog (#11); the dialog registers the toggle handler via profilePick.
+  const onPickProfile = useCallback((id: string) => {
+    useSessionStore.getState().profilePick?.(id as ProfileId);
+  }, []);
   // Mobile hamburger: whether the app-action cluster is expanded (ignored on
   // desktop, where the cluster is always shown inline).
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -384,6 +389,7 @@ export function App(): React.JSX.Element {
             sketchPreviews={sketchPreviews}
             datums={datumRenders}
             opHighlight={profileHighlight}
+            onPickProfile={onPickProfile}
             onSelectBody={setSelectedBody}
             facePick={sketcher.pickingFace ? { onPick: sketcher.pickFace } : null}
             viewBarOpen={viewOpen}

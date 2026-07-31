@@ -202,6 +202,42 @@ export function coplanarFaceOutline(
   return out;
 }
 
+/** Even-odd ray-cast point-in-polygon in sketch (u,v) coordinates. */
+function pointInLoop(
+  px: number,
+  py: number,
+  poly: readonly { readonly x: number; readonly y: number }[]
+): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+    const a = poly[i];
+    const b = poly[j];
+    if (!a || !b) continue;
+    if (a.y > py !== b.y > py && px < ((b.x - a.x) * (py - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/**
+ * True when the sketch-plane point (px,py) lies in a profile region: inside its
+ * outer loop and outside every hole (#11 click-to-pick). Pure arithmetic so it
+ * unit-tests without a canvas.
+ */
+export function pointInArea(
+  px: number,
+  py: number,
+  outer: readonly { readonly x: number; readonly y: number }[],
+  holes: readonly (readonly { readonly x: number; readonly y: number }[])[]
+): boolean {
+  if (!pointInLoop(px, py, outer)) return false;
+  for (const hole of holes) {
+    if (pointInLoop(px, py, hole)) return false;
+  }
+  return true;
+}
+
 /** Plane basis as plain triples (origin + in-plane U/V axes + normal). */
 export interface PlaneBasisLite {
   readonly origin: Triple;

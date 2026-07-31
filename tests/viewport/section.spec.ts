@@ -117,3 +117,27 @@ describe('sectionPlanePoints (snap targets, #5)', () => {
     expect(xs[1]).toBeCloseTo(0.5);
   });
 });
+
+describe('coplanarFaceOutline (#10 face-pick preview)', () => {
+  // A unit square on the plane z=0, two triangles sharing the diagonal.
+  const positions = new Float32Array([
+    0, 0, 0, // 0
+    2, 0, 0, // 1
+    2, 2, 0, // 2
+    0, 2, 0, // 3
+  ]);
+  const indices = new Uint32Array([0, 1, 2, 0, 2, 3]);
+
+  it('outlines the square perimeter (shared diagonal dropped)', async () => {
+    const { coplanarFaceOutline } = await import('../../src/viewport/section');
+    const segs = coplanarFaceOutline(positions, indices, [0, 0, 0], [0, 0, 1]);
+    // 4 perimeter edges × 2 points × 3 coords = 24; the interior diagonal
+    // (used by both triangles) is excluded.
+    expect(segs).toHaveLength(24);
+  });
+
+  it('returns nothing when the plane misses the face', async () => {
+    const { coplanarFaceOutline } = await import('../../src/viewport/section');
+    expect(coplanarFaceOutline(positions, indices, [0, 0, 5], [0, 0, 1])).toHaveLength(0);
+  });
+});

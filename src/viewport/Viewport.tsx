@@ -32,7 +32,7 @@ import {
   type SketchPlaneBasis,
 } from './planeMapping';
 import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
-import { sliceMesh, MAX_SECTION_SEGMENTS } from './section';
+import { sliceMesh, coplanarFaceOutline, MAX_SECTION_SEGMENTS } from './section';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
@@ -229,6 +229,7 @@ export function Viewport({
   const datumGroupRef = useRef<THREE.Group | null>(null);
   const sectionGroupRef = useRef<THREE.Group | null>(null);
   const highlightGroupRef = useRef<THREE.Group | null>(null);
+  const faceHoverGroupRef = useRef<THREE.Group | null>(null);
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
   const cameraRef = useRef<RigCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -244,6 +245,10 @@ export function Viewport({
   const measureCandidatesRef = useRef<MeasureCandidate[]>([]);
   const onSelectBodyRef = useRef<((bodyId: BodyId | null) => void) | undefined>(undefined);
   const facePickRef = useRef<FacePickProps | null>(null);
+  const bodiesRef = useRef<MeshTransfer[]>([]);
+  useEffect(() => {
+    bodiesRef.current = bodies;
+  }, [bodies]);
   // One-shot zoom-to-fit request (e.g. after a reference import). Wait a frame
   // so the overlay reflects the just-added geometry, then frame it.
   useEffect(() => {
@@ -274,6 +279,15 @@ export function Viewport({
   }, [onSelectBody]);
   useEffect(() => {
     facePickRef.current = facePick;
+    // Drop any lingering face-pick outline (#10) when the pick ends.
+    if (!facePick) {
+      const group = faceHoverGroupRef.current;
+      if (group) {
+        disposeSceneObjects(group);
+        group.clear();
+      }
+      requestRenderRef.current();
+    }
   }, [facePick]);
 
   // Catch-all invalidation (ADR-0071): any React commit — a new body mesh,
@@ -374,6 +388,10 @@ export function Viewport({
     highlightGroup.name = 'OpHighlight';
     highlightGroup.renderOrder = 999; // drawn last, over bodies (depth-test off)
     highlightGroupRef.current = highlightGroup;
+    const faceHoverGroup = new THREE.Group();
+    faceHoverGroup.name = 'FaceHover';
+    faceHoverGroup.renderOrder = 999;
+    faceHoverGroupRef.current = faceHoverGroup;
     scene.add(
       grid,
       originPlanes.XY,
@@ -387,7 +405,8 @@ export function Viewport({
       sketchGroup,
       datumGroup,
       sectionGroup,
-      highlightGroup
+      highlightGroup,
+      faceHoverGroup
     );
 
     let width = 0;
@@ -661,6 +680,45 @@ export function Viewport({
       };
     };
 
+    // Live face-pick preview (#10): while choosing a body face to sketch on,
+    // outline the face under the cursor in amber so it's clear what a click
+    // will pick. Cleared when the cursor leaves any body.
+    const showFaceHover = (event: PointerEvent): void => {
+      const group = faceHoverGroupRef.current;
+      if (!group) return;
+      disposeSceneObjects(group);
+      group.clear();
+      const bodyGroup = bodyGroupRef.current;
+      if (!bodyGroup) return;
+      raycaster.setFromCamera(ndcOf(event), camera);
+      const hit = raycaster.intersectObjects(bodyGroup.children, false)[0];
+      const face = hit?.face;
+      if (!hit || !face) return;
+      // Use the picked body's transferred mesh arrays (typed) rather than the
+      // THREE geometry — same data, no interop typing noise.
+      const name = hit.object.name;
+      const bodyId = name.startsWith('Body:') ? name.slice('Body:'.length) : null;
+      const mesh = bodyId ? bodiesRef.current.find((m) => m.bodyId === bodyId) : undefined;
+      if (!mesh) return;
+      const n = face.normal; // identity transform → local = world
+      const segs = coplanarFaceOutline(
+        mesh.positions,
+        mesh.indices,
+        [hit.point.x, hit.point.y, hit.point.z],
+        [n.x, n.y, n.z]
+      );
+      if (segs.length < 6) return;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs), 3));
+      const material = new THREE.LineBasicMaterial({
+        color: OP_HIGHLIGHT_COLOR,
+        depthTest: false,
+      });
+      const lines = new THREE.LineSegments(geometry, material);
+      lines.renderOrder = 999;
+      group.add(lines);
+    };
+
     // Measure pick (F10): nearest vertex/midpoint snap, else body surface.
     const MEASURE_SNAP_PX = 14;
     const measurePick = (event: PointerEvent): MeasurePick | null => {
@@ -697,6 +755,11 @@ export function Viewport({
     const onPointerMove = (event: PointerEvent): void => {
       if (edgePickRef.current) {
         highlightHover(raycastEdge(event));
+        return;
+      }
+      if (facePickRef.current) {
+        showFaceHover(event);
+        requestRenderRef.current();
         return;
       }
       const hit = pointerToPlane(event);
@@ -891,6 +954,7 @@ export function Viewport({
       sketchGroupRef.current = null;
       sectionGroupRef.current = null;
       highlightGroupRef.current = null;
+      faceHoverGroupRef.current = null;
       originPlanesRef.current = null;
       cameraRef.current = null;
       controlsRef.current = null;

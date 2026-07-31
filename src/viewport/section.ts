@@ -144,6 +144,71 @@ export function sliceMesh(
   return out;
 }
 
+/**
+ * Boundary outline of the mesh triangles that lie ON the plane (origin+normal) —
+ * i.e. the face under a face-pick cursor (#10). Returns world-space segment
+ * endpoints `[x0,y0,z0,x1,y1,z1,…]`: every edge used by exactly one on-plane
+ * triangle (a face-perimeter edge). Pure numeric; `positions`/`indices` are the
+ * transferred body mesh (already world-space, identity transform).
+ */
+export function coplanarFaceOutline(
+  positions: Float32Array,
+  indices: Uint32Array,
+  origin: Triple,
+  normal: Triple
+): number[] {
+  const eps = 1e-4; // mm — a mesh vertex "on" the picked plane
+  const edges = new Map<
+    string,
+    { n: number; c: readonly [number, number, number, number, number, number] }
+  >();
+  const add = (
+    x0: number,
+    y0: number,
+    z0: number,
+    x1: number,
+    y1: number,
+    z1: number
+  ): void => {
+    const k0 = coordKey(x0, y0, z0);
+    const k1 = coordKey(x1, y1, z1);
+    const key = k0 < k1 ? `${k0}|${k1}` : `${k1}|${k0}`;
+    const e = edges.get(key);
+    if (e) e.n += 1;
+    else edges.set(key, { n: 1, c: [x0, y0, z0, x1, y1, z1] });
+  };
+  const triCount = Math.floor(indices.length / 3);
+  for (let t = 0; t < triCount; t += 1) {
+    const ia = indices[t * 3] ?? 0;
+    const ib = indices[t * 3 + 1] ?? 0;
+    const ic = indices[t * 3 + 2] ?? 0;
+    const ax = positions[ia * 3] ?? 0;
+    const ay = positions[ia * 3 + 1] ?? 0;
+    const az = positions[ia * 3 + 2] ?? 0;
+    const bx = positions[ib * 3] ?? 0;
+    const by = positions[ib * 3 + 1] ?? 0;
+    const bz = positions[ib * 3 + 2] ?? 0;
+    const cx = positions[ic * 3] ?? 0;
+    const cy = positions[ic * 3 + 1] ?? 0;
+    const cz = positions[ic * 3 + 2] ?? 0;
+    if (
+      Math.abs(signedDistance(ax, ay, az, origin, normal)) > eps ||
+      Math.abs(signedDistance(bx, by, bz, origin, normal)) > eps ||
+      Math.abs(signedDistance(cx, cy, cz, origin, normal)) > eps
+    ) {
+      continue;
+    }
+    add(ax, ay, az, bx, by, bz);
+    add(bx, by, bz, cx, cy, cz);
+    add(cx, cy, cz, ax, ay, az);
+  }
+  const out: number[] = [];
+  for (const e of edges.values()) {
+    if (e.n === 1) out.push(e.c[0], e.c[1], e.c[2], e.c[3], e.c[4], e.c[5]);
+  }
+  return out;
+}
+
 /** Plane basis as plain triples (origin + in-plane U/V axes + normal). */
 export interface PlaneBasisLite {
   readonly origin: Triple;

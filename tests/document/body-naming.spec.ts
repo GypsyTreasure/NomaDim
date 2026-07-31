@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BodyId, OpId, SketchId } from '../../src/core';
 import {
+  applyCommand,
   bodyDisplayName,
   bodyOrdinal,
   emptyDocument,
@@ -61,5 +62,18 @@ describe('body naming', () => {
 
   it('falls back to the id for a body no op produces', () => {
     expect(bodyDisplayName(emptyDocument(), bid('ghost'))).toBe('ghost');
+  });
+
+  it('keeps the "Body N" name when a fresh body is first hidden (#7)', () => {
+    const res = applyCommand(docWithBodies(), {
+      type: 'SetBodyVisible',
+      payload: { bodyId: bid('bb'), visible: false },
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    // Materializing metadata on hide must not overwrite the derived name with
+    // the raw id.
+    expect(bodyDisplayName(res.value.state, bid('bb'))).toBe('Body2');
+    expect(res.value.state.bodyMeta.find((m) => m.id === 'bb')?.visible).toBe(false);
   });
 });

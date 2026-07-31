@@ -12,8 +12,8 @@ import {
 } from '../core';
 import { findSketch, type DocumentState } from './model';
 import { emptySketch } from './sketch/access';
-import { getBodyMeta, upsertBodyMeta } from './bodies/access';
-import type { BodyMeta } from './bodies/types';
+import { bodyDisplayName, upsertBodyMeta } from './bodies/access';
+import { DEFAULT_BODY_COLOR, type BodyMeta } from './bodies/types';
 import { getDatum, removeDatum, upsertDatum } from './datums/access';
 import type { Datum } from './datums/types';
 import { getSketchMeta, upsertSketchMeta } from './sketch/meta';
@@ -36,6 +36,7 @@ import type {
 } from './history';
 import type { OpId } from '../core';
 import { applyTimelineCommand, type TimelineCommand } from './timelineCommands';
+import { opDefinition } from './ops/registry';
 
 /**
  * Commands (ARCHITECTURE §4, R1-R3): plain serializable `{ type, payload }`
@@ -151,7 +152,17 @@ function setBodyMeta(
   bodyId: BodyId,
   patch: Partial<Pick<BodyMeta, 'name' | 'color' | 'visible'>>
 ): Result<CommandResult, ValidationError> {
-  const next: BodyMeta = { ...getBodyMeta(state, bodyId), ...patch };
+  // Seed a not-yet-materialized body with its resolved display name ("Body N"),
+  // not the raw-id default — otherwise the first hide/colour edit would freeze
+  // the id as the name (#7).
+  const existing = state.bodyMeta.find((m) => m.id === bodyId);
+  const base: BodyMeta = existing ?? {
+    id: bodyId,
+    name: bodyDisplayName(state, bodyId),
+    color: DEFAULT_BODY_COLOR,
+    visible: true,
+  };
+  const next: BodyMeta = { ...base, ...patch };
   const after = upsertBodyMeta(state, next);
   const bodyMetaPatch: BodyMetaPatch = {
     kind: 'replaceBodyMeta',
@@ -206,10 +217,35 @@ export function applyCommand(
     case 'AddOp':
     case 'EditOp':
     case 'SetOpSuppressed':
-    case 'DeleteOp':
     case 'RenameOp':
     case 'SetRollback':
       return applyTimelineCommand(state, command);
+
+    case 'DeleteOp': {
+      // A Sketch op owns its sketch — deleting the op must also remove that
+      // sketch, or it lingers in the browser tree (#13). One transaction so a
+      // single undo restores both the op and the sketch.
+      const op = state.ops.find((o) => o.id === command.payload.opId);
+      const result = applyTimelineCommand(state, command);
+      if (!result.ok) return result;
+      const producedSketchId = op ? opDefinition(op).dependencies(op).producesSketch : null;
+      const sketch = producedSketchId ? findSketch(state, producedSketchId) : null;
+      if (!producedSketchId || !sketch) return result;
+      const removal = sketchReplacement(
+        result.value.state,
+        'Delete Operation',
+        sketch,
+        null,
+        producedSketchId
+      );
+      return ok({
+        state: removal.state,
+        transaction: {
+          label: 'Delete Operation',
+          patches: [...result.value.transaction.patches, ...removal.transaction.patches],
+        },
+      });
+    }
 
     case 'CreateSketch': {
       const { sketchId, opId, name, plane } = command.payload;

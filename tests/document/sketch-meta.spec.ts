@@ -148,3 +148,14 @@ describe('sketch visibility', () => {
     expect(result.ok).toBe(false);
   });
 });
+
+describe('deleting a Sketch op removes its sketch (#13)', () => {
+  it('drops the sketch from the document so it leaves the browser tree', () => {
+    const { doc, sketchId } = circleSketch();
+    expect(doc.sketches.find((s) => s.id === sketchId)).toBeDefined();
+    // The Sketch op minted by CreateSketch has id 'so1'.
+    const deleted = apply(doc, { type: 'DeleteOp', payload: { opId: 'so1' as OpId } });
+    expect(deleted.ops.some((o) => o.id === ('so1' as OpId))).toBe(false);
+    expect(deleted.sketches.find((s) => s.id === sketchId)).toBeUndefined();
+  });
+});

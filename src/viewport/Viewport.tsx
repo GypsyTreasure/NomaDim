@@ -322,6 +322,20 @@ export function Viewport({
     const controls = new OrbitControls(camera, overlayCanvas);
     controls.enableDamping = true;
     controls.target.set(0, 0, 0);
+    // Default button map (modeling): left orbits, right pans.
+    const NAV_BUTTONS = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN,
+    } as const;
+    // Sketch button map (#8): left is reserved for drawing/selecting, so the
+    // model is orbited with the RIGHT button and panned with the middle.
+    const SKETCH_BUTTONS = {
+      LEFT: null,
+      MIDDLE: THREE.MOUSE.PAN,
+      RIGHT: THREE.MOUSE.ROTATE,
+    } as const;
+    controls.mouseButtons = { ...NAV_BUTTONS };
     controlsRef.current = controls;
 
     const grid = createGrid();
@@ -519,10 +533,11 @@ export function Viewport({
     // render loop keeps itself awake until the camera settles (ADR-0071).
     const updateSketchCamera = (): boolean => {
       const mode = sketchModeRef.current;
-      // Orbit while free; lock rotation during sketch editing, edge picking,
-      // and measuring so a click resolves to a pick, not an orbit.
-      controls.enableRotate =
-        mode === null && edgePickRef.current === null && measureRef.current === null;
+      // Lock rotation during edge picking and measuring so a click resolves to a
+      // pick, not an orbit. While sketching, the model can still be orbited —
+      // but with the RIGHT button (left draws), so drawing is never hijacked (#8).
+      controls.enableRotate = edgePickRef.current === null && measureRef.current === null;
+      controls.mouseButtons = mode === null ? { ...NAV_BUTTONS } : { ...SKETCH_BUTTONS };
       if (!mode) {
         animatedPlaneKey = null;
         cameraTarget = null;

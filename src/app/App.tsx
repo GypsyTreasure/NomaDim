@@ -232,7 +232,121 @@ export function App(): React.JSX.Element {
           </h1>
           <ProjectNameField />
         </div>
-        <UndoRedo />
+        {/* Menus live IN the top bar (#5), not floating over the model. Browser
+            is present in both modes; View + the app-action menu are modeling. */}
+        <div className={styles.headerActions} ref={appBarRef}>
+          <div className={toolbarStyles.bar}>
+            <IconButton
+              icon="browser"
+              label={t('menu.browser')}
+              active={treeOpen}
+              ariaPressed={treeOpen}
+              testid="browser-toggle"
+              badge={
+                <span className={toolbarStyles.badge} data-testid="body-count">
+                  {liveBodyIds.length}
+                </span>
+              }
+              onClick={() => {
+                setTreeOpen((open) => !open);
+              }}
+            />
+            {!inSketch && (
+              <IconButton
+                icon="view"
+                label={t('menu.view')}
+                active={viewOpen}
+                ariaPressed={viewOpen}
+                testid="view-toggle"
+                onClick={() => {
+                  setViewOpen((open) => !open);
+                }}
+              />
+            )}
+            {!inSketch && (
+              <button
+                type="button"
+                className={sketcherStyles.menuToggle}
+                aria-label={t('menu.toggle')}
+                aria-expanded={actionsOpen}
+                data-testid="app-menu-toggle"
+                onClick={() => {
+                  setActionsOpen((open) => !open);
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+                  <path
+                    d="M3 5h14M3 10h14M3 15h14"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+          {!inSketch && (
+            <div
+              className={`${sketcherStyles.menuPanel ?? ''} ${
+                actionsOpen ? (sketcherStyles.menuPanelOpen ?? '') : ''
+              }`}
+              data-testid="app-actions"
+            >
+              {/* File block. */}
+              <div className={toolbarStyles.block}>
+                <NewProjectButton />
+                <DocumentIO />
+                <ImportStepButton />
+                <ExportStlButton />
+                <ProjectsButton />
+              </div>
+              <span className={toolbarStyles.divider} aria-hidden="true" />
+              {/* Create + inspect block. */}
+              <div className={toolbarStyles.block}>
+                <ConstructMenu />
+                <IconButton
+                  icon="measure"
+                  label={t('measure.toggle')}
+                  shortcut="M"
+                  active={measure.active}
+                  ariaPressed={measure.active}
+                  onClick={measure.toggle}
+                />
+              </div>
+              <span className={toolbarStyles.divider} aria-hidden="true" />
+              {/* System block. */}
+              <div className={toolbarStyles.block}>
+                <SettingsButton />
+                <LicenseButton />
+                <IconButton
+                  icon="help"
+                  label={t('help.openButton')}
+                  shortcut="?"
+                  testid="shortcuts-open"
+                  onClick={() => {
+                    setHelpOpen(true);
+                  }}
+                />
+              </div>
+              {kernelError && (
+                <span className={sketcherStyles.summary} role="alert">
+                  {t('kernel.status.error')} {kernelError}{' '}
+                  <button
+                    type="button"
+                    className={sketcherStyles.button}
+                    data-testid="kernel-reload"
+                    onClick={() => {
+                      window.location.reload();
+                    }}
+                  >
+                    {t('kernel.reload')}
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+          <UndoRedo />
+        </div>
       </header>
       <main className={styles.viewportArea}>
         <div
@@ -270,123 +384,6 @@ export function App(): React.JSX.Element {
             facePick={sketcher.pickingFace ? { onPick: sketcher.pickFace } : null}
             viewBarOpen={viewOpen}
           />
-
-          {/* Top-right cluster (both modes). The Browser toggle is always
-              present so bodies/origin planes can be hidden even while sketching
-              (#4); View + the app-action menu are modeling-only. */}
-          <div className={sketcherStyles.appBar} ref={appBarRef}>
-            {/* Always-visible cluster: Browser (both modes) + View + hamburger. */}
-            <div className={toolbarStyles.bar}>
-              <IconButton
-                icon="browser"
-                label={t('menu.browser')}
-                active={treeOpen}
-                ariaPressed={treeOpen}
-                testid="browser-toggle"
-                badge={
-                  <span className={toolbarStyles.badge} data-testid="body-count">
-                    {liveBodyIds.length}
-                  </span>
-                }
-                onClick={() => {
-                  setTreeOpen((open) => !open);
-                }}
-              />
-              {!inSketch && (
-                <IconButton
-                  icon="view"
-                  label={t('menu.view')}
-                  active={viewOpen}
-                  ariaPressed={viewOpen}
-                  testid="view-toggle"
-                  onClick={() => {
-                    setViewOpen((open) => !open);
-                  }}
-                />
-              )}
-              {!inSketch && (
-                <button
-                  type="button"
-                  className={sketcherStyles.menuToggle}
-                  aria-label={t('menu.toggle')}
-                  aria-expanded={actionsOpen}
-                  data-testid="app-menu-toggle"
-                  onClick={() => {
-                    setActionsOpen((open) => !open);
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-                    <path
-                      d="M3 5h14M3 10h14M3 15h14"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
-            {!inSketch && (
-              <div
-                className={`${sketcherStyles.menuPanel ?? ''} ${
-                  actionsOpen ? (sketcherStyles.menuPanelOpen ?? '') : ''
-                }`}
-                data-testid="app-actions"
-              >
-                {/* File block. */}
-                <div className={toolbarStyles.block}>
-                  <NewProjectButton />
-                  <DocumentIO />
-                  <ImportStepButton />
-                  <ExportStlButton />
-                  <ProjectsButton />
-                </div>
-                <span className={toolbarStyles.divider} aria-hidden="true" />
-                {/* Create + inspect block. */}
-                <div className={toolbarStyles.block}>
-                  <ConstructMenu />
-                  <IconButton
-                    icon="measure"
-                    label={t('measure.toggle')}
-                    shortcut="M"
-                    active={measure.active}
-                    ariaPressed={measure.active}
-                    onClick={measure.toggle}
-                  />
-                </div>
-                <span className={toolbarStyles.divider} aria-hidden="true" />
-                {/* System block. */}
-                <div className={toolbarStyles.block}>
-                  <SettingsButton />
-                  <LicenseButton />
-                  <IconButton
-                    icon="help"
-                    label={t('help.openButton')}
-                    shortcut="?"
-                    testid="shortcuts-open"
-                    onClick={() => {
-                      setHelpOpen(true);
-                    }}
-                  />
-                </div>
-                {kernelError && (
-                  <span className={sketcherStyles.summary} role="alert">
-                    {t('kernel.status.error')} {kernelError}{' '}
-                    <button
-                      type="button"
-                      className={sketcherStyles.button}
-                      data-testid="kernel-reload"
-                      onClick={() => {
-                        window.location.reload();
-                      }}
-                    >
-                      {t('kernel.reload')}
-                    </button>
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
 
           {treeOpen && <BrowserTree />}
 

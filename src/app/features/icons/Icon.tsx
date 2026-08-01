@@ -145,12 +145,15 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   mirrorY: <P d="M3 12h18M7 7 12 4l5 3H7Zm0 10 5 3 5-3H7Z" />,
   pattern: <P d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" />,
   newSketch: <P d="M4 20h16M6 16 15 7l2 2-9 9H6v-2Zm10-11 1.5-1.5a1.4 1.4 0 0 1 2 2L18 7z" />,
-  extrude: <P d="M6 20h8v-8H6zM6 12l3-3h8v8l-3 3M9 9V4h8v8h-3M12 9l3-3" />,
+  // A flat profile with a bold arrow pushing it up — the Fusion "extrude". #5a
+  extrude: <P d="M5 21h9v-5H5zM9.5 12V3M6.5 6 9.5 3l3 3" />,
+  // Axis + profile + a sweep arrow around it — the Fusion "revolve". #5a
   revolve: (
     <>
       <P d="M4 3v18" />
-      <P d="M9 5c7 0 7 14 0 14" />
-      <ellipse cx="9" cy="12" rx="2.5" ry="7" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <P d="M8 8h4v9H8z" />
+      <P d="M12 8a7 7 0 0 1 0 12" />
+      <P d="M12 20l1.5-2M12 20l-2-1" />
     </>
   ),
   fillet: <P d="M5 5v6a8 8 0 0 0 8 8h6M5 5h4M19 19v-4" />,

@@ -1,15 +1,19 @@
-import { err, ok, ImportError, ValidationError, type BodyId, type OpId } from '../../core';
+import { err, ok, ImportError, ValidationError, type OpId } from '../../core';
 import { boolAttr, numAttr, strAttr } from '../xml/xmlRaw';
+import { joinBodyIds, parseBodyIds } from './extrudeOp';
 import type { OpDefinition } from './definition';
 import type { MoveOp } from './types';
 
-/** Move a body in place (#3): rigid transform applied to the body itself. */
+/** Move bodies in place (#3): one rigid transform applied to each selected body. */
 export const moveOpDefinition: OpDefinition<MoveOp> = {
   type: 'Move',
   labelKey: 'op.move',
   xmlTag: 'move',
 
   validate(op) {
+    if (op.bodyIds.length === 0) {
+      return err(new ValidationError(`Move "${op.id}" selects no bodies`));
+    }
     if ([...op.translate, ...op.rotate].some((n) => !Number.isFinite(n))) {
       return err(new ValidationError(`Move "${op.id}" has a non-finite value`));
     }
@@ -23,7 +27,7 @@ export const moveOpDefinition: OpDefinition<MoveOp> = {
         id: op.id,
         name: op.name,
         suppressed: op.suppressed,
-        body: op.bodyId,
+        body: joinBodyIds(op.bodyIds),
         tx: op.translate[0],
         ty: op.translate[1],
         tz: op.translate[2],
@@ -61,7 +65,7 @@ export const moveOpDefinition: OpDefinition<MoveOp> = {
       id: id as OpId,
       name,
       suppressed,
-      bodyId: body as BodyId,
+      bodyIds: parseBodyIds(body),
       translate: [tx, ty, tz],
       rotate: [rx, ry, rz],
     });
@@ -70,7 +74,7 @@ export const moveOpDefinition: OpDefinition<MoveOp> = {
   dependencies(op) {
     return {
       producesBodies: [],
-      consumesBodies: [op.bodyId],
+      consumesBodies: [...op.bodyIds],
       consumesSketch: null,
       producesSketch: null,
     };

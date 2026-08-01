@@ -430,7 +430,7 @@ describe('timeline XML round-trip', () => {
           id: op('mv1'),
           name: 'Move1',
           suppressed: false,
-          bodyId: body('b1'),
+          bodyIds: [body('b1')],
           translate: [12.5, -3, 4],
           rotate: [0, 90, 45],
         },

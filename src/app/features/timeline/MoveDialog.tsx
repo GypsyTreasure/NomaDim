@@ -1,20 +1,23 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { createId, type BodyId } from '../../../core';
 import type { MoveOp } from '../../../document';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import { t } from '../../i18n/t';
 import type { OpDialogProps } from './dialogTypes';
-import { DialogFrame, NumberRow, SelectRow } from './dialogShared';
+import { BodyChecklist, DialogFrame, NumberRow } from './dialogShared';
 import { existingIds, mintName, targetOptions } from './dialogData';
 
-/** Move create/edit dialog (#3): body + in-place XYZ translation + rotation. */
+/** Move create/edit dialog (#3): one or more bodies + in-place XYZ translation
+ * + rotation, applied to each selected body. */
 export function MoveDialog({ editing, onClose }: OpDialogProps): React.JSX.Element {
   const document = useDocumentStore((s) => s.document);
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const prior = editing?.type === 'Move' ? editing : null;
 
-  const [bodyId, setBodyId] = useState<BodyId | null>(prior?.bodyId ?? liveBodyIds[0] ?? null);
+  const [bodyIds, setBodyIds] = useState<ReadonlySet<BodyId>>(
+    new Set(prior?.bodyIds ?? (liveBodyIds[0] ? [liveBodyIds[0]] : []))
+  );
   const [tx, setTx] = useState(prior?.translate[0] ?? 0);
   const [ty, setTy] = useState(prior?.translate[1] ?? 0);
   const [tz, setTz] = useState(prior?.translate[2] ?? 0);
@@ -22,17 +25,28 @@ export function MoveDialog({ editing, onClose }: OpDialogProps): React.JSX.Eleme
   const [ry, setRy] = useState(prior?.rotate[1] ?? 0);
   const [rz, setRz] = useState(prior?.rotate[2] ?? 0);
 
-  const okDisabled = bodyId === null;
+  const options = targetOptions(document, liveBodyIds);
+  const effective = new Set([...bodyIds].filter((id) => options.some((o) => o.value === id)));
+  const toggle = useCallback((id: BodyId): void => {
+    setBodyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const okDisabled = effective.size === 0;
 
   const submit = (): void => {
-    if (bodyId === null) return;
+    if (effective.size === 0) return;
     const ids = existingIds(document);
     const op: MoveOp = {
       type: 'Move',
       id: prior?.id ?? createId<'OpId'>(ids),
       name: prior?.name ?? mintName(document, 'Move'),
       suppressed: prior?.suppressed ?? false,
-      bodyId,
+      bodyIds: [...effective],
       translate: [tx, ty, tz],
       rotate: [rx, ry, rz],
     };
@@ -44,11 +58,11 @@ export function MoveDialog({ editing, onClose }: OpDialogProps): React.JSX.Eleme
 
   return (
     <DialogFrame title={t('op.move')} okDisabled={okDisabled} onOk={submit} onCancel={onClose}>
-      <SelectRow<BodyId>
+      <BodyChecklist<BodyId>
         labelKey="dialog.body"
-        value={bodyId ?? ('' as BodyId)}
-        options={targetOptions(document, liveBodyIds)}
-        onChange={setBodyId}
+        options={options}
+        selected={effective}
+        onToggle={toggle}
       />
       <NumberRow labelKey="dialog.translateX" value={tx} onChange={setTx} />
       <NumberRow labelKey="dialog.translateY" value={ty} onChange={setTy} />

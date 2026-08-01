@@ -12,19 +12,23 @@ import { KernelExecError, type ExecCtx } from './types';
  */
 export function executeMove(ctx: ExecCtx, op: MoveOp): void {
   const { oc, bodies } = ctx;
-  const shape = bodies.get(op.bodyId);
-  if (!shape) {
-    throw new KernelExecError('TARGET_MISSING', `Move target ${op.bodyId} missing`);
+  // One shared transform, applied to each selected body in place (#3). The prior
+  // shape of each stays owned by its producing delta (§9); only the map
+  // reference is replaced. The transform is rebuilt per body (BRepBuilderAPI
+  // consumes it) and freed each time.
+  for (const bodyId of op.bodyIds) {
+    const shape = bodies.get(bodyId);
+    if (!shape) {
+      throw new KernelExecError('TARGET_MISSING', `Move target ${bodyId} missing`);
+    }
+    const trsf = rigidTrsf(oc, op.translate, op.rotate);
+    const result = applyTrsf(oc, shape, trsf);
+    trsf.delete();
+    if (result.IsNull()) {
+      result.delete();
+      throw new KernelExecError('MOVE_FAILED', `Move ${op.id} failed`);
+    }
+    trackShapeAllocation();
+    bodies.set(bodyId, result);
   }
-
-  const trsf = rigidTrsf(oc, op.translate, op.rotate);
-  const result = applyTrsf(oc, shape, trsf);
-  trsf.delete();
-
-  if (result.IsNull()) {
-    result.delete();
-    throw new KernelExecError('MOVE_FAILED', `Move ${op.id} failed`);
-  }
-  trackShapeAllocation();
-  bodies.set(op.bodyId, result);
 }

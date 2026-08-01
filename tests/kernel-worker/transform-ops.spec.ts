@@ -203,7 +203,7 @@ describe('Move', () => {
       id: 'mv1' as MoveOp['id'],
       name: 'Move',
       suppressed: false,
-      bodyId: bid('A'),
+      bodyIds: [bid('A')],
       translate: [50, 0, 0],
       rotate: [0, 0, 0],
     };
@@ -214,6 +214,33 @@ describe('Move', () => {
     expect(volOf(bodies, 'A')).toBeCloseTo(1000, 2); // rigid move preserves volume
     expect(comX('A')).toBeCloseTo(beforeX + 50, 2); // and shifts by the translation
     expect([...bodies.keys()]).toEqual([bid('A')]); // in place: no new body id
+    cache.freeFrom(0);
+  });
+
+  it('moves MULTIPLE bodies in place by the same transform (#3)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    seedBox(bodies, 'A', 0); // x ∈ [0,10], com 5
+    seedBox(bodies, 'B', 20); // x ∈ [20,30], com 25
+    record(cache, 0, new Map(), bodies);
+
+    const op: MoveOp = {
+      type: 'Move',
+      id: 'mv2' as MoveOp['id'],
+      name: 'Move',
+      suppressed: false,
+      bodyIds: [bid('A'), bid('B')],
+      translate: [0, 0, 5],
+      rotate: [0, 0, 0],
+    };
+    const before = snapshotRefs(bodies);
+    executeMove(ctx(bodies), op);
+    record(cache, 1, before, bodies);
+
+    // Both bodies moved in place — volumes preserved, ids unchanged.
+    expect(volOf(bodies, 'A')).toBeCloseTo(1000, 2);
+    expect(volOf(bodies, 'B')).toBeCloseTo(1000, 2);
+    expect([...bodies.keys()].sort()).toEqual([bid('A'), bid('B')]);
     cache.freeFrom(0);
   });
 });

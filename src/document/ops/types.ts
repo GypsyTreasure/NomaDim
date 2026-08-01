@@ -236,7 +236,8 @@ export interface ShellOp extends OpBase {
  * `bodyId`, no copy (contrast CopyBody). Modifies in place like Fillet/Shell. */
 export interface MoveOp extends OpBase {
   readonly type: 'Move';
-  readonly bodyId: BodyId;
+  /** Bodies moved in place by the same rigid transform (#3). */
+  readonly bodyIds: readonly BodyId[];
   readonly translate: readonly [number, number, number];
   readonly rotate: readonly [number, number, number];
 }

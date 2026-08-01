@@ -27,12 +27,24 @@ function isDirection(value: string): value is ExtrudeDirection {
 export function validateBooleanTarget(
   opId: string,
   operation: BooleanOperation,
-  targetBodyId: BodyId | null
+  targetBodyIds: readonly BodyId[]
 ): ValidationError | null {
-  if (operation !== 'NewBody' && targetBodyId === null) {
+  if (operation !== 'NewBody' && targetBodyIds.length === 0) {
     return new ValidationError(`Op "${opId}": ${operation} requires a target body`);
   }
   return null;
+}
+
+/** Serialize body ids to a single space-separated attribute; parse tolerates the
+ * pre-#3 single-id form (one token) and empty (no targets). */
+export function joinBodyIds(ids: readonly BodyId[]): string {
+  return ids.join(' ');
+}
+export function parseBodyIds(value: string): BodyId[] {
+  return value
+    .split(/\s+/)
+    .filter((token) => token.length > 0)
+    .map((token) => token as BodyId);
 }
 
 export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
@@ -56,7 +68,7 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
     }
     // A surface extrude is always a new body — no boolean target to validate.
     if (!op.asSurface) {
-      const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyId);
+      const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyIds);
       if (targetError) return err(targetError);
     }
     if (op.wallThicknessMm < 0 || !Number.isFinite(op.wallThicknessMm)) {
@@ -77,7 +89,7 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
         direction: op.direction,
         distance2: op.distance2Mm,
         operation: op.operation,
-        target: op.targetBodyId ?? '',
+        target: joinBodyIds(op.targetBodyIds),
         wall: op.wallThicknessMm,
         surface: op.asSurface,
         body: op.bodyId,
@@ -128,7 +140,7 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
       direction,
       distance2Mm: distance2,
       operation,
-      targetBodyId: target === '' ? null : (target as BodyId),
+      targetBodyIds: parseBodyIds(target),
       // Optional (#7): pre-thin-wall documents default to a solid (0).
       wallThicknessMm: numAttr(raw, 'wall') ?? 0,
       // Optional (ADR-0072): pre-surface documents default to a solid.
@@ -140,7 +152,7 @@ export const extrudeOpDefinition: OpDefinition<ExtrudeOp> = {
   dependencies(op) {
     return {
       producesBodies: op.operation === 'NewBody' ? [op.bodyId] : [],
-      consumesBodies: op.operation === 'NewBody' || !op.targetBodyId ? [] : [op.targetBodyId],
+      consumesBodies: op.operation === 'NewBody' ? [] : [...op.targetBodyIds],
       consumesSketch: op.sketchId,
       producesSketch: null,
     };

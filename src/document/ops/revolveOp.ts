@@ -13,7 +13,7 @@ import {
 import { getEntity } from '../sketch/access';
 import { asRawArray, boolAttr, numAttr, strAttr } from '../xml/xmlRaw';
 import type { OpDefinition } from './definition';
-import { validateBooleanTarget } from './extrudeOp';
+import { joinBodyIds, parseBodyIds, validateBooleanTarget } from './extrudeOp';
 import type { BooleanOperation, RevolveAxis, RevolveOp } from './types';
 
 /**
@@ -70,7 +70,7 @@ export const revolveOpDefinition: OpDefinition<RevolveOp> = {
       }
     }
     if (!op.asSurface) {
-      const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyId);
+      const targetError = validateBooleanTarget(op.id, op.operation, op.targetBodyIds);
       if (targetError) return err(targetError);
     }
     if (op.wallThicknessMm < 0 || !Number.isFinite(op.wallThicknessMm)) {
@@ -90,7 +90,7 @@ export const revolveOpDefinition: OpDefinition<RevolveOp> = {
         axis: axisToAttr(op.axis),
         angle: op.angleDeg,
         operation: op.operation,
-        target: op.targetBodyId ?? '',
+        target: joinBodyIds(op.targetBodyIds),
         wall: op.wallThicknessMm,
         surface: op.asSurface,
         body: op.bodyId,
@@ -138,7 +138,7 @@ export const revolveOpDefinition: OpDefinition<RevolveOp> = {
       axis,
       angleDeg: angle,
       operation,
-      targetBodyId: target === '' ? null : (target as BodyId),
+      targetBodyIds: parseBodyIds(target),
       wallThicknessMm: numAttr(raw, 'wall') ?? 0,
       asSurface: boolAttr(raw, 'surface') ?? false,
       bodyId: body as BodyId,
@@ -148,7 +148,7 @@ export const revolveOpDefinition: OpDefinition<RevolveOp> = {
   dependencies(op) {
     return {
       producesBodies: op.operation === 'NewBody' ? [op.bodyId] : [],
-      consumesBodies: op.operation === 'NewBody' || !op.targetBodyId ? [] : [op.targetBodyId],
+      consumesBodies: op.operation === 'NewBody' ? [] : [...op.targetBodyIds],
       consumesSketch: op.sketchId,
       producesSketch: null,
     };

@@ -55,8 +55,9 @@ export interface ExtrudeOp extends OpBase {
   /** Second-side distance; only meaningful for direction 'two-sides'. */
   readonly distance2Mm: number;
   readonly operation: BooleanOperation;
-  /** Target for Join/Cut/Intersect; ignored for NewBody. */
-  readonly targetBodyId: BodyId | null;
+  /** Targets for Join/Cut/Intersect; ignored for NewBody. Each is modified in
+   * place — the tool is applied to every selected body (#3). */
+  readonly targetBodyIds: readonly BodyId[];
   /** Thin-wall (single-wall/shell) thickness (mm); 0 = a solid body (#7). When
    * > 0 the extrusion is hollowed to this wall thickness before the boolean, so
    * a thin wall can still Join/Cut/Intersect an existing body. */
@@ -83,7 +84,8 @@ export interface RevolveOp extends OpBase {
   readonly axis: RevolveAxis;
   readonly angleDeg: number;
   readonly operation: BooleanOperation;
-  readonly targetBodyId: BodyId | null;
+  /** Targets for Join/Cut/Intersect; ignored for NewBody. Each modified in place (#3). */
+  readonly targetBodyIds: readonly BodyId[];
   /** Thin-wall (single-wall/shell) thickness (mm); 0 = a solid body (#7). */
   readonly wallThicknessMm: number;
   /** Zero-thickness SURFACE body (ADR-0072): revolve the profile wires into an

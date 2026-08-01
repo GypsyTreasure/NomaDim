@@ -58,7 +58,7 @@ function extrude(overrides: Partial<ExtrudeOp>): ExtrudeOp {
     direction: 'one-side',
     distance2Mm: 0,
     operation: 'NewBody',
-    targetBodyId: null,
+    targetBodyIds: [],
     wallThicknessMm: 0,
     asSurface: false,
     bodyId: bid('B'),
@@ -175,7 +175,7 @@ describe('extrude executor', () => {
         distanceMm: 20,
         wallThicknessMm: 2,
         operation: 'Join',
-        targetBodyId: bid('A'),
+        targetBodyIds: [bid('A')],
         bodyId: bid('unused'),
       })
     );
@@ -293,7 +293,7 @@ describe('boolean operations (all four)', () => {
           profileIds: [profB.id],
           distanceMm: 20,
           operation,
-          targetBodyId: bid('A'),
+          targetBodyIds: [bid('A')],
           bodyId: bid('B'),
         })
       );
@@ -345,7 +345,7 @@ describe('boolean operations (all four)', () => {
         direction: 'all',
         distanceMm: 0,
         operation: 'Cut',
-        targetBodyId: bid('A'),
+        targetBodyIds: [bid('A')],
         bodyId: bid('B'),
       })
     );
@@ -354,6 +354,49 @@ describe('boolean operations (all four)', () => {
     const a = bodies.get(bid('A'));
     expect(a).toBeDefined();
     if (a) expect(volumeOf(a)).toBeCloseTo(3000, 2); // 4000 − 10*10*10 column
+    cache.freeFrom(0);
+  });
+
+  it('Cut applies to EACH of multiple target bodies (#3)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    // Two identical 20×20×10 base solids A and B (same XY profile, so the same
+    // corner column overlaps both). Replaced-in-place shapes are owned by the
+    // delta cache, so record deltas and free through it (R8).
+    const base = rectProfile('base', 0, 0, 20, 20);
+    let before = snapshotRefs(bodies);
+    executeExtrude(
+      ctxFor(bodies, [base]),
+      extrude({ profileIds: [base.id], distanceMm: 10, bodyId: bid('A') })
+    );
+    executeExtrude(
+      ctxFor(bodies, [base]),
+      extrude({ profileIds: [base.id], distanceMm: 10, bodyId: bid('B') })
+    );
+    cache.record(0, diffDelta(before, bodies), { opId: 'o0' as never, status: 'ok' });
+
+    // One extrude cut targeting BOTH bodies with a 10×10 corner column.
+    const tool = rectProfile('tool', 0, 0, 10, 10);
+    before = snapshotRefs(bodies);
+    executeExtrude(
+      ctxFor(bodies, [tool]),
+      extrude({
+        profileIds: [tool.id],
+        distanceMm: 10,
+        operation: 'Cut',
+        targetBodyIds: [bid('A'), bid('B')],
+        bodyId: bid('unused'),
+      })
+    );
+    cache.record(1, diffDelta(before, bodies), { opId: 'o1' as never, status: 'ok' });
+
+    const a = bodies.get(bid('A'));
+    const b = bodies.get(bid('B'));
+    expect(a).toBeDefined();
+    expect(b).toBeDefined();
+    // Each: 20*20*10 − 10*10*10 = 4000 − 1000 = 3000.
+    if (a) expect(volumeOf(a)).toBeCloseTo(3000, 2);
+    if (b) expect(volumeOf(b)).toBeCloseTo(3000, 2);
     cache.freeFrom(0);
   });
 });
@@ -374,7 +417,7 @@ describe('revolve executor', () => {
       axis: { kind: 'origin', axis: 'Y' },
       angleDeg: 360,
       operation: 'NewBody',
-      targetBodyId: null,
+      targetBodyIds: [],
       wallThicknessMm: 0,
       asSurface: false,
       bodyId: bid('R'),

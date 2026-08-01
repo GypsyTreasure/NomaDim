@@ -137,6 +137,32 @@ export function SelectRow<T extends string>(props: {
   );
 }
 
+/** Multi-select body list (#3): pick one or more boolean target bodies. */
+export function BodyChecklist<T extends string>(props: {
+  labelKey: TranslationKey;
+  options: readonly SelectOption<T>[];
+  selected: ReadonlySet<T>;
+  onToggle: (id: T) => void;
+}): React.JSX.Element {
+  return (
+    <fieldset className={styles.fieldset} data-testid="target-checklist">
+      <legend>{t(props.labelKey)}</legend>
+      {props.options.map((opt) => (
+        <label key={opt.value} className={styles.checkRow}>
+          <input
+            type="checkbox"
+            checked={props.selected.has(opt.value)}
+            onChange={() => {
+              props.onToggle(opt.value);
+            }}
+          />
+          <span>{opt.label}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
 export function ProfileChecklist(props: {
   profiles: readonly SketchProfile[];
   selected: ReadonlySet<ProfileId>;

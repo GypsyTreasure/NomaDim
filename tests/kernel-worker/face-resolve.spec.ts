@@ -49,7 +49,7 @@ function makeBox(bodies: BodyStateMap): void {
     direction: 'one-side',
     distance2Mm: 0,
     operation: 'NewBody',
-    targetBodyId: null,
+    targetBodyIds: [],
     wallThicknessMm: 0,
     asSurface: false,
     bodyId: bid('B'),

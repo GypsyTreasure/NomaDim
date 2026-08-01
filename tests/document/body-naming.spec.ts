@@ -28,7 +28,7 @@ function extrudeProducing(id: string, bodyId: string): ExtrudeOp {
     direction: 'one-side',
     distance2Mm: 0,
     operation: 'NewBody',
-    targetBodyId: null,
+    targetBodyIds: [],
     wallThicknessMm: 0,
     asSurface: false,
     bodyId: bid(bodyId),

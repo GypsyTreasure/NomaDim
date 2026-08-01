@@ -75,7 +75,7 @@ function extrudeOf(doc: DocumentState, sketchId: SketchId, id: string): ExtrudeO
     direction: 'one-side',
     distance2Mm: 0,
     operation: 'NewBody',
-    targetBodyId: null,
+    targetBodyIds: [],
     wallThicknessMm: 0,
     asSurface: false,
     bodyId: `${id}-body` as never,

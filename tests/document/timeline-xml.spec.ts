@@ -41,7 +41,7 @@ function extrudeOp(overrides: Partial<ExtrudeOp> = {}): ExtrudeOp {
     direction: 'symmetric',
     distance2Mm: 3,
     operation: 'NewBody',
-    targetBodyId: null,
+    targetBodyIds: [],
     wallThicknessMm: 0,
     asSurface: false,
     bodyId: body('b1'),
@@ -60,7 +60,7 @@ function revolveOp(overrides: Partial<RevolveOp> = {}): RevolveOp {
     axis: { kind: 'entity', entityId: 'ln7' as never },
     angleDeg: 270,
     operation: 'Cut',
-    targetBodyId: body('b1'),
+    targetBodyIds: [body('b1')],
     wallThicknessMm: 0,
     asSurface: false,
     bodyId: body('b2'),
@@ -174,13 +174,13 @@ describe('timeline XML round-trip', () => {
           distanceMm: 5,
           distance2Mm: 8,
           operation: 'Join',
-          targetBodyId: body('b0'),
+          targetBodyIds: [body('b0')],
         }),
         revolveOp({
           axis: { kind: 'origin', axis: 'Z' },
           angleDeg: 360,
           operation: 'NewBody',
-          targetBodyId: null,
+          targetBodyIds: [],
           suppressed: false,
         }),
       ],
@@ -200,7 +200,7 @@ describe('timeline XML round-trip', () => {
           direction: 'all',
           distanceMm: 0,
           operation: 'Cut',
-          targetBodyId: body('b0'),
+          targetBodyIds: [body('b0')],
         }),
       ],
       rollbackIndex: 2,
@@ -209,6 +209,39 @@ describe('timeline XML round-trip', () => {
     const parsed = timelineFromXml(xml);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
+  it('round-trips an extrude Cut targeting MULTIPLE bodies (#3)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        extrudeOp({
+          operation: 'Cut',
+          targetBodyIds: [body('b0'), body('b1'), body('b2')],
+        }),
+      ],
+      rollbackIndex: 2,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
+  it('parses a pre-#3 single-target extrude (back-compat: target="b1" → [b1])', () => {
+    // Emit a current multi-target op, then rewrite the target attr to the old
+    // single-id form and confirm it parses to a one-element array.
+    const data: TimelineData = {
+      ops: [sketchOp('so1', 's1'), extrudeOp({ operation: 'Cut', targetBodyIds: [body('b1')] })],
+      rollbackIndex: 2,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      const extrude = parsed.value.ops.find((o) => o.type === 'Extrude');
+      expect(extrude?.type === 'Extrude' && extrude.targetBodyIds).toEqual([body('b1')]);
+    }
   });
 
   it('serialization is deterministic (re-emitting the parse is byte-identical)', () => {
@@ -373,7 +406,7 @@ describe('timeline XML round-trip', () => {
           bodyId: body('b2'),
           axis: { kind: 'origin', axis: 'Z' },
           operation: 'NewBody',
-          targetBodyId: null,
+          targetBodyIds: [],
           suppressed: false,
           asSurface: true,
         }),

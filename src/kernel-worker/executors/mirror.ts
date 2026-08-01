@@ -34,7 +34,7 @@ export function executeMirror(ctx: ExecCtx, op: MirrorOp, planeWorld?: WorldPlan
     ctx,
     op.operation === 'Join' ? 'Join' : 'NewBody',
     op.bodyId,
-    op.operation === 'Join' ? op.sourceBodyId : null,
+    op.operation === 'Join' ? [op.sourceBodyId] : [],
     reflected
   );
 }

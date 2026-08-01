@@ -19,6 +19,7 @@ import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import type { OpDialogProps } from './dialogTypes';
 import {
+  BodyChecklist,
   DialogFrame,
   NumberRow,
   ProfileChecklist,
@@ -79,7 +80,9 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [angleDeg, setAngleDeg] = useState(prior?.angleDeg ?? 360);
   const [axis, setAxis] = useState<string>(axisValue(prior?.axis ?? { kind: 'origin', axis: 'Y' }));
   const [operation, setOperation] = useState<BooleanOperation>(prior?.operation ?? 'NewBody');
-  const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
+  const [targetBodyIds, setTargetBodyIds] = useState<ReadonlySet<BodyId>>(
+    new Set(prior?.targetBodyIds ?? [])
+  );
   const [wallThicknessMm, setWallThicknessMm] = useState(prior?.wallThicknessMm ?? 0);
   const [bodyType, setBodyType] = useState<BodyType>(
     initialBodyType(prior?.asSurface ?? false, prior?.wallThicknessMm ?? 0)
@@ -120,13 +123,25 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   );
 
   const targets = targetOptions(document, liveBodyIds, prior?.bodyId);
-  // Auto-select a target body for a boolean op so OK is immediately actionable (#6).
+  const toggleTarget = useCallback((id: BodyId): void => {
+    setTargetBodyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const effectiveTargets = new Set(
+    [...targetBodyIds].filter((id) => targets.some((t) => t.value === id))
+  );
+  // Auto-select the first target so OK is immediately actionable (#6); more can
+  // then be ticked (#3). New Body clears them.
   const chooseOperation = (op: BooleanOperation): void => {
     setOperation(op);
     if (op !== 'NewBody') {
-      if (targetBodyId === null && targets[0]) setTargetBodyId(targets[0].value);
+      if (effectiveTargets.size === 0 && targets[0]) setTargetBodyIds(new Set([targets[0].value]));
     } else {
-      setTargetBodyId(null);
+      setTargetBodyIds(new Set());
     }
   };
 
@@ -164,7 +179,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     effectiveSelected.size === 0 ||
     !(Math.abs(angleDeg) > 0) ||
     Math.abs(angleDeg) > 360 ||
-    (needsTarget && targetBodyId === null) ||
+    (needsTarget && effectiveTargets.size === 0) ||
     (bodyType === 'thin' && wallThicknessMm <= 0);
 
   // Live ghost preview (F3): a valid draft revolve (creating, not editing).
@@ -182,7 +197,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           axis: parsedAxis,
           angleDeg,
           operation: effectiveOperation,
-          targetBodyId: needsTarget ? targetBodyId : null,
+          targetBodyIds: needsTarget ? [...effectiveTargets] : [],
           wallThicknessMm: effectiveWallMm,
           asSurface,
           bodyId: 'preview-body' as BodyId,
@@ -202,7 +217,7 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       axis: parseAxis(axis),
       angleDeg,
       operation: effectiveOperation,
-      targetBodyId: needsTarget ? targetBodyId : null,
+      targetBodyIds: needsTarget ? [...effectiveTargets] : [],
       wallThicknessMm: effectiveWallMm,
       asSurface,
       bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
@@ -254,11 +269,11 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         />
       )}
       {needsTarget && (
-        <SelectRow<BodyId>
+        <BodyChecklist<BodyId>
           labelKey="dialog.target"
-          value={targetBodyId ?? ('' as BodyId)}
           options={targets}
-          onChange={setTargetBodyId}
+          selected={effectiveTargets}
+          onToggle={toggleTarget}
         />
       )}
     </DialogFrame>

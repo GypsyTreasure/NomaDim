@@ -33,9 +33,10 @@ test('choosing Cut in Extrude auto-selects a target and enables OK', async ({ pa
   const dialog = page.getByRole('dialog', { name: 'Extrude' });
   await dialog.getByRole('checkbox').first().check();
 
-  // Switch to Cut → the target body auto-fills and OK becomes clickable.
+  // Switch to Cut → a target body auto-selects (checked in the target list, #3)
+  // and OK becomes clickable.
   await dialog.getByLabel('Operation').selectOption('Cut');
-  await expect(dialog.getByLabel('Target Body')).not.toHaveValue('');
+  await expect(dialog.getByTestId('target-checklist').getByRole('checkbox').first()).toBeChecked();
   const ok = page.getByRole('button', { name: 'OK' });
   await expect(ok).toBeEnabled();
   await ok.click();

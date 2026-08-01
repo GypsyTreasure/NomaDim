@@ -107,5 +107,5 @@ export function executeRevolve(ctx: ExecCtx, op: RevolveOp, axis: WorldAxis | un
     throw new KernelExecError('NO_PROFILES', 'Revolve selects no profiles');
   }
   tool = applyThinWall(ctx.oc, tool, op.wallThicknessMm);
-  applyBooleanResult(ctx, op.operation, op.bodyId, op.targetBodyId, tool);
+  applyBooleanResult(ctx, op.operation, op.bodyId, op.targetBodyIds, tool);
 }

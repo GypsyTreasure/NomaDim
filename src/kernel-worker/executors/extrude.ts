@@ -114,5 +114,5 @@ export function executeExtrude(ctx: ExecCtx, op: ExtrudeOp): void {
     throw new KernelExecError('NO_PROFILES', 'Extrude selects no profiles');
   }
   tool = applyThinWall(ctx.oc, tool, op.wallThicknessMm);
-  applyBooleanResult(ctx, op.operation, op.bodyId, op.targetBodyId, tool);
+  applyBooleanResult(ctx, op.operation, op.bodyId, op.targetBodyIds, tool);
 }

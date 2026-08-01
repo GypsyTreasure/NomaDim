@@ -85,7 +85,7 @@ export function executePattern(ctx: ExecCtx, op: PatternOp): void {
     ctx,
     op.operation === 'Join' ? 'Join' : 'NewBody',
     op.bodyId,
-    op.operation === 'Join' ? op.sourceBodyId : null,
+    op.operation === 'Join' ? [op.sourceBodyId] : [],
     tool
   );
 }

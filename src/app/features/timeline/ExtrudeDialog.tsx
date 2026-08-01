@@ -6,6 +6,7 @@ import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import type { OpDialogProps } from './dialogTypes';
 import {
+  BodyChecklist,
   DialogFrame,
   NumberRow,
   ProfileChecklist,
@@ -50,7 +51,9 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const [direction, setDirection] = useState<ExtrudeDirection>(prior?.direction ?? 'one-side');
   const [distance2Mm, setDistance2Mm] = useState(prior?.distance2Mm ?? 10);
   const [operation, setOperation] = useState<BooleanOperation>(prior?.operation ?? 'NewBody');
-  const [targetBodyId, setTargetBodyId] = useState<BodyId | null>(prior?.targetBodyId ?? null);
+  const [targetBodyIds, setTargetBodyIds] = useState<ReadonlySet<BodyId>>(
+    new Set(prior?.targetBodyIds ?? [])
+  );
   const [wallThicknessMm, setWallThicknessMm] = useState(prior?.wallThicknessMm ?? 0);
   const [bodyType, setBodyType] = useState<BodyType>(
     initialBodyType(prior?.asSurface ?? false, prior?.wallThicknessMm ?? 0)
@@ -86,15 +89,27 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   useProfileHighlight(sketchId, effectiveSelected, pickable, null, toggle);
 
   const targets = targetOptions(document, liveBodyIds, prior?.bodyId);
-  // Choosing a boolean op auto-selects a target body so OK is immediately
+  const toggleTarget = useCallback((id: BodyId): void => {
+    setTargetBodyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  // Only bodies that still exist can stay selected as targets.
+  const effectiveTargets = new Set(
+    [...targetBodyIds].filter((id) => targets.some((t) => t.value === id))
+  );
+  // Choosing a boolean op auto-selects the first target so OK is immediately
   // actionable — otherwise Cut/Join/Intersect look "dead" until you also pick a
-  // target (#6). Switching back to New Body clears it.
+  // target (#6). Multiple targets can then be ticked (#3). New Body clears them.
   const chooseOperation = (op: BooleanOperation): void => {
     setOperation(op);
     if (op !== 'NewBody') {
-      if (targetBodyId === null && targets[0]) setTargetBodyId(targets[0].value);
+      if (effectiveTargets.size === 0 && targets[0]) setTargetBodyIds(new Set([targets[0].value]));
     } else {
-      setTargetBodyId(null);
+      setTargetBodyIds(new Set());
     }
   };
 
@@ -105,7 +120,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     effectiveSelected.size === 0 ||
     (!throughAll && (!Number.isFinite(distanceMm) || distanceMm === 0)) ||
     (direction === 'two-sides' && !(distance2Mm > 0)) ||
-    (needsTarget && targetBodyId === null) ||
+    (needsTarget && effectiveTargets.size === 0) ||
     (bodyType === 'thin' && wallThicknessMm <= 0);
 
   // Live ghost preview (F3): while creating (not editing), feed a draft op with
@@ -125,7 +140,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
           direction,
           distance2Mm,
           operation: effectiveOperation,
-          targetBodyId: needsTarget ? targetBodyId : null,
+          targetBodyIds: needsTarget ? [...effectiveTargets] : [],
           wallThicknessMm: effectiveWallMm,
           asSurface,
           bodyId: 'preview-body' as BodyId,
@@ -146,7 +161,7 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       direction,
       distance2Mm,
       operation: effectiveOperation,
-      targetBodyId: needsTarget ? targetBodyId : null,
+      targetBodyIds: needsTarget ? [...effectiveTargets] : [],
       wallThicknessMm: effectiveWallMm,
       asSurface,
       bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
@@ -204,11 +219,11 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
         />
       )}
       {needsTarget && (
-        <SelectRow<BodyId>
+        <BodyChecklist<BodyId>
           labelKey="dialog.target"
-          value={targetBodyId ?? ('' as BodyId)}
           options={targets}
-          onChange={setTargetBodyId}
+          selected={effectiveTargets}
+          onToggle={toggleTarget}
         />
       )}
     </DialogFrame>

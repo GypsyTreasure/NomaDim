@@ -348,6 +348,15 @@ export function Viewport({
     const controls = new OrbitControls(camera, overlayCanvas);
     controls.enableDamping = true;
     controls.target.set(0, 0, 0);
+    // Free-feeling upright orbit (#1): the model rotates through (nearly) the
+    // full vertical range, but stops a hair short of the exact pole. Reaching
+    // the pole of an azimuth/polar orbit is a gimbal singularity — the view
+    // freezes/flips and reads as "rotation is blocked". Clamping to a tiny
+    // epsilon keeps a level horizon (upright, Fusion-like) while removing that
+    // dead-stop, so orbiting feels continuous. Damping smooths the approach.
+    const POLE_EPSILON = 0.0002; // radians — imperceptible, but avoids the pole
+    controls.minPolarAngle = POLE_EPSILON;
+    controls.maxPolarAngle = Math.PI - POLE_EPSILON;
     // Default button map (modeling): left orbits, right pans.
     const NAV_BUTTONS = {
       LEFT: THREE.MOUSE.ROTATE,

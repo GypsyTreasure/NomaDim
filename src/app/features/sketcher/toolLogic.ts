@@ -249,8 +249,9 @@ export function toolClick(state: ToolState, spec: PointSpec): ToolStep {
       return noCommit({ ...state, clicks: [...state.clicks, spec] });
     case 'change':
     case 'dimension':
-      // Editing / annotation tools: clicks select existing points (handled in
-      // the hook), never place geometry.
+    case 'split':
+      // Editing / annotation / split tools: clicks pick existing geometry
+      // (handled in the hook), never place new geometry here.
       return noCommit(state);
     default: {
       const exhaustive: never = state.tool;
@@ -376,6 +377,7 @@ export function toolEnter(
     }
     case 'change':
     case 'dimension':
+    case 'split':
       return noCommit(state);
     default: {
       const exhaustive: never = state.tool;
@@ -476,6 +478,7 @@ export function toolPreview(
     case 'point':
     case 'change':
     case 'dimension':
+    case 'split':
       return [];
     default: {
       const exhaustive: never = state.tool;

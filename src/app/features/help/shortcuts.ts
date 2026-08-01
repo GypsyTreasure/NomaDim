@@ -105,6 +105,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'G', desc: 'help.tool.polygon' },
       { keys: 'B', desc: 'help.tool.spline' },
       { keys: 'D', desc: 'help.tool.dimension' },
+      { keys: 'T', desc: 'help.tool.split' },
       { keys: 'X', desc: 'help.construction' },
       { keys: 'Q', desc: 'help.snap' },
       { keys: 'J', desc: 'help.intersect' },

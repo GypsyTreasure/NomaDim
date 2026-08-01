@@ -28,6 +28,7 @@ export type IconName =
   | 'select'
   | 'change'
   | 'dimension'
+  | 'split'
   | 'line'
   | 'centerline'
   | 'rectangle'
@@ -114,6 +115,8 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
     </>
   ),
   dimension: <P d="M4 8v8M20 8v8M4 12h16m-16 0 3-2m-3 2 3 2m13-2-3-2m3 2-3 2" />,
+  // A line broken by a divider — "split a line where another crosses it" (#6).
+  split: <P d="M4 12h6m4 0h6M12 6v12" />,
   line: <P d="M5 19 19 5" />,
   centerline: <P d="M4 12h3m3 0h4m3 0h3" />,
   rectangle: <P d="M4 6h16v12H4z" />,

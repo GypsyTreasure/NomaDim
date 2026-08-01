@@ -82,6 +82,17 @@ export type Command =
       readonly payload: { sketchId: SketchId; entityIds: readonly EntityId[] };
     }
   | {
+      // Split lines by crossing lines (#6): the app pre-computes the plan (pure
+      // geometry lives in sketch/), this applies it as one undoable transaction.
+      readonly type: 'SplitSketchLine';
+      readonly payload: {
+        sketchId: SketchId;
+        removeEntityIds: readonly EntityId[];
+        addPoints: readonly SketchPoint[];
+        addEntities: readonly SketchEntity[];
+      };
+    }
+  | {
       readonly type: 'AddSketchDimension';
       readonly payload: { sketchId: SketchId; dimension: SketchDimension };
     }
@@ -353,6 +364,21 @@ export function applyCommand(
         points: before.points.filter((p) => referenced.has(p.id)),
       };
       return commitSketchEdit(state, 'Delete', before, after);
+    }
+    case 'SplitSketchLine': {
+      const found = requireSketch(state, command.payload.sketchId);
+      if (!found.ok) return found;
+      const before = found.value;
+      const doomed = new Set<string>(command.payload.removeEntityIds);
+      const after: Sketch = {
+        ...before,
+        points: [...before.points, ...command.payload.addPoints],
+        entities: [
+          ...before.entities.filter((e) => !doomed.has(e.id)),
+          ...command.payload.addEntities,
+        ],
+      };
+      return commitSketchEdit(state, 'Split', before, after);
     }
     case 'AddSketchDimension': {
       const found = requireSketch(state, command.payload.sketchId);

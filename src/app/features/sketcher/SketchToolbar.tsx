@@ -135,6 +135,15 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
             ))}
           </select>
         )}
+        <IconButton
+          icon="split"
+          label={t('sketch.tool.split')}
+          shortcut="T"
+          active={sketcher.tool === 'split'}
+          onClick={() => {
+            sketcher.setTool('split');
+          }}
+        />
       </div>
       <Divider />
       <div className={toolbarStyles.block}>

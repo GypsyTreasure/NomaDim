@@ -33,6 +33,7 @@ import {
   initialInputState,
   parseField,
   parsedValues,
+  planLineSplit,
   reduceInput,
   DEFAULT_DIMENSION_OFFSET_MM,
   SnapEngine,
@@ -577,6 +578,35 @@ export function useSketcher(): SketcherApi {
         setDimFirst(null);
         return;
       }
+      if (tool === 'split') {
+        // Pick the nearest line and divide it wherever other lines cross it,
+        // inserting shared joint points (#6). One click = one split.
+        const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        let bestId: EntityId | null = null;
+        let bestDist = tolMm;
+        for (const entity of evaluateSketch(current)) {
+          const ent = current.entities.find((e) => e.id === entity.entityId);
+          if (ent?.type !== 'line') continue;
+          const d = distanceToCurve(entity.curve, p);
+          if (d <= bestDist) {
+            bestDist = d;
+            bestId = entity.entityId;
+          }
+        }
+        if (!bestId) return;
+        const plan = planLineSplit(current, bestId);
+        if (!plan) return; // nothing crosses it — no-op
+        commandBus.dispatch({
+          type: 'SplitSketchLine',
+          payload: {
+            sketchId: current.id,
+            removeEntityIds: plan.removeEntityIds,
+            addPoints: plan.addPoints,
+            addEntities: plan.addEntities,
+          },
+        });
+        return;
+      }
       const snap = snapResult.snap;
       const spec =
         snap?.sourceRef.type === 'point'
@@ -793,6 +823,7 @@ export function useSketcher(): SketcherApi {
         b: 'spline',
         m: 'change',
         d: 'dimension',
+        t: 'split',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
       if (hotkey) {

@@ -300,6 +300,26 @@ describe('timeline XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(data);
   });
 
+  it('round-trips a multi-source CopyBody (#3 extraInstances)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        copyBodyOp({
+          translate: [5, 0, 2],
+          extraInstances: [
+            { sourceBodyId: body('b2'), bodyId: body('b3') },
+            { sourceBodyId: body('b4'), bodyId: body('b5') },
+          ],
+        }),
+      ],
+      rollbackIndex: 2,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
   it('round-trips Mirror and Pattern (P1 transform ops)', () => {
     const data: TimelineData = {
       ops: [

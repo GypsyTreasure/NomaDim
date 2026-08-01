@@ -270,6 +270,36 @@ describe('CopyBody rotation', () => {
     expect(bodies.has(bid('A'))).toBe(true);
     cache.freeFrom(0);
   });
+
+  it('copies MULTIPLE sources, each to its own produced body (#3)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    seedBox(bodies, 'A', 0);
+    seedBox(bodies, 'B', 20);
+    record(cache, 0, new Map(), bodies);
+
+    const op: CopyBodyOp = {
+      type: 'CopyBody',
+      id: 'c2' as CopyBodyOp['id'],
+      name: 'Copy',
+      suppressed: false,
+      sourceBodyId: bid('A'),
+      translate: [0, 0, 50],
+      rotate: [0, 0, 0],
+      bodyId: bid('CA'),
+      extraInstances: [{ sourceBodyId: bid('B'), bodyId: bid('CB') }],
+    };
+    const before = snapshotRefs(bodies);
+    executeCopyBody(ctx(bodies), op);
+    record(cache, 1, before, bodies);
+
+    // Two independent copies produced; both sources remain.
+    expect(volOf(bodies, 'CA')).toBeCloseTo(1000, 2);
+    expect(volOf(bodies, 'CB')).toBeCloseTo(1000, 2);
+    expect(bodies.has(bid('A'))).toBe(true);
+    expect(bodies.has(bid('B'))).toBe(true);
+    cache.freeFrom(0);
+  });
 });
 
 afterAll(() => {

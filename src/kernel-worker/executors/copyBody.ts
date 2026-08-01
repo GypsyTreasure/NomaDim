@@ -12,19 +12,25 @@ import { KernelExecError, type ExecCtx } from './types';
  */
 export function executeCopyBody(ctx: ExecCtx, op: CopyBodyOp): void {
   const { oc, bodies } = ctx;
-  const source = bodies.get(op.sourceBodyId);
-  if (!source) {
-    throw new KernelExecError('SOURCE_MISSING', `CopyBody source ${op.sourceBodyId} missing`);
+  // Copy each (source → produced) pair with the same transform (#3): the primary
+  // plus any extra instances. Each source stays owned by its producing delta.
+  const instances = [
+    { sourceBodyId: op.sourceBodyId, bodyId: op.bodyId },
+    ...(op.extraInstances ?? []),
+  ];
+  for (const inst of instances) {
+    const source = bodies.get(inst.sourceBodyId);
+    if (!source) {
+      throw new KernelExecError('SOURCE_MISSING', `CopyBody source ${inst.sourceBodyId} missing`);
+    }
+    const trsf = rigidTrsf(oc, op.translate, op.rotate);
+    const result = applyTrsf(oc, source, trsf);
+    trsf.delete();
+    if (result.IsNull()) {
+      result.delete();
+      throw new KernelExecError('COPY_FAILED', `CopyBody ${op.id} failed`);
+    }
+    trackShapeAllocation();
+    bodies.set(inst.bodyId, result);
   }
-
-  const trsf = rigidTrsf(oc, op.translate, op.rotate);
-  const result = applyTrsf(oc, source, trsf);
-  trsf.delete();
-
-  if (result.IsNull()) {
-    result.delete();
-    throw new KernelExecError('COPY_FAILED', `CopyBody ${op.id} failed`);
-  }
-  trackShapeAllocation();
-  bodies.set(op.bodyId, result);
 }

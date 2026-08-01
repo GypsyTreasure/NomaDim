@@ -1,5 +1,6 @@
 import { err, ok, ImportError, ValidationError, type BodyId, type OpId } from '../../core';
 import { boolAttr, numAttr, strAttr } from '../xml/xmlRaw';
+import { instanceChildren, parseInstances } from './bodyInstances';
 import type { OpDefinition } from './definition';
 import type { CopyBodyOp } from './types';
 
@@ -10,8 +11,13 @@ export const copyBodyOpDefinition: OpDefinition<CopyBodyOp> = {
   xmlTag: 'copyBody',
 
   validate(op) {
-    if (op.sourceBodyId === op.bodyId) {
-      return err(new ValidationError(`CopyBody "${op.id}" cannot copy onto itself`));
+    for (const inst of [
+      { sourceBodyId: op.sourceBodyId, bodyId: op.bodyId },
+      ...(op.extraInstances ?? []),
+    ]) {
+      if (inst.sourceBodyId === inst.bodyId) {
+        return err(new ValidationError(`CopyBody "${op.id}" cannot copy onto itself`));
+      }
     }
     if (op.translate.some((n) => !Number.isFinite(n))) {
       return err(new ValidationError(`CopyBody "${op.id}" has a non-finite translation`));
@@ -35,6 +41,7 @@ export const copyBodyOpDefinition: OpDefinition<CopyBodyOp> = {
         ry: op.rotate[1],
         rz: op.rotate[2],
       },
+      children: instanceChildren(op.extraInstances),
     };
   },
 
@@ -63,6 +70,7 @@ export const copyBodyOpDefinition: OpDefinition<CopyBodyOp> = {
     const rx = numAttr(raw, 'rx') ?? 0;
     const ry = numAttr(raw, 'ry') ?? 0;
     const rz = numAttr(raw, 'rz') ?? 0;
+    const extraInstances = parseInstances(raw);
     return ok({
       type: 'CopyBody',
       id: id as OpId,
@@ -72,13 +80,15 @@ export const copyBodyOpDefinition: OpDefinition<CopyBodyOp> = {
       translate: [tx, ty, tz],
       rotate: [rx, ry, rz],
       bodyId: body as BodyId,
+      ...(extraInstances ? { extraInstances } : {}),
     });
   },
 
   dependencies(op) {
+    const extras = op.extraInstances ?? [];
     return {
-      producesBodies: [op.bodyId],
-      consumesBodies: [op.sourceBodyId],
+      producesBodies: [op.bodyId, ...extras.map((i) => i.bodyId)],
+      consumesBodies: [op.sourceBodyId, ...extras.map((i) => i.sourceBodyId)],
       consumesSketch: null,
       producesSketch: null,
     };

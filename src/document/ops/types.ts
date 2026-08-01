@@ -147,6 +147,14 @@ export interface CombineOp extends OpBase {
  * evaluates it against the live BodyStateMap), so edits to earlier ops flow
  * into the copy while later ops do not. Optional XYZ translation (mm).
  */
+/** One extra (source → produced) body pair for a multi-source transform op
+ * (#3): the primary source keeps the op's own `sourceBodyId`/`bodyId`; each
+ * additional source carries its own stable produced body id here. */
+export interface BodyInstance {
+  readonly sourceBodyId: BodyId;
+  readonly bodyId: BodyId;
+}
+
 export interface CopyBodyOp extends OpBase {
   readonly type: 'CopyBody';
   readonly sourceBodyId: BodyId;
@@ -156,6 +164,9 @@ export interface CopyBodyOp extends OpBase {
   readonly rotate: readonly [number, number, number];
   /** Minted at creation — the produced copy, stable across regens (§8). */
   readonly bodyId: BodyId;
+  /** Additional source→produced pairs when copying multiple bodies at once (#3);
+   * absent for a single-body copy (back-compat). */
+  readonly extraInstances?: readonly BodyInstance[];
 }
 
 /** Mirror a body across a world origin plane (P1). Join fuses the reflection

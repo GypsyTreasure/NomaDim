@@ -33,6 +33,7 @@ import {
   initialInputState,
   parseField,
   parsedValues,
+  pickLineDimension,
   planLineSplit,
   reduceInput,
   DEFAULT_DIMENSION_OFFSET_MM,
@@ -519,6 +520,25 @@ export function useSketcher(): SketcherApi {
           }
           const radialEntity = current.entities.find((e) => e.id === radialId);
           if (!radialEntity || (radialEntity.type !== 'circle' && radialEntity.type !== 'arc')) {
+            // Line pick (#6c): no point/rim under the cursor → dimension the
+            // LENGTH of the nearest straight line in one click.
+            const linePick = pickLineDimension(current, dimTarget, tolMm, dimensionKindRef.current);
+            if (!linePick) return;
+            const existingLine = new Set<string>(current.dimensions.map((d) => d.id));
+            commandBus.dispatch({
+              type: 'AddSketchDimension',
+              payload: {
+                sketchId: current.id,
+                dimension: {
+                  id: createId<'DimensionId'>(existingLine),
+                  kind: linePick.kind,
+                  a: linePick.a,
+                  b: linePick.b,
+                  offset: DEFAULT_DIMENSION_OFFSET_MM,
+                },
+              },
+            });
+            setDimFirst(null);
             return;
           }
           const chosen = dimensionKindRef.current;

@@ -14,7 +14,15 @@ import {
   type PointId,
   type Vec2,
 } from '../core';
-import type { SketchDimension, SketchDimensionKind, SketchEntity } from '../document';
+import {
+  pointMap,
+  type Sketch,
+  type SketchDimension,
+  type SketchDimensionKind,
+  type SketchEntity,
+} from '../document';
+import { evaluateSketch } from './entities/curves';
+import { distanceToCurve } from './entities/queries';
 
 /**
  * Reference-dimension geometry (solver-free, ADR-0002). Every value is
@@ -35,6 +43,50 @@ export interface DimensionRender {
   readonly label: string;
   /** True when this dimension is the current selection (drawn highlighted). */
   readonly selected?: boolean;
+}
+
+/** Horizontal vs vertical from the span — AutoCAD's `auto` rule (dominant axis). */
+export function linearKindFromSpan(a: Vec2, b: Vec2): 'horizontal' | 'vertical' {
+  return Math.abs(b.x - a.x) >= Math.abs(b.y - a.y) ? 'horizontal' : 'vertical';
+}
+
+/** The Dim tool's kind setting: `auto` (resolve to H/V) or a concrete kind. */
+export type DimensionPickKind = 'auto' | SketchDimensionKind;
+
+/**
+ * Line-pick dimensioning (#6c): resolves the nearest straight line to `target`
+ * (within `tolMm`) into a length dimension between its two endpoints. `kind` is
+ * the tool setting; `auto` and the circle-only radius/diameter fall back to the
+ * H/V span rule. Pure — the app mints the id and dispatches AddSketchDimension.
+ */
+export function pickLineDimension(
+  sketch: Sketch,
+  target: Vec2,
+  tolMm: number,
+  kind: DimensionPickKind
+): { a: PointId; b: PointId; kind: SketchDimensionKind } | null {
+  let lineId: EntityId | null = null;
+  let best = tolMm;
+  for (const ev of evaluateSketch(sketch)) {
+    const ent = sketch.entities.find((e) => e.id === ev.entityId);
+    if (ent?.type !== 'line') continue;
+    const d = distanceToCurve(ev.curve, target);
+    if (d <= best) {
+      best = d;
+      lineId = ev.entityId;
+    }
+  }
+  const line = sketch.entities.find((e) => e.id === lineId);
+  if (line?.type !== 'line') return null;
+  const pts = pointMap(sketch);
+  const a = pts.get(line.start);
+  const b = pts.get(line.end);
+  if (!a || !b) return null;
+  const resolved =
+    kind === 'auto' || kind === 'radius' || kind === 'diameter'
+      ? linearKindFromSpan(vec2(a.x, a.y), vec2(b.x, b.y))
+      : kind;
+  return { a: line.start, b: line.end, kind: resolved };
 }
 
 /** Perpendicular distance (mm) from `p` to the segment a–b. */

@@ -38,13 +38,16 @@ test('phone: opening New Project from the menu keeps the menu open for the decis
   const page = await ctx.newPage();
   await page.goto('/app/');
 
-  // Build a body so New Project is enabled.
+  // Build a body so New Project is enabled. New Sketch stays visible; the
+  // create ops now live in the hamburger ribbon on phones (#5c), so open it
+  // to reach Extrude.
   await page.getByRole('button', { name: 'New Sketch' }).click();
   await page.getByTestId('plane-choice-XY').click();
   await page.keyboard.press('c');
   await page.keyboard.type('20');
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Finish Sketch' }).click();
+  await page.getByTestId('app-menu-toggle').click();
   await page.getByRole('button', { name: 'Extrude', exact: true }).click();
   await page.getByRole('dialog', { name: 'Extrude' }).getByRole('checkbox').first().check();
   await page.getByRole('button', { name: 'OK' }).click();

@@ -46,6 +46,7 @@ import { SettingsButton } from './features/admin/SettingsButton';
 import { ProjectsButton } from './features/projects/ProjectsButton';
 import { useFolderStore } from './features/projects/folderStore';
 import { IconButton } from './features/ui/IconButton';
+import { ToolbarGroup } from './features/ui/ToolbarGroup';
 import toolbarStyles from './features/ui/Toolbar.module.css';
 import { useEntitlementStore } from './store/entitlementStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
@@ -242,32 +243,46 @@ export function App(): React.JSX.Element {
             is present in both modes; View + the app-action menu are modeling. */}
         <div className={styles.headerActions} ref={appBarRef}>
           <div className={toolbarStyles.bar}>
-            <IconButton
-              icon="browser"
-              label={t('menu.browser')}
-              active={treeOpen}
-              ariaPressed={treeOpen}
-              testid="browser-toggle"
-              badge={
-                <span className={toolbarStyles.badge} data-testid="body-count">
-                  {liveBodyIds.length}
-                </span>
-              }
-              onClick={() => {
-                setTreeOpen((open) => !open);
-              }}
-            />
-            {!inSketch && (
+            <ToolbarGroup label={t('ribbon.view')}>
               <IconButton
-                icon="view"
-                label={t('menu.view')}
-                active={viewOpen}
-                ariaPressed={viewOpen}
-                testid="view-toggle"
+                icon="browser"
+                label={t('menu.browser')}
+                active={treeOpen}
+                ariaPressed={treeOpen}
+                testid="browser-toggle"
+                badge={
+                  <span className={toolbarStyles.badge} data-testid="body-count">
+                    {liveBodyIds.length}
+                  </span>
+                }
                 onClick={() => {
-                  setViewOpen((open) => !open);
+                  setTreeOpen((open) => !open);
                 }}
               />
+              {!inSketch && (
+                <IconButton
+                  icon="view"
+                  label={t('menu.view')}
+                  active={viewOpen}
+                  ariaPressed={viewOpen}
+                  testid="view-toggle"
+                  onClick={() => {
+                    setViewOpen((open) => !open);
+                  }}
+                />
+              )}
+            </ToolbarGroup>
+            {!inSketch && (
+              <ToolbarGroup label={t('ribbon.sketch')}>
+                <IconButton
+                  icon="newSketch"
+                  label={t('sketch.newSketch')}
+                  shortcut="N"
+                  primary
+                  testid="new-sketch"
+                  onClick={sketcher.newSketch}
+                />
+              </ToolbarGroup>
             )}
             {!inSketch && (
               <button
@@ -298,18 +313,14 @@ export function App(): React.JSX.Element {
               }`}
               data-testid="app-actions"
             >
-              {/* File block. */}
-              <div className={toolbarStyles.block}>
-                <NewProjectButton />
-                <DocumentIO />
-                <ImportStepButton />
-                <ExportStlButton />
-                <ProjectsButton />
-              </div>
+              {/* Create/Modify/Pattern ops, moved up onto the logo bar (#5c). */}
+              <CreateOpsBar timeline={timeline} />
               <span className={toolbarStyles.divider} aria-hidden="true" />
-              {/* Create + inspect block. */}
-              <div className={toolbarStyles.block}>
+              {/* Datum + Inspect. */}
+              <ToolbarGroup label={t('ribbon.datum')}>
                 <ConstructMenu />
+              </ToolbarGroup>
+              <ToolbarGroup label={t('ribbon.inspect')}>
                 <IconButton
                   icon="measure"
                   label={t('measure.toggle')}
@@ -318,10 +329,17 @@ export function App(): React.JSX.Element {
                   ariaPressed={measure.active}
                   onClick={measure.toggle}
                 />
-              </div>
+              </ToolbarGroup>
               <span className={toolbarStyles.divider} aria-hidden="true" />
-              {/* System block. */}
-              <div className={toolbarStyles.block}>
+              <ToolbarGroup label={t('ribbon.file')}>
+                <NewProjectButton />
+                <DocumentIO />
+                <ImportStepButton />
+                <ExportStlButton />
+                <ProjectsButton />
+              </ToolbarGroup>
+              <span className={toolbarStyles.divider} aria-hidden="true" />
+              <ToolbarGroup label={t('ribbon.system')}>
                 <SettingsButton />
                 <LicenseButton />
                 <IconButton
@@ -333,7 +351,7 @@ export function App(): React.JSX.Element {
                     setHelpOpen(true);
                   }}
                 />
-              </div>
+              </ToolbarGroup>
               {kernelError && (
                 <span className={sketcherStyles.summary} role="alert">
                   {t('kernel.status.error')} {kernelError}{' '}
@@ -351,13 +369,14 @@ export function App(): React.JSX.Element {
               )}
             </div>
           )}
-          <UndoRedo />
+          <ToolbarGroup label={t('ribbon.history')}>
+            <UndoRedo />
+          </ToolbarGroup>
         </div>
       </header>
       <main className={styles.viewportArea}>
-        {/* 3D-operation launcher docked at the top in modeling mode (#4); the
-            timeline history stays in the bottom dock. */}
-        {!inSketch && <CreateOpsBar timeline={timeline} onNewSketch={sketcher.newSketch} />}
+        {/* The create-op launcher now lives on the top logo bar as thematic
+            ribbon groups (#5c); the timeline history stays in the bottom dock. */}
         <div
           className={styles.canvasRegion}
           onDragOver={(e) => {

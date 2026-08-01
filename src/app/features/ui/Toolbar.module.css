@@ -23,19 +23,28 @@
   gap: calc(var(--grid-unit) * 0.15);
 }
 
-/* Two-row icon grid for the 3D-operation launcher (#4): icons flow top-to-
-   bottom into two rows, then wrap to the next column; scrolls horizontally on
-   overflow so it never pushes the viewport. */
-.createGrid {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(2, auto);
-  grid-auto-columns: max-content;
-  align-content: center;
+/* MS-Office-style named ribbon group (#5c): a row of icons over a caption. */
+.group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.groupRow {
+  display: flex;
+  align-items: flex-start;
   gap: calc(var(--grid-unit) * 0.15);
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+}
+
+.groupLabel {
+  font-family: var(--font-body);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-grey-muted);
+  pointer-events: none;
 }
 
 /* Hairline separator between blocks. */

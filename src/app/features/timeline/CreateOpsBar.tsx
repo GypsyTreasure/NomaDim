@@ -2,12 +2,12 @@ import type { OpType } from '../../../document';
 import { t } from '../../i18n/t';
 import { withShortcut } from '../help/shortcuts';
 import { IconButton } from '../ui/IconButton';
+import { ToolbarGroup } from '../ui/ToolbarGroup';
 import type { IconName } from '../icons/Icon';
 import { useOpAvailability } from './opAvailability';
-import { CREATABLE_OP_TYPES, OP_FEATURES } from './registry';
+import { OP_FEATURES } from './registry';
+import { CREATE_OP_GROUPS } from './createOpGroups';
 import type { TimelineApi } from './useTimeline';
-import toolbarStyles from '../ui/Toolbar.module.css';
-import styles from './Timeline.module.css';
 
 /** Create-op keyboard shortcut, shown as a tooltip (master rule, ADR-0032). */
 const OP_SHORTCUT: Partial<Record<OpType, string>> = {
@@ -38,50 +38,41 @@ const OP_ICON: Partial<Record<OpType, IconName>> = {
 };
 
 /**
- * 3D-operation launcher (ADR-0094): New Sketch + every creatable op as icon
- * buttons in a compact two-row grid, docked at the top (below the header) in
- * modeling mode. The timeline history stays at the bottom. Accessible names and
- * guard tooltips match the old text bar — an enabled op reads "Label (Shortcut)"
- * and a disabled one carries its unmet-precondition reason (M9, gui-hardening).
+ * The modeling create ops as named ribbon groups, rendered inline in the top
+ * bar beside the NomaDim logo (#5c) — no longer a separate strip below the
+ * header. New Sketch is a standalone primary button in the always-visible bar
+ * (App), so it survives the mobile hamburger collapse; each op keeps its
+ * accessible name and guard tooltip (enabled → "Label (Shortcut)", disabled →
+ * unmet-precondition reason, M9).
  */
-export function CreateOpsBar({
-  timeline,
-  onNewSketch,
-}: {
-  timeline: TimelineApi;
-  onNewSketch: () => void;
-}): React.JSX.Element {
+export function CreateOpsBar({ timeline }: { timeline: TimelineApi }): React.JSX.Element {
   const availabilityOf = useOpAvailability();
+  const opButton = (type: OpType): React.JSX.Element => {
+    const availability = availabilityOf(type);
+    const label = t(OP_FEATURES[type].labelKey);
+    const title = availability.available
+      ? withShortcut(label, OP_SHORTCUT[type])
+      : t(availability.reasonKey ?? 'guard.needSketch');
+    return (
+      <IconButton
+        key={type}
+        icon={OP_ICON[type] ?? 'extrude'}
+        label={label}
+        title={title}
+        disabled={!availability.available}
+        onClick={() => {
+          timeline.openCreate(type);
+        }}
+      />
+    );
+  };
   return (
-    <div className={styles.createRowTop} data-testid="create-ops-bar">
-      <div className={toolbarStyles.createGrid}>
-        <IconButton
-          icon="newSketch"
-          label={t('sketch.newSketch')}
-          shortcut="N"
-          primary
-          onClick={onNewSketch}
-        />
-        {CREATABLE_OP_TYPES.map((type) => {
-          const availability = availabilityOf(type);
-          const label = t(OP_FEATURES[type].labelKey);
-          const title = availability.available
-            ? withShortcut(label, OP_SHORTCUT[type])
-            : t(availability.reasonKey ?? 'guard.needSketch');
-          return (
-            <IconButton
-              key={type}
-              icon={OP_ICON[type] ?? 'extrude'}
-              label={label}
-              title={title}
-              disabled={!availability.available}
-              onClick={() => {
-                timeline.openCreate(type);
-              }}
-            />
-          );
-        })}
-      </div>
-    </div>
+    <>
+      {CREATE_OP_GROUPS.map((group) => (
+        <ToolbarGroup key={group.labelKey} label={t(group.labelKey)} testid="create-ops-bar">
+          {group.ops.map(opButton)}
+        </ToolbarGroup>
+      ))}
+    </>
   );
 }

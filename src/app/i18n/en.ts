@@ -31,6 +31,17 @@ export const en = {
   'menu.toggle': 'Menu',
   'menu.browser': 'Browser',
   'menu.view': 'View',
+  // MS-Office-style ribbon group captions (#5c, ADR-0108).
+  'ribbon.view': 'View',
+  'ribbon.sketch': 'Sketch',
+  'ribbon.create': 'Create',
+  'ribbon.modify': 'Modify',
+  'ribbon.pattern': 'Pattern',
+  'ribbon.datum': 'Datum',
+  'ribbon.inspect': 'Inspect',
+  'ribbon.file': 'File',
+  'ribbon.system': 'System',
+  'ribbon.history': 'History',
   'project.new': 'New Project',
   'project.new.confirm':
     'Starting a new project clears the current model and its saved copy. Export it first?',

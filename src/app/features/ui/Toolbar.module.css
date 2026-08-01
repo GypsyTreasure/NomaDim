@@ -48,15 +48,18 @@
   background-color: var(--color-hairline);
 }
 
-/* The core icon button: square, borderless, quiet until hovered. */
+/* The core icon button: a picture stacked over a 2–3-letter acronym caption
+   (#5b), borderless, quiet until hovered. */
 .iconBtn {
   position: relative;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
+  gap: 1px;
+  width: 42px;
+  min-height: 42px;
+  padding: 3px 2px;
   background-color: transparent;
   color: var(--color-panel-fg);
   border: var(--border-width) solid transparent;
@@ -66,6 +69,23 @@
     background-color var(--transition-fast),
     color var(--transition-fast),
     transform var(--transition-fast);
+}
+
+/* The acronym caption under the picture — small, muted, uppercase mono so it
+   reads as a tag, not prose. Inherits the button colour on hover/active. */
+.acr {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--color-grey-muted);
+  pointer-events: none;
+}
+
+.iconBtn:hover:not(:disabled) .acr,
+.iconBtnActive .acr,
+.iconBtnPrimary .acr {
+  color: inherit;
 }
 
 .iconBtn:hover:not(:disabled) {
@@ -120,11 +140,11 @@
   line-height: 1;
 }
 
-/* Touch targets grow on phones. */
+/* Touch targets grow on phones (min-height keeps the caption row). */
 @media (max-width: 560px) {
   .iconBtn {
     width: var(--control-h-touch);
-    height: var(--control-h-touch);
+    min-height: var(--control-h-touch);
   }
 }
 

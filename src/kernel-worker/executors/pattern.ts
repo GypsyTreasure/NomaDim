@@ -50,14 +50,18 @@ function circularTrsfs(oc: OpenCascadeInstance, op: PatternOp): gp_Trsf[] {
  * source (Join) via `applyBooleanResult` (heals too). `angleDeg` is the total
  * sweep across all instances (360° gives a full ring meeting the source).
  */
-export function executePattern(ctx: ExecCtx, op: PatternOp): void {
+/** Arrays one source, storing the fused instances as `producedBodyId` (NewBody)
+ * or fusing them into the source (Join). Shared by the multi-source loop (#3). */
+function patternOneSource(
+  ctx: ExecCtx,
+  op: PatternOp,
+  sourceBodyId: PatternOp['sourceBodyId'],
+  producedBodyId: PatternOp['bodyId']
+): void {
   const { oc, bodies } = ctx;
-  const source = bodies.get(op.sourceBodyId);
+  const source = bodies.get(sourceBodyId);
   if (!source) {
-    throw new KernelExecError('SOURCE_MISSING', `Pattern source ${op.sourceBodyId} missing`);
-  }
-  if (op.count < 2) {
-    throw new KernelExecError('PATTERN_FAILED', 'Pattern needs a count of at least 2.');
+    throw new KernelExecError('SOURCE_MISSING', `Pattern source ${sourceBodyId} missing`);
   }
 
   const trsfs = op.kind === 'linear' ? linearGridTrsfs(oc, op) : circularTrsfs(oc, op);
@@ -84,8 +88,22 @@ export function executePattern(ctx: ExecCtx, op: PatternOp): void {
   applyBooleanResult(
     ctx,
     op.operation === 'Join' ? 'Join' : 'NewBody',
-    op.bodyId,
-    op.operation === 'Join' ? [op.sourceBodyId] : [],
+    producedBodyId,
+    op.operation === 'Join' ? [sourceBodyId] : [],
     tool
   );
+}
+
+export function executePattern(ctx: ExecCtx, op: PatternOp): void {
+  if (op.count < 2) {
+    throw new KernelExecError('PATTERN_FAILED', 'Pattern needs a count of at least 2.');
+  }
+  // Array each source (primary + extras, #3) with the same pattern params.
+  const instances = [
+    { sourceBodyId: op.sourceBodyId, bodyId: op.bodyId },
+    ...(op.extraInstances ?? []),
+  ];
+  for (const inst of instances) {
+    patternOneSource(ctx, op, inst.sourceBodyId, inst.bodyId);
+  }
 }

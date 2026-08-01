@@ -1,5 +1,6 @@
 import { err, ok, ImportError, ValidationError, type BodyId, type OpId } from '../../core';
 import { boolAttr, numAttr, strAttr } from '../xml/xmlRaw';
+import { instanceChildren, parseInstances } from './bodyInstances';
 import type { OpDefinition } from './definition';
 import type { OriginAxis, PatternKind, PatternOp, TransformOperation } from './types';
 
@@ -17,8 +18,13 @@ export const patternOpDefinition: OpDefinition<PatternOp> = {
     if (!Number.isInteger(op.count) || op.count < 2) {
       return err(new ValidationError(`Pattern "${op.id}" needs a count of at least 2`));
     }
-    if (op.sourceBodyId === op.bodyId) {
-      return err(new ValidationError(`Pattern "${op.id}" cannot target its own body id`));
+    for (const inst of [
+      { sourceBodyId: op.sourceBodyId, bodyId: op.bodyId },
+      ...(op.extraInstances ?? []),
+    ]) {
+      if (inst.sourceBodyId === inst.bodyId) {
+        return err(new ValidationError(`Pattern "${op.id}" cannot target its own body id`));
+      }
     }
     // Grid directions 2/3 are integer counts ≥ 1 (1 = unused); the total number
     // of instances is capped so a runaway 50×50×50 can't lock up the kernel.
@@ -55,6 +61,7 @@ export const patternOpDefinition: OpDefinition<PatternOp> = {
         operation: op.operation,
         body: op.bodyId,
       },
+      children: instanceChildren(op.extraInstances),
     };
   },
 
@@ -117,13 +124,15 @@ export const patternOpDefinition: OpDefinition<PatternOp> = {
       axis3: axis3 as OriginAxis,
       operation: operation as TransformOperation,
       bodyId: body as BodyId,
+      ...(parseInstances(raw) ? { extraInstances: parseInstances(raw) } : {}),
     });
   },
 
   dependencies(op) {
+    const extras = op.extraInstances ?? [];
     return {
-      producesBodies: op.operation === 'Join' ? [] : [op.bodyId],
-      consumesBodies: [op.sourceBodyId],
+      producesBodies: op.operation === 'Join' ? [] : [op.bodyId, ...extras.map((i) => i.bodyId)],
+      consumesBodies: [op.sourceBodyId, ...extras.map((i) => i.sourceBodyId)],
       consumesSketch: null,
       producesSketch: null,
     };

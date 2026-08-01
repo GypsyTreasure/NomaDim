@@ -8,6 +8,7 @@ import {
   type OpId,
 } from '../../core';
 import { boolAttr, strAttr } from '../xml/xmlRaw';
+import { instanceChildren, parseInstances } from './bodyInstances';
 import type { OpDefinition } from './definition';
 import type { MirrorOp, OriginPlane, TransformOperation } from './types';
 
@@ -21,8 +22,13 @@ export const mirrorOpDefinition: OpDefinition<MirrorOp> = {
   xmlTag: 'mirror',
 
   validate(op) {
-    if (op.sourceBodyId === op.bodyId) {
-      return err(new ValidationError(`Mirror "${op.id}" cannot target its own body id`));
+    for (const inst of [
+      { sourceBodyId: op.sourceBodyId, bodyId: op.bodyId },
+      ...(op.extraInstances ?? []),
+    ]) {
+      if (inst.sourceBodyId === inst.bodyId) {
+        return err(new ValidationError(`Mirror "${op.id}" cannot target its own body id`));
+      }
     }
     return ok(undefined);
   },
@@ -41,6 +47,7 @@ export const mirrorOpDefinition: OpDefinition<MirrorOp> = {
         operation: op.operation,
         body: op.bodyId,
       },
+      children: instanceChildren(op.extraInstances),
     };
   },
 
@@ -66,6 +73,7 @@ export const mirrorOpDefinition: OpDefinition<MirrorOp> = {
       return err(new ImportError('Invalid timeline XML', undefined, 'malformed <mirror>'));
     }
     const datum = strAttr(raw, 'datum');
+    const extraInstances = parseInstances(raw);
     return ok({
       type: 'Mirror',
       id: id as OpId,
@@ -76,14 +84,17 @@ export const mirrorOpDefinition: OpDefinition<MirrorOp> = {
       ...(datum !== null ? { datumId: datum as DatumId } : {}),
       operation: operation as TransformOperation,
       bodyId: body as BodyId,
+      ...(extraInstances ? { extraInstances } : {}),
     });
   },
 
   dependencies(op) {
-    // Join fuses into the source (no new body); NewBody produces a fresh body.
+    // Join fuses into each source (no new body); NewBody produces a fresh body
+    // per source (#3).
+    const extras = op.extraInstances ?? [];
     return {
-      producesBodies: op.operation === 'Join' ? [] : [op.bodyId],
-      consumesBodies: [op.sourceBodyId],
+      producesBodies: op.operation === 'Join' ? [] : [op.bodyId, ...extras.map((i) => i.bodyId)],
+      consumesBodies: [op.sourceBodyId, ...extras.map((i) => i.sourceBodyId)],
       consumesSketch: null,
       producesSketch: null,
     };

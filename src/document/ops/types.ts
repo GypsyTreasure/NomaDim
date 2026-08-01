@@ -180,6 +180,8 @@ export interface MirrorOp extends OpBase {
   readonly datumId?: DatumId;
   readonly operation: TransformOperation;
   readonly bodyId: BodyId;
+  /** Additional source→produced pairs when mirroring multiple bodies (#3). */
+  readonly extraInstances?: readonly BodyInstance[];
 }
 
 export type PatternKind = 'linear' | 'circular';
@@ -214,6 +216,8 @@ export interface PatternOp extends OpBase {
   readonly axis3: OriginAxis;
   readonly operation: TransformOperation;
   readonly bodyId: BodyId;
+  /** Additional source→produced pairs when patterning multiple bodies (#3). */
+  readonly extraInstances?: readonly BodyInstance[];
 }
 
 /** An imported base body (roadmap P1): a parentless root body whose geometry is

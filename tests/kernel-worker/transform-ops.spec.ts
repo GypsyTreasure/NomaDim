@@ -106,6 +106,35 @@ describe('Mirror', () => {
     expect(volOf(bodies, 'A')).toBeCloseTo(2000, 2);
     cache.freeFrom(0);
   });
+
+  it('reflects MULTIPLE sources, each to its own new body (#3)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    seedBox(bodies, 'A', 5);
+    seedBox(bodies, 'B', 30);
+    record(cache, 0, new Map(), bodies);
+
+    const op: MirrorOp = {
+      type: 'Mirror',
+      id: 'm2' as MirrorOp['id'],
+      name: 'Mirror',
+      suppressed: false,
+      sourceBodyId: bid('A'),
+      plane: 'YZ',
+      operation: 'NewBody',
+      bodyId: bid('MA'),
+      extraInstances: [{ sourceBodyId: bid('B'), bodyId: bid('MB') }],
+    };
+    const before = snapshotRefs(bodies);
+    executeMirror(ctx(bodies), op);
+    record(cache, 1, before, bodies);
+
+    expect(volOf(bodies, 'MA')).toBeCloseTo(1000, 2);
+    expect(volOf(bodies, 'MB')).toBeCloseTo(1000, 2);
+    expect(bodies.has(bid('A'))).toBe(true);
+    expect(bodies.has(bid('B'))).toBe(true);
+    cache.freeFrom(0);
+  });
 });
 
 describe('Pattern', () => {
@@ -175,6 +204,46 @@ describe('Pattern', () => {
 
     // 2×2 disjoint cells of a 10³ box → four boxes → 4000.
     expect(volOf(bodies, 'A')).toBeCloseTo(4000, 2);
+    cache.freeFrom(0);
+  });
+
+  it('patterns MULTIPLE sources, each producing its own array (#3)', () => {
+    const bodies: BodyStateMap = new Map();
+    const cache = new ShapeCache();
+    seedBox(bodies, 'A', 0);
+    seedBox(bodies, 'B', 100);
+    record(cache, 0, new Map(), bodies);
+
+    const op: PatternOp = {
+      type: 'Pattern',
+      id: 'p3' as PatternOp['id'],
+      name: 'Pattern',
+      suppressed: false,
+      sourceBodyId: bid('A'),
+      kind: 'linear',
+      count: 3,
+      spacingMm: 20,
+      axis: 'X',
+      angleDeg: 0,
+      count2: 1,
+      spacingMm2: 0,
+      axis2: 'Y',
+      count3: 1,
+      spacingMm3: 0,
+      axis3: 'Z',
+      operation: 'NewBody',
+      bodyId: bid('PA'),
+      extraInstances: [{ sourceBodyId: bid('B'), bodyId: bid('PB') }],
+    };
+    const before = snapshotRefs(bodies);
+    executePattern(ctx(bodies), op);
+    record(cache, 1, before, bodies);
+
+    // Each NewBody array = (count-1) disjoint copies of a 10³ box → 2000.
+    expect(volOf(bodies, 'PA')).toBeCloseTo(2000, 2);
+    expect(volOf(bodies, 'PB')).toBeCloseTo(2000, 2);
+    expect(bodies.has(bid('A'))).toBe(true);
+    expect(bodies.has(bid('B'))).toBe(true);
     cache.freeFrom(0);
   });
 });

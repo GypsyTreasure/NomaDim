@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createId, type BodyId, type DatumId } from '../../../core';
 import {
   isDatumPlane,
+  type BodyInstance,
   type MirrorOp,
   type OriginPlane,
   type TransformOperation,
@@ -10,7 +11,7 @@ import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import { t } from '../../i18n/t';
 import type { OpDialogProps } from './dialogTypes';
-import { DialogFrame, SelectRow, type SelectOption } from './dialogShared';
+import { BodyChecklist, DialogFrame, SelectRow, type SelectOption } from './dialogShared';
 import { existingIds, mintName, targetOptions } from './dialogData';
 
 const ORIGIN_PLANE_OPTIONS: readonly SelectOption<string>[] = [
@@ -30,9 +31,12 @@ export function MirrorDialog({ editing, onClose }: OpDialogProps): React.JSX.Ele
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const prior = editing?.type === 'Mirror' ? editing : null;
 
-  const [sourceBodyId, setSourceBodyId] = useState<BodyId | null>(
-    prior?.sourceBodyId ?? liveBodyIds[0] ?? null
-  );
+  const priorSources = prior
+    ? [prior.sourceBodyId, ...(prior.extraInstances ?? []).map((i) => i.sourceBodyId)]
+    : liveBodyIds[0]
+      ? [liveBodyIds[0]]
+      : [];
+  const [sourceIds, setSourceIds] = useState<ReadonlySet<BodyId>>(new Set(priorSources));
   // "origin:XY" for an origin plane, "datum:<id>" for a construction plane.
   const [planeChoice, setPlaneChoice] = useState<string>(
     prior?.datumId ? `datum:${prior.datumId}` : `origin:${prior?.plane ?? 'XY'}`
@@ -46,24 +50,53 @@ export function MirrorDialog({ editing, onClose }: OpDialogProps): React.JSX.Ele
     return [...ORIGIN_PLANE_OPTIONS, ...datumOpts];
   }, [document.datums]);
 
-  const okDisabled = sourceBodyId === null;
+  const bodyOptions = targetOptions(document, liveBodyIds);
+  const effective = new Set([...sourceIds].filter((id) => bodyOptions.some((o) => o.value === id)));
+  const toggleSource = useCallback((id: BodyId): void => {
+    setSourceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const okDisabled = effective.size === 0;
 
   const submit = (): void => {
-    if (sourceBodyId === null) return;
-    const ids = existingIds(document);
+    if (effective.size === 0) return;
+    const idPool = existingIds(document);
+    const mintBody = (): BodyId => {
+      const id = createId<'BodyId'>(idPool);
+      idPool.add(id);
+      return id;
+    };
+    const priorBody = new Map<BodyId, BodyId>();
+    if (prior) {
+      priorBody.set(prior.sourceBodyId, prior.bodyId);
+      for (const i of prior.extraInstances ?? []) priorBody.set(i.sourceBodyId, i.bodyId);
+    }
+    const producedFor = (source: BodyId): BodyId => priorBody.get(source) ?? mintBody();
+    const [first, ...rest] = [...effective];
+    if (first === undefined) return;
+    const extraInstances: BodyInstance[] = rest.map((source) => ({
+      sourceBodyId: source,
+      bodyId: producedFor(source),
+    }));
     const isDatum = planeChoice.startsWith('datum:');
     const op: MirrorOp = {
       type: 'Mirror',
-      id: prior?.id ?? createId<'OpId'>(ids),
+      id: prior?.id ?? createId<'OpId'>(idPool),
       name: prior?.name ?? mintName(document, 'Mirror'),
       suppressed: prior?.suppressed ?? false,
-      sourceBodyId,
+      sourceBodyId: first,
       plane: isDatum
         ? (prior?.plane ?? 'XY')
         : (planeChoice.slice('origin:'.length) as OriginPlane),
       ...(isDatum ? { datumId: planeChoice.slice('datum:'.length) as DatumId } : {}),
       operation,
-      bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
+      bodyId: producedFor(first),
+      ...(extraInstances.length > 0 ? { extraInstances } : {}),
     };
     const result = commandBus.dispatch(
       prior ? { type: 'EditOp', payload: { op } } : { type: 'AddOp', payload: { op } }
@@ -73,11 +106,11 @@ export function MirrorDialog({ editing, onClose }: OpDialogProps): React.JSX.Ele
 
   return (
     <DialogFrame title={t('op.mirror')} okDisabled={okDisabled} onOk={submit} onCancel={onClose}>
-      <SelectRow<BodyId>
+      <BodyChecklist<BodyId>
         labelKey="dialog.source"
-        value={sourceBodyId ?? ('' as BodyId)}
-        options={targetOptions(document, liveBodyIds, prior?.bodyId)}
-        onChange={setSourceBodyId}
+        options={bodyOptions}
+        selected={effective}
+        onToggle={toggleSource}
       />
       <SelectRow<string>
         labelKey="dialog.plane"

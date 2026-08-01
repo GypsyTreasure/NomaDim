@@ -364,6 +364,64 @@ describe('timeline XML round-trip', () => {
     if (parsed.ok) expect(parsed.value).toEqual(data);
   });
 
+  it('round-trips a multi-source Mirror (#3 extraInstances)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        {
+          type: 'Mirror',
+          id: op('mi2'),
+          name: 'Mirror1',
+          suppressed: false,
+          sourceBodyId: body('b1'),
+          plane: 'YZ',
+          operation: 'NewBody',
+          bodyId: body('b2'),
+          extraInstances: [{ sourceBodyId: body('b3'), bodyId: body('b4') }],
+        },
+      ],
+      rollbackIndex: 2,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
+  it('round-trips a multi-source Pattern (#3 extraInstances)', () => {
+    const data: TimelineData = {
+      ops: [
+        sketchOp('so1', 's1'),
+        {
+          type: 'Pattern',
+          id: op('pa2'),
+          name: 'Pattern1',
+          suppressed: false,
+          sourceBodyId: body('b1'),
+          kind: 'linear',
+          count: 3,
+          spacingMm: 20,
+          axis: 'X',
+          angleDeg: 0,
+          count2: 1,
+          spacingMm2: 0,
+          axis2: 'Y',
+          count3: 1,
+          spacingMm3: 0,
+          axis3: 'Z',
+          operation: 'NewBody',
+          bodyId: body('b2'),
+          extraInstances: [{ sourceBodyId: body('b3'), bodyId: body('b4') }],
+        },
+      ],
+      rollbackIndex: 2,
+    };
+    const xml = timelineToXml(data);
+    const parsed = timelineFromXml(xml);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(data);
+  });
+
   it('parses a legacy single-axis pattern (no dir 2/3 attrs) to grid defaults (#4)', () => {
     const legacy =
       '<timeline rollback="1">' +

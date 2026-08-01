@@ -14,27 +14,32 @@ import { KernelExecError, type ExecCtx } from './types';
  */
 export function executeMirror(ctx: ExecCtx, op: MirrorOp, planeWorld?: WorldPlane): void {
   const { oc, bodies } = ctx;
-  const source = bodies.get(op.sourceBodyId);
-  if (!source) {
-    throw new KernelExecError('SOURCE_MISSING', `Mirror source ${op.sourceBodyId} missing`);
+  // Reflect each source (primary + extras, #3) across the same plane, then
+  // Join it into that source or store it as its own new body.
+  const instances = [
+    { sourceBodyId: op.sourceBodyId, bodyId: op.bodyId },
+    ...(op.extraInstances ?? []),
+  ];
+  for (const inst of instances) {
+    const source = bodies.get(inst.sourceBodyId);
+    if (!source) {
+      throw new KernelExecError('SOURCE_MISSING', `Mirror source ${inst.sourceBodyId} missing`);
+    }
+    const trsf = planeWorld
+      ? mirrorPlaneTrsf(oc, planeWorld.origin, planeWorld.normal)
+      : mirrorTrsf(oc, op.plane);
+    const reflected = applyTrsf(oc, source, trsf);
+    trsf.delete();
+    if (reflected.IsNull()) {
+      reflected.delete();
+      throw new KernelExecError('MIRROR_FAILED', `Mirror ${op.id} failed`);
+    }
+    applyBooleanResult(
+      ctx,
+      op.operation === 'Join' ? 'Join' : 'NewBody',
+      inst.bodyId,
+      op.operation === 'Join' ? [inst.sourceBodyId] : [],
+      reflected
+    );
   }
-
-  const trsf = planeWorld
-    ? mirrorPlaneTrsf(oc, planeWorld.origin, planeWorld.normal)
-    : mirrorTrsf(oc, op.plane);
-  const reflected = applyTrsf(oc, source, trsf);
-  trsf.delete();
-  if (reflected.IsNull()) {
-    reflected.delete();
-    throw new KernelExecError('MIRROR_FAILED', `Mirror ${op.id} failed`);
-  }
-
-  // Join → fuse into the source id; NewBody → the reflection is its own body.
-  applyBooleanResult(
-    ctx,
-    op.operation === 'Join' ? 'Join' : 'NewBody',
-    op.bodyId,
-    op.operation === 'Join' ? [op.sourceBodyId] : [],
-    reflected
-  );
 }

@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { createId, type BodyId } from '../../../core';
-import type { OriginAxis, PatternKind, PatternOp, TransformOperation } from '../../../document';
+import type {
+  BodyInstance,
+  OriginAxis,
+  PatternKind,
+  PatternOp,
+  TransformOperation,
+} from '../../../document';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
 import { useKernelStore } from '../../store/kernelStore';
 import { t } from '../../i18n/t';
 import type { OpDialogProps } from './dialogTypes';
-import { DialogFrame, NumberRow, SelectRow, type SelectOption } from './dialogShared';
+import {
+  BodyChecklist,
+  DialogFrame,
+  NumberRow,
+  SelectRow,
+  type SelectOption,
+} from './dialogShared';
 import { existingIds, mintName, targetOptions } from './dialogData';
 
 const KIND_OPTIONS: readonly SelectOption<PatternKind>[] = [
@@ -28,9 +40,12 @@ export function PatternDialog({ editing, onClose }: OpDialogProps): React.JSX.El
   const liveBodyIds = useKernelStore((s) => s.liveBodyIds);
   const prior = editing?.type === 'Pattern' ? editing : null;
 
-  const [sourceBodyId, setSourceBodyId] = useState<BodyId | null>(
-    prior?.sourceBodyId ?? liveBodyIds[0] ?? null
-  );
+  const priorSources = prior
+    ? [prior.sourceBodyId, ...(prior.extraInstances ?? []).map((i) => i.sourceBodyId)]
+    : liveBodyIds[0]
+      ? [liveBodyIds[0]]
+      : [];
+  const [sourceIds, setSourceIds] = useState<ReadonlySet<BodyId>>(new Set(priorSources));
   const [kind, setKind] = useState<PatternKind>(prior?.kind ?? 'linear');
   const [count, setCount] = useState(prior?.count ?? 3);
   const [spacingMm, setSpacingMm] = useState(prior?.spacingMm ?? 20);
@@ -51,8 +66,19 @@ export function PatternDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       !Number.isInteger(count3) ||
       count3 < 1 ||
       count * count2 * count3 > 1000);
+  const bodyOptions = targetOptions(document, liveBodyIds);
+  const effective = new Set([...sourceIds].filter((id) => bodyOptions.some((o) => o.value === id)));
+  const toggleSource = useCallback((id: BodyId): void => {
+    setSourceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const okDisabled =
-    sourceBodyId === null ||
+    effective.size === 0 ||
     !Number.isInteger(count) ||
     count < 2 ||
     gridInvalid ||
@@ -60,14 +86,31 @@ export function PatternDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     (kind === 'circular' && !(Math.abs(angleDeg) > 0));
 
   const submit = (): void => {
-    if (sourceBodyId === null) return;
-    const ids = existingIds(document);
+    if (effective.size === 0) return;
+    const idPool = existingIds(document);
+    const mintBody = (): BodyId => {
+      const id = createId<'BodyId'>(idPool);
+      idPool.add(id);
+      return id;
+    };
+    const priorBody = new Map<BodyId, BodyId>();
+    if (prior) {
+      priorBody.set(prior.sourceBodyId, prior.bodyId);
+      for (const i of prior.extraInstances ?? []) priorBody.set(i.sourceBodyId, i.bodyId);
+    }
+    const producedFor = (source: BodyId): BodyId => priorBody.get(source) ?? mintBody();
+    const [first, ...rest] = [...effective];
+    if (first === undefined) return;
+    const extraInstances: BodyInstance[] = rest.map((source) => ({
+      sourceBodyId: source,
+      bodyId: producedFor(source),
+    }));
     const op: PatternOp = {
       type: 'Pattern',
-      id: prior?.id ?? createId<'OpId'>(ids),
+      id: prior?.id ?? createId<'OpId'>(idPool),
       name: prior?.name ?? mintName(document, 'Pattern'),
       suppressed: prior?.suppressed ?? false,
-      sourceBodyId,
+      sourceBodyId: first,
       kind,
       count,
       spacingMm,
@@ -80,7 +123,8 @@ export function PatternDialog({ editing, onClose }: OpDialogProps): React.JSX.El
       spacingMm3,
       axis3,
       operation,
-      bodyId: prior?.bodyId ?? createId<'BodyId'>(ids),
+      bodyId: producedFor(first),
+      ...(extraInstances.length > 0 ? { extraInstances } : {}),
     };
     const result = commandBus.dispatch(
       prior ? { type: 'EditOp', payload: { op } } : { type: 'AddOp', payload: { op } }
@@ -90,11 +134,11 @@ export function PatternDialog({ editing, onClose }: OpDialogProps): React.JSX.El
 
   return (
     <DialogFrame title={t('op.pattern')} okDisabled={okDisabled} onOk={submit} onCancel={onClose}>
-      <SelectRow<BodyId>
+      <BodyChecklist<BodyId>
         labelKey="dialog.source"
-        value={sourceBodyId ?? ('' as BodyId)}
-        options={targetOptions(document, liveBodyIds, prior?.bodyId)}
-        onChange={setSourceBodyId}
+        options={bodyOptions}
+        selected={effective}
+        onToggle={toggleSource}
       />
       <SelectRow<PatternKind>
         labelKey="dialog.pattern.kind"

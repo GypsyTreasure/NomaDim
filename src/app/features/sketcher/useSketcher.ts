@@ -41,6 +41,7 @@ import {
   type DimensionRender,
   type NumericInputState,
   type SnapResult,
+  type SnapKind,
   type SketchToolId,
 } from '../../../sketch';
 import {
@@ -229,6 +230,7 @@ export function useSketcher(): SketcherApi {
   const activeSketchId = useSessionStore((s) => s.activeSketchId);
   const activeTool = useSessionStore((s) => s.activeTool);
   const snapEnabled = useSessionStore((s) => s.snapEnabled);
+  const orthoEnabled = useSessionStore((s) => s.orthoEnabled);
   const selectedEntityIds = useSessionStore((s) => s.selectedEntityIds);
   const selectedDimensionIds = useSessionStore((s) => s.selectedDimensionIds);
 
@@ -338,6 +340,11 @@ export function useSketcher(): SketcherApi {
 
   const snapResult: SnapResult = useMemo(() => {
     if (!sketch || !snapEnabled || ctrlHeld) return { snap: null, guides: [] };
+    // Ortho off (#4): suppress the horizontal/vertical alignment guides + their
+    // snap candidates (and the H∩V corner), leaving point/parallel/tangent snap.
+    const disabledKinds = orthoEnabled
+      ? undefined
+      : new Set<SnapKind>(['align-h', 'align-v', 'guide-intersection']);
     return snapEngine.query({
       sketch,
       evaluated,
@@ -347,8 +354,19 @@ export function useSketcher(): SketcherApi {
       gridSpacingMm: GRID_SPACING_MM,
       anchor: toolState.chainAnchor?.p ?? toolState.clicks[toolState.clicks.length - 1]?.p,
       extraSnapPoints: sectionSnapPoints,
+      disabledKinds,
     });
-  }, [sketch, evaluated, cursor, pxPerMm, snapEnabled, ctrlHeld, toolState, sectionSnapPoints]);
+  }, [
+    sketch,
+    evaluated,
+    cursor,
+    pxPerMm,
+    snapEnabled,
+    orthoEnabled,
+    ctrlHeld,
+    toolState,
+    sectionSnapPoints,
+  ]);
 
   const effectiveCursor = snapResult.snap?.point ?? cursor;
   const typedValues = useMemo(() => parsedValues(inputState), [inputState]);
@@ -808,6 +826,11 @@ export function useSketcher(): SketcherApi {
       if (event.key === 'q' || event.key === 'Q') {
         const s = useSessionStore.getState();
         s.setSnapEnabled(!s.snapEnabled);
+        return;
+      }
+      if (event.key === 'o' || event.key === 'O') {
+        const s = useSessionStore.getState();
+        s.setOrthoEnabled(!s.orthoEnabled); // Ortho H/V snapping toggle (#4)
         return;
       }
       if (event.key === 'f' || event.key === 'F') {

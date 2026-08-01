@@ -76,6 +76,8 @@ const Divider = (): React.JSX.Element => (
 export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JSX.Element {
   const snapEnabled = useSessionStore((s) => s.snapEnabled);
   const setSnapEnabled = useSessionStore((s) => s.setSnapEnabled);
+  const orthoEnabled = useSessionStore((s) => s.orthoEnabled);
+  const setOrthoEnabled = useSessionStore((s) => s.setOrthoEnabled);
 
   return (
     <div className={styles.toolbar}>
@@ -178,6 +180,17 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
           ariaPressed={snapEnabled}
           onClick={() => {
             setSnapEnabled(!snapEnabled);
+          }}
+        />
+        <IconButton
+          icon="ortho"
+          label={t('sketch.ortho')}
+          shortcut="O"
+          active={orthoEnabled}
+          ariaPressed={orthoEnabled}
+          testid="sketch-ortho"
+          onClick={() => {
+            setOrthoEnabled(!orthoEnabled);
           }}
         />
         <IconButton

@@ -108,9 +108,10 @@
    with progress bar"). A thin top-pinned bar with an indeterminate sweep,
    shown until the first regen makes the kernel ready. */
 .kernelLoading {
-  position: fixed;
-  top: 0;
-  left: 0;
+  /* In-flow first row of the shell (#1): it sits ABOVE the header and pushes it
+     down instead of overlaying and hiding the menu icons. Transient — removed
+     once the kernel is ready. */
+  flex: 0 0 auto;
   z-index: 40;
   display: flex;
   gap: 10px;

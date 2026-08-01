@@ -1,12 +1,17 @@
+/* Fixed to the viewport (not absolute): the panel is mounted deep inside the
+   header's app-actions dropdown, so an absolute backdrop was confined to that
+   small positioned ancestor — clipped to a ~40px strip on desktop (looked
+   "empty") and trapped inside the scrolling dropdown on mobile. Fixed matches
+   the shared DialogFrame backdrop and always covers the whole screen. */
 .backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--grid-unit);
   background-color: var(--color-scrim);
-  z-index: 10;
+  z-index: 60;
 }
 
 .panel {

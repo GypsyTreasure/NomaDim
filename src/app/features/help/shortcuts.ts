@@ -108,6 +108,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'T', desc: 'help.tool.split' },
       { keys: 'X', desc: 'help.construction' },
       { keys: 'Q', desc: 'help.snap' },
+      { keys: 'O', desc: 'help.ortho' },
       { keys: 'J', desc: 'help.intersect' },
       { keys: 'K', desc: 'help.sketchMirror' },
       { keys: 'Shift+K', desc: 'help.sketchMirrorY' },

@@ -38,6 +38,9 @@ interface SessionStore {
   /** Selected reference dimensions (mutually exclusive with entity selection). */
   readonly selectedDimensionIds: readonly DimensionId[];
   readonly snapEnabled: boolean;
+  /** Ortho: horizontal/vertical alignment snapping while sketching (#4). On by
+   * default; a toolbar toggle / "O" turns it off so lines go free-angle. */
+  readonly orthoEnabled: boolean;
   /** True while a Fillet/Chamfer dialog is in edge-pick mode (F4). */
   readonly edgePicking: boolean;
   /** Body whose edges are pickable (scopes the viewport highlight). */
@@ -62,6 +65,7 @@ interface SessionStore {
   readonly setSelection: (entityIds: readonly EntityId[]) => void;
   readonly setSelectedDimensions: (dimensionIds: readonly DimensionId[]) => void;
   readonly setSnapEnabled: (enabled: boolean) => void;
+  readonly setOrthoEnabled: (enabled: boolean) => void;
   readonly setEdgePicking: (on: boolean) => void;
   readonly setEdgePickBodyId: (bodyId: BodyId | null) => void;
   readonly setPickedEdges: (edges: readonly EdgeFingerprint[]) => void;
@@ -80,6 +84,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   selectedEntityIds: [],
   selectedDimensionIds: [],
   snapEnabled: true,
+  orthoEnabled: true,
   edgePicking: false,
   edgePickBodyId: null,
   pickedEdges: [],
@@ -120,6 +125,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
   },
   setSnapEnabled: (enabled) => {
     set({ snapEnabled: enabled });
+  },
+  setOrthoEnabled: (enabled) => {
+    set({ orthoEnabled: enabled });
   },
   setEdgePicking: (on) => {
     set({ edgePicking: on });

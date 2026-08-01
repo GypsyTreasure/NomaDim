@@ -144,6 +144,20 @@ describe('SnapEngine guides', () => {
     expect(result.snap && nearlyEqualVec(result.snap.point, vec2(0, 10))).toBe(true);
   });
 
+  it('ortho off (#4): the H/V kind set drops alignment guides, candidates, and the corner', () => {
+    // Same kinds the Ortho toggle disables when orthoEnabled === false.
+    const orthoOff = new Set<SnapKind>(['align-h', 'align-v', 'guide-intersection']);
+    // Vertical-alignment spot: no longer snaps or draws a guide.
+    const v = engine.query(makeCtx(vec2(10.3, 20), { gridSpacingMm: 0, disabledKinds: orthoOff }));
+    expect(v.snap).toBeNull();
+    expect(v.guides.some((g) => g.kind === 'align-v' || g.kind === 'align-h')).toBe(false);
+    // Corner spot: no longer resolves to guide-intersection.
+    const corner = engine.query(
+      makeCtx(vec2(0.2, 10.2), { gridSpacingMm: 0, disabledKinds: orthoOff })
+    );
+    expect(corner.snap?.kind ?? null).not.toBe('guide-intersection');
+  });
+
   /** Fixture plus a 45° diagonal so direction guides aren't degenerate with axis alignment. */
   function withDiagonal(): Sketch {
     const sketch = fixtureSketch();

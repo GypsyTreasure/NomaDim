@@ -41,6 +41,7 @@ export type IconName =
   | 'spline'
   | 'construction'
   | 'snap'
+  | 'ortho'
   | 'intersect'
   | 'delete'
   | 'finish'
@@ -134,6 +135,8 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   spline: <P d="M3 17c4 0 5-10 9-10s5 10 9 10" />,
   construction: <P d="M4 8h4M12 8h4M20 8v4M20 16h-4M12 16H8M4 16v-4M4 12v0" />,
   snap: <P d="M6 4v7a6 6 0 0 0 12 0V4M6 8h3m6 0h3" />,
+  // Right-angle "L" with a corner square — the horizontal/vertical ortho lock (#4).
+  ortho: <P d="M6 4v14h14M6 13h5v5" />,
   intersect: <P d="M9 4a6 6 0 0 0 0 16M15 4a6 6 0 0 1 0 16M9 12h6" />,
   delete: <P d="M5 7h14M10 7V5h4v2m4 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7m4 4v6m4-6v6" />,
   finish: <P d="m4 12 5 5L20 6" />,

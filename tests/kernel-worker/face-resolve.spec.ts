@@ -111,6 +111,33 @@ describe('resolveSketchFace', () => {
     freeBodies(bodies);
   });
 
+  it('disambiguates a shared-edge pick by the ray normal (#2)', () => {
+    const bodies: BodyStateMap = new Map();
+    makeBox(bodies);
+    const box = bodies.get(bid('B'));
+    if (!box) return;
+    // [20,10,10] is exactly on the edge shared by the top (+Z) and side (+X)
+    // faces — both are 0 mm from the pick, so only the ray normal can decide.
+    const edge: [number, number, number] = [20, 10, 10];
+    const top = resolveSketchFace(oc, box, edge, [0, 0, 1]);
+    expect(top?.normal[2]).toBeCloseTo(1, 5);
+    const side = resolveSketchFace(oc, box, edge, [1, 0, 0]);
+    expect(Math.abs(side?.normal[0] ?? 0)).toBeCloseTo(1, 5);
+    freeBodies(bodies);
+  });
+
+  it('orients axes Fusion-style: up follows world +Z on a wall, +Y on top (#5)', () => {
+    const bodies: BodyStateMap = new Map();
+    makeBox(bodies);
+    const box = bodies.get(bid('B'));
+    if (!box) return;
+    const side = resolveSketchFace(oc, box, [20, 10, 5], [1, 0, 0]);
+    expect(side?.yAxis[2]).toBeCloseTo(1, 5); // sketch "up" = world +Z on a vertical face
+    const top = resolveSketchFace(oc, box, [10, 10, 10], [0, 0, 1]);
+    expect(top?.yAxis[1]).toBeCloseTo(1, 5); // sketch "up" = world +Y on the top face
+    freeBodies(bodies);
+  });
+
   it('frees every OCCT handle (R8)', () => {
     expect(getLiveShapeCount()).toBe(0);
   });

@@ -104,7 +104,11 @@ export interface MeasureProps {
 
 /** Active while choosing a body face to sketch on (F2 sketch-on-face). */
 export interface FacePickProps {
-  readonly onPick: (bodyId: BodyId, point: readonly [number, number, number]) => void;
+  readonly onPick: (
+    bodyId: BodyId,
+    point: readonly [number, number, number],
+    normal: readonly [number, number, number] | null
+  ) => void;
 }
 
 /** Per-body render style from the browser tree (F8). */
@@ -697,16 +701,24 @@ export function Viewport({
     // Raycast a body mesh → its BodyId AND the world hit point (face picking).
     const raycastBodyHit = (
       event: PointerEvent
-    ): { bodyId: BodyId; point: [number, number, number] } | null => {
+    ): {
+      bodyId: BodyId;
+      point: [number, number, number];
+      normal: [number, number, number] | null;
+    } | null => {
       const group = bodyGroupRef.current;
       if (!group) return null;
       raycaster.setFromCamera(ndcOf(event), camera);
       const hit = raycaster.intersectObjects(group.children, false)[0];
       const name = hit?.object.name ?? '';
       if (!hit || !name.startsWith('Body:')) return null;
+      // The hit triangle's world normal disambiguates faces at a shared edge (#2).
+      // Bodies render at identity, so the local face normal is already world.
+      const fn = hit.face?.normal ?? null;
       return {
         bodyId: name.slice('Body:'.length) as BodyId,
         point: [hit.point.x, hit.point.y, hit.point.z],
+        normal: fn ? [fn.x, fn.y, fn.z] : null,
       };
     };
 
@@ -848,7 +860,7 @@ export function Viewport({
       const face = facePickRef.current;
       if (face) {
         const hit = raycastBodyHit(event);
-        if (hit) face.onPick(hit.bodyId, hit.point);
+        if (hit) face.onPick(hit.bodyId, hit.point, hit.normal);
         return;
       }
       // While an op dialog is open, a click on a highlighted profile region in

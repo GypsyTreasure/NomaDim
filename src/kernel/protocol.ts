@@ -160,7 +160,15 @@ export type KernelRequest =
   | { id: ReqId; kind: 'init'; wasmBinary?: ArrayBuffer }
   | { id: ReqId; kind: 'regen'; generation: number; fromIndex: number; plan: RegenPlan }
   | { id: ReqId; kind: 'bodyEdges'; bodyIds: BodyId[] }
-  | { id: ReqId; kind: 'resolveFace'; bodyId: BodyId; point: readonly [number, number, number] }
+  | {
+      id: ReqId;
+      kind: 'resolveFace';
+      bodyId: BodyId;
+      point: readonly [number, number, number];
+      // World-space ray normal at the pick, used to disambiguate faces meeting
+      // at a shared edge (#2). Optional for back-compat.
+      normal?: readonly [number, number, number];
+    }
   | { id: ReqId; kind: 'tessellate'; bodyIds: BodyId[]; quality: MeshQuality }
   | {
       id: ReqId;

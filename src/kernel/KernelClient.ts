@@ -116,9 +116,16 @@ export class KernelClient {
   /** Resolves the planar face under a picked world point → a sketch plane (F2 on-face). */
   async resolveFace(
     bodyId: BodyId,
-    point: readonly [number, number, number]
+    point: readonly [number, number, number],
+    normal?: readonly [number, number, number]
   ): Promise<FacePlaneResult | null> {
-    const response = await this.send({ id: this.nextId(), kind: 'resolveFace', bodyId, point });
+    const response = await this.send({
+      id: this.nextId(),
+      kind: 'resolveFace',
+      bodyId,
+      point,
+      normal,
+    });
     if (response.kind === 'faceResolved') {
       return response.face;
     }

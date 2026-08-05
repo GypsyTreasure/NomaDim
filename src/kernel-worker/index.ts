@@ -275,7 +275,7 @@ async function handleRequest(request: KernelRequest): Promise<void> {
       case 'resolveFace': {
         const oc = await ensureOcct();
         const shape = bodies.get(request.bodyId);
-        const face = shape ? resolveSketchFace(oc, shape, request.point) : null;
+        const face = shape ? resolveSketchFace(oc, shape, request.point, request.normal) : null;
         respond({ id: request.id, kind: 'faceResolved', face });
         return;
       }

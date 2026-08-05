@@ -165,8 +165,9 @@ export function getKernelClient(): KernelClient | null {
  */
 export async function resolveSketchFace(
   bodyId: BodyId,
-  point: readonly [number, number, number]
+  point: readonly [number, number, number],
+  normal?: readonly [number, number, number]
 ): Promise<FacePlaneResult | null> {
   if (!client) return null;
-  return client.resolveFace(bodyId, point);
+  return client.resolveFace(bodyId, point, normal);
 }

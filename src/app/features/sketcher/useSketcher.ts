@@ -198,7 +198,11 @@ export interface SketcherApi {
   readonly cancelPlaneChoice: () => void;
   readonly beginFacePick: () => void;
   readonly cancelFacePick: () => void;
-  readonly pickFace: (bodyId: BodyId, point: readonly [number, number, number]) => void;
+  readonly pickFace: (
+    bodyId: BodyId,
+    point: readonly [number, number, number],
+    normal: readonly [number, number, number] | null
+  ) => void;
   readonly finishSketch: () => void;
   /** Import SVG/DXF reference geometry into the active sketch (#2). */
   readonly importReference: (fileName: string, text: string) => void;
@@ -1087,8 +1091,12 @@ export function useSketcher(): SketcherApi {
   }, []);
 
   const pickFace = useCallback(
-    (bodyId: BodyId, point: readonly [number, number, number]) => {
-      void resolveSketchFace(bodyId, point).then((face) => {
+    (
+      bodyId: BodyId,
+      point: readonly [number, number, number],
+      normal: readonly [number, number, number] | null
+    ) => {
+      void resolveSketchFace(bodyId, point, normal ?? undefined).then((face) => {
         if (!face) {
           setFaceError(t('sketch.facePickHint'));
           return;

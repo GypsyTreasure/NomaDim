@@ -201,6 +201,26 @@ const EDGE_COLOR = 0x0d1b2a; // navy
 const EDGE_PICKED_COLOR = 0x1a6b5a; // teal
 const EDGE_HOVER_COLOR = 0x2fa78d; // bright teal
 const EDGE_PICK_THRESHOLD_MM = 2;
+/** Screen-space edge-pick tolerance (#3): an edge counts if its projected line
+    runs within this many CSS pixels of the cursor. */
+const EDGE_PICK_PX = 10;
+
+/** Distance in pixels from point (px,py) to segment (ax,ay)-(bx,by). */
+function pointSegmentDistancePx(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  const t = lenSq > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
 const ORBIT_STEP_RAD = 0.3; // ~17° per orbit-widget nudge (#8)
 const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (tokens brand teal)
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
@@ -644,13 +664,47 @@ export function Viewport({
       );
     };
 
+    // Pick the edge whose projected polyline runs CLOSEST to the cursor in
+    // screen pixels (#3), not the world-space ray hit nearest the camera — so
+    // the edge under the arrow TIP is selected, precisely and independent of
+    // zoom/depth. Falls within EDGE_PICK_PX of the cursor to count.
     const raycastEdge = (event: PointerEvent): THREE.Line | null => {
       const group = edgeGroupRef.current;
       if (!group?.visible) return null;
-      raycaster.setFromCamera(ndcOf(event), camera);
-      const hits = raycaster.intersectObjects(group.children, false);
-      const line = hits[0]?.object;
-      return line instanceof THREE.Line ? line : null;
+      const rect = overlayCanvas.getBoundingClientRect();
+      const cx = event.clientX - rect.left;
+      const cy = event.clientY - rect.top;
+      const a = new THREE.Vector3();
+      const b = new THREE.Vector3();
+      const toScreen = (v: THREE.Vector3): { x: number; y: number; behind: boolean } => {
+        v.project(camera);
+        return {
+          x: ((v.x + 1) / 2) * rect.width,
+          y: ((1 - v.y) / 2) * rect.height,
+          behind: v.z > 1,
+        };
+      };
+      let best: THREE.Line | null = null;
+      let bestDist = EDGE_PICK_PX;
+      for (const child of group.children) {
+        if (!(child instanceof THREE.Line)) continue;
+        const geom = child.geometry as THREE.BufferGeometry;
+        const pos = geom.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (!pos) continue;
+        for (let i = 0; i + 1 < pos.count; i += 1) {
+          a.fromBufferAttribute(pos, i).applyMatrix4(child.matrixWorld);
+          b.fromBufferAttribute(pos, i + 1).applyMatrix4(child.matrixWorld);
+          const sa = toScreen(a);
+          const sb = toScreen(b);
+          if (sa.behind || sb.behind) continue;
+          const d = pointSegmentDistancePx(cx, cy, sa.x, sa.y, sb.x, sb.y);
+          if (d < bestDist) {
+            bestDist = d;
+            best = child;
+          }
+        }
+      }
+      return best;
     };
 
     const highlightHover = (hovered: THREE.Line | null): void => {

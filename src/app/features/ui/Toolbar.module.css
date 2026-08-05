@@ -3,17 +3,14 @@
    like system shared by the modeling top bar and the sketch dock. Colours are
    tokens only (no hardcoded values). */
 
-/* A floating cluster of control blocks. */
+/* A cluster of control blocks. Flat like the sketch dock (#1) — the buttons sit
+   directly on the header surface, with no rounded pill outline around them. */
 .bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--grid-unit) * 0.25);
   padding: calc(var(--grid-unit) * 0.35);
-  background-color: var(--color-panel-bg);
-  border: var(--border-width) solid var(--color-hairline);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-md);
 }
 
 /* A group of related icon buttons inside a bar. */

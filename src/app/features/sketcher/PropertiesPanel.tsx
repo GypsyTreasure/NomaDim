@@ -251,7 +251,7 @@ export function PropertiesPanel({ sketch }: { sketch: Sketch }): React.JSX.Eleme
           <PointFields sketch={sketch} pointId={entity.end} label="P2" />
           <div className={styles.propertyRow}>
             {t('sketch.properties.length')}
-            <span>{length.toFixed(3)}</span>
+            <span>{length.toFixed(2)}</span>
           </div>
           <div className={styles.propertyRow}>
             {t('sketch.properties.angle')}

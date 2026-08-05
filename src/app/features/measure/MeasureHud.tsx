@@ -2,7 +2,9 @@ import { t } from '../../i18n/t';
 import type { MeasureResult } from './useMeasure';
 import styles from './Measure.module.css';
 
-const fmt = (n: number): string => n.toFixed(3);
+// 0.01 mm precision is all users need on screen (#9); trailing zeros stay so
+// columns line up in the readout.
+const fmt = (n: number): string => n.toFixed(2);
 
 /** Measure readout (F10): distance + ΔX/ΔY/ΔZ, or circle radius/diameter. */
 export function MeasureHud({ result }: { result: MeasureResult | null }): React.JSX.Element {

@@ -49,13 +49,22 @@ const VIEW_KEY_HINT: Record<ViewId, string> = {
 const CAMERA_INITIAL_POSITION = new THREE.Vector3(280, -280, 220); // Z-up isometric-ish
 const SKETCH_CAMERA_LERP = 0.18;
 /**
- * Device-pixel-ratio ceiling for the drawing buffers (ADR-0050). iPhones report
- * dpr 3, so an uncapped full-screen WebGL buffer + a same-size 2D overlay is ~9×
- * the CSS-pixel area — enough, with the always-on render loop, to OOM-kill the
- * Safari renderer (the "a problem repeatedly occurred" crash). Capping at 2 keeps
- * lines crisp while roughly halving buffer memory on dpr-3 devices.
+ * Device-pixel-ratio ceiling for the drawing buffers (ADR-0050/0110). iPhones
+ * report dpr 3, so an uncapped full-screen WebGL buffer + a same-size 2D overlay
+ * is ~9× the CSS-pixel area — enough, with the render loop, to OOM-kill the
+ * Safari renderer (the "a problem repeatedly occurred" crash). Buffer memory
+ * scales with dpr², so on touch devices (phones/tablets — the machines that get
+ * killed) the ceiling drops to 1.5, cutting that memory a further ~44% vs 2 while
+ * still reading crisp on a high-density screen; desktops keep 2.
  */
-const MAX_DEVICE_PIXEL_RATIO = 2;
+const isTouchDevice = (): boolean => {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+};
+const MAX_DEVICE_PIXEL_RATIO = isTouchDevice() ? 1.5 : 2;
 const renderDpr = (): number => Math.min(window.devicePixelRatio, MAX_DEVICE_PIXEL_RATIO);
 
 export interface SketchModeProps {

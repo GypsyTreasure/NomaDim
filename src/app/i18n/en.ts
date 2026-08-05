@@ -14,6 +14,8 @@ export const en = {
   'viewport.origin.xy': 'XY Plane',
   'viewport.origin.xz': 'XZ Plane',
   'viewport.origin.yz': 'YZ Plane',
+  'recovery.message': 'Recovered after a problem — your work is saved.',
+  'recovery.load': 'Load 3D',
   'kernel.status.loading': 'Loading kernel…',
   'kernel.status.error': 'Kernel error:',
   'kernel.reload': 'Reload',

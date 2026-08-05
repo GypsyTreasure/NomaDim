@@ -46,6 +46,19 @@
   min-width: 0;
 }
 
+.projectName {
+  display: flex;
+  min-width: 0;
+}
+
+/* Phones: hide the project name so the compact header (logo + New Sketch +
+   hamburger) fits on one clean row (#1). */
+@media (max-width: 700px) {
+  .projectName {
+    display: none;
+  }
+}
+
 /* Right side of the top bar (#5): the icon menus + Undo/Redo, in the header
    itself rather than floating over the model. `relative` anchors the mobile
    hamburger dropdown; it wraps under the brand on very narrow screens. */
@@ -123,6 +136,43 @@
   color: var(--color-panel-fg);
   background-color: var(--color-navy-800);
   box-shadow: var(--shadow-sm);
+}
+
+/* Crash-loop recovery bar (ADR-0110): an in-flow top row shown when the app
+   comes up in safe mode, telling the user their work is saved and offering to
+   load 3D on demand. */
+.recoveryBar {
+  flex: 0 0 auto;
+  z-index: 40;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-panel-fg);
+  background-color: var(--color-navy-800);
+  border-bottom: var(--border-width) solid var(--color-hairline);
+}
+
+.recoveryText {
+  flex: 0 1 auto;
+}
+
+.recoveryButton {
+  flex: 0 0 auto;
+  min-height: var(--control-h);
+  padding: calc(var(--grid-unit) * 0.4) var(--grid-unit);
+  background-color: var(--color-primary);
+  color: var(--color-canvas);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
 }
 
 .kernelLoadingLabel {

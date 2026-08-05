@@ -84,6 +84,12 @@ function persist(doc: DocumentState): void {
  * immediately when the page is hidden or unloading — mobile browsers can freeze
  * or kill a backgrounded tab without emitting further events, so the pending
  * write must land before the tab goes away. Returns an unsubscribe/teardown.
+ *
+ * The hide flush is the mobile-critical path: iOS Safari fires `visibilitychange`
+ * (on `document` — NOT `window`, where it never fires) the instant the app is
+ * backgrounded, which is typically the last event before the OS reclaims the
+ * tab's memory and kills it. `pagehide` covers bfcache/navigation. Getting this
+ * right is what makes a mid-work crash lossless.
  */
 export function startAutosave(): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -107,13 +113,15 @@ export function startAutosave(): () => void {
     timer = setTimeout(flush, DEBOUNCE_MS);
   });
 
-  window.addEventListener('visibilitychange', flush);
+  // visibilitychange fires on document; pagehide on window. Both flush so the
+  // last edit lands before a backgrounded mobile tab is discarded/killed.
+  document.addEventListener('visibilitychange', flush);
   window.addEventListener('pagehide', flush);
 
   return () => {
     flush();
     unsubscribe();
-    window.removeEventListener('visibilitychange', flush);
+    document.removeEventListener('visibilitychange', flush);
     window.removeEventListener('pagehide', flush);
   };
 }

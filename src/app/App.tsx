@@ -39,6 +39,7 @@ import { loadDocumentText } from './features/document-io/documentIO';
 import { pushToast } from './store/toastStore';
 import { usePreviewStore } from './store/previewStore';
 import { restorePersistedDocument, startAutosave } from './features/persistence/autosave';
+import { isSafeMode, markBootStable } from './features/persistence/resilience';
 import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { LicenseButton } from './features/licensing/LicenseButton';
@@ -58,6 +59,7 @@ import { scheduleKernelBoot, useKernelStore } from './store/kernelStore';
 import { useDocumentStore } from './store/documentStore';
 import { useSessionStore } from './store/sessionStore';
 import { useGlobalShortcuts } from './useGlobalShortcuts';
+import { useMediaQuery } from './useMediaQuery';
 import styles from './App.module.css';
 import sketcherStyles from './features/sketcher/Sketcher.module.css';
 
@@ -104,6 +106,18 @@ export function App(): React.JSX.Element {
   const [viewOpen, setViewOpen] = useState(false);
   const appBarRef = useRef<HTMLDivElement>(null);
 
+  // Crash-loop guard (ADR-0110): after repeated OOM crash-reloads, come up in
+  // safe mode — the document is still restored, but the heavy 3D kernel waits
+  // for a tap so the reload loop can't continue. `recovered` flips once the user
+  // opts back into 3D.
+  const [recovered, setRecovered] = useState(false);
+  const safeMode = isSafeMode() && !recovered;
+
+  // On phones the ribbon collapses behind the hamburger and only the essentials
+  // stay on the bar (#1) — the Browser/View toggles and Undo/Redo move into the
+  // dropdown in modeling mode, keeping the top bar simple and aligned.
+  const isMobile = useMediaQuery('(max-width: 700px)');
+
   // Tapping outside the app bar closes the menu — but NOT on item clicks, so a
   // dialog opened from the menu (e.g. New Project) keeps the menu open while
   // the decision is made (the dialog's scrim lives inside the app bar subtree).
@@ -145,9 +159,21 @@ export function App(): React.JSX.Element {
     void useFolderStore.getState().restore();
     // Defer the multi-MB WASM boot to idle so the shell + empty viewport paint
     // first (M8 lazy kernel). Restore stays synchronous and ordered before it.
-    scheduleKernelBoot();
-    return startAutosave();
+    // In safe mode (crash loop) the kernel waits for an explicit tap (ADR-0110).
+    if (!isSafeMode()) scheduleKernelBoot();
+    // Surviving a few seconds without another crash-reload = a clean boot.
+    const stableTimer = setTimeout(markBootStable, 6000);
+    const stopAutosave = startAutosave();
+    return () => {
+      clearTimeout(stableTimer);
+      stopAutosave();
+    };
   }, []);
+
+  // A ready kernel means this boot succeeded — clear the crash counter now.
+  useEffect(() => {
+    if (kernelReady) markBootStable();
+  }, [kernelReady]);
 
   const edgePick = useMemo<EdgePickProps | null>(() => {
     if (!edgePicking) return null;
@@ -209,9 +235,63 @@ export function App(): React.JSX.Element {
 
   const inSketch = sketcher.activeSketch !== null;
 
+  // Header controls reused across the desktop bar and the mobile dropdown, so
+  // each renders in exactly one place per layout (#1).
+  const browserToggle = (
+    <IconButton
+      icon="browser"
+      label={t('menu.browser')}
+      active={treeOpen}
+      ariaPressed={treeOpen}
+      testid="browser-toggle"
+      badge={
+        <span className={toolbarStyles.badge} data-testid="body-count">
+          {liveBodyIds.length}
+        </span>
+      }
+      onClick={() => {
+        setTreeOpen((open) => !open);
+      }}
+    />
+  );
+  const viewToggle = !inSketch ? (
+    <IconButton
+      icon="view"
+      label={t('menu.view')}
+      active={viewOpen}
+      ariaPressed={viewOpen}
+      testid="view-toggle"
+      onClick={() => {
+        setViewOpen((open) => !open);
+      }}
+    />
+  ) : null;
+  const historyGroup = (
+    <ToolbarGroup label={t('ribbon.history')}>
+      <UndoRedo />
+    </ToolbarGroup>
+  );
+
   return (
     <div className={styles.shell}>
-      {!kernelReady && !kernelError && (
+      {safeMode && (
+        <div className={styles.recoveryBar} role="status" data-testid="recovery-bar">
+          <span className={styles.recoveryText}>{t('recovery.message')}</span>
+          <button
+            type="button"
+            className={styles.recoveryButton}
+            data-testid="recovery-load"
+            onClick={() => {
+              markBootStable();
+              setRecovered(true);
+              scheduleKernelBoot();
+            }}
+          >
+            {t('recovery.load')}
+          </button>
+        </div>
+      )}
+      {!kernelReady && !kernelError && !safeMode && (
         <div className={styles.kernelLoading} data-testid="kernel-loading" role="status">
           <span className={styles.kernelLoadingLabel}>
             {t('kernel.loading')}
@@ -237,41 +317,28 @@ export function App(): React.JSX.Element {
               <Logo />
             </a>
           </h1>
-          <ProjectNameField />
+          {/* Hidden on phones (#1) to give the compact header room — the name is
+              still editable on wider screens and shown in the browser tab. */}
+          <span className={styles.projectName}>
+            <ProjectNameField />
+          </span>
         </div>
         {/* Menus live IN the top bar (#5), not floating over the model. Browser
             is present in both modes; View + the app-action menu are modeling. */}
         <div className={styles.headerActions} ref={appBarRef}>
           <div className={toolbarStyles.bar}>
-            <ToolbarGroup label={t('ribbon.view')}>
-              <IconButton
-                icon="browser"
-                label={t('menu.browser')}
-                active={treeOpen}
-                ariaPressed={treeOpen}
-                testid="browser-toggle"
-                badge={
-                  <span className={toolbarStyles.badge} data-testid="body-count">
-                    {liveBodyIds.length}
-                  </span>
-                }
-                onClick={() => {
-                  setTreeOpen((open) => !open);
-                }}
-              />
-              {!inSketch && (
-                <IconButton
-                  icon="view"
-                  label={t('menu.view')}
-                  active={viewOpen}
-                  ariaPressed={viewOpen}
-                  testid="view-toggle"
-                  onClick={() => {
-                    setViewOpen((open) => !open);
-                  }}
-                />
-              )}
-            </ToolbarGroup>
+            {/* Desktop: Browser + View inline. Mobile: these move into the
+                hamburger dropdown (modeling) — but in a sketch (no dropdown)
+                Browser stays on the bar so body visibility is always reachable. */}
+            {!isMobile && (
+              <ToolbarGroup label={t('ribbon.view')}>
+                {browserToggle}
+                {viewToggle}
+              </ToolbarGroup>
+            )}
+            {isMobile && inSketch && (
+              <ToolbarGroup label={t('ribbon.view')}>{browserToggle}</ToolbarGroup>
+            )}
             {!inSketch && (
               <ToolbarGroup label={t('ribbon.sketch')}>
                 <IconButton
@@ -313,6 +380,18 @@ export function App(): React.JSX.Element {
               }`}
               data-testid="app-actions"
             >
+              {/* On phones the toggles + Undo/Redo live at the top of the
+                  dropdown (the bar keeps only New Sketch + hamburger, #1). */}
+              {isMobile && (
+                <>
+                  <ToolbarGroup label={t('ribbon.view')}>
+                    {browserToggle}
+                    {viewToggle}
+                  </ToolbarGroup>
+                  {historyGroup}
+                  <span className={toolbarStyles.divider} aria-hidden="true" />
+                </>
+              )}
               {/* Create/Modify/Pattern ops, moved up onto the logo bar (#5c). */}
               <CreateOpsBar timeline={timeline} />
               <span className={toolbarStyles.divider} aria-hidden="true" />
@@ -369,9 +448,9 @@ export function App(): React.JSX.Element {
               )}
             </div>
           )}
-          <ToolbarGroup label={t('ribbon.history')}>
-            <UndoRedo />
-          </ToolbarGroup>
+          {/* History stays on the bar on desktop and in a sketch; on mobile in
+              modeling mode it rides in the dropdown instead (above). */}
+          {(!isMobile || inSketch) && historyGroup}
         </div>
       </header>
       <main className={styles.viewportArea}>

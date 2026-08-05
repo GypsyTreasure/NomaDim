@@ -51,17 +51,62 @@ export class StaleRegenError extends Error {
  * (kernel-worker-entry-only rule).
  */
 export class KernelClient {
-  private readonly worker: Worker;
+  private worker: Worker;
   private readonly pending = new Map<ReqId, PendingRequest>();
   private readonly inFlightIds = new Set<string>();
 
+  /**
+   * Called after the worker dies (an uncatchable OCCT WASM `abort()` on a
+   * pathological op — e.g. certain multi-edge fillets, #4). By the time it
+   * fires, every in-flight request has already been rejected and a FRESH worker
+   * has been spun up; the RegenScheduler re-inits it and rebuilds from the
+   * timeline, so a crash degrades to "that op failed" instead of a frozen app.
+   */
+  onCrash: (() => void) | null = null;
+
   constructor() {
-    this.worker = new Worker(new URL('../kernel-worker/index.ts', import.meta.url), {
+    this.worker = this.spawnWorker();
+  }
+
+  private spawnWorker(): Worker {
+    const worker = new Worker(new URL('../kernel-worker/index.ts', import.meta.url), {
       type: 'module',
     });
-    this.worker.onmessage = (event: MessageEvent<KernelResponse>) => {
+    worker.onmessage = (event: MessageEvent<KernelResponse>) => {
       this.handleMessage(event.data);
     };
+    worker.onerror = () => {
+      this.handleCrash();
+    };
+    worker.onmessageerror = () => {
+      this.handleCrash();
+    };
+    return worker;
+  }
+
+  /**
+   * The worker process died. Reject everything in flight (unfreezing the app),
+   * replace it with a fresh instance, and hand control to `onCrash` so the
+   * scheduler can re-init + rebuild. Guarded so a burst of error events (they
+   * can double-fire) recovers only once per death.
+   */
+  private crashing = false;
+  private handleCrash(): void {
+    if (this.crashing) return;
+    this.crashing = true;
+    try {
+      this.worker.terminate();
+    } catch {
+      // Already gone.
+    }
+    for (const { reject } of this.pending.values()) {
+      reject(new KernelError('The 3D kernel crashed on this operation.', 'KERNEL_CRASHED'));
+    }
+    this.pending.clear();
+    this.inFlightIds.clear();
+    this.worker = this.spawnWorker();
+    this.crashing = false;
+    this.onCrash?.();
   }
 
   /**

@@ -69,6 +69,10 @@ export class RegenScheduler {
    * WASM work on the single-threaded worker — a top mobile-crash lever. */
   private busy = false;
   private pending: DocumentState | null = null;
+  private startOptions?: { baseUrl?: string; onProgress?: (progress: WasmLoadProgress) => void };
+  private recovering = false;
+  /** After a crash-recovery the worker is empty, so the next regen must be full. */
+  private forceFull = false;
 
   constructor(
     private readonly client: KernelClient,
@@ -84,6 +88,12 @@ export class RegenScheduler {
     baseUrl?: string;
     onProgress?: (progress: WasmLoadProgress) => void;
   }): Promise<void> {
+    this.startOptions = options;
+    // If the worker ever dies (OCCT abort, #4), re-init the fresh one and
+    // rebuild from the timeline so the app recovers instead of hanging.
+    this.client.onCrash = () => {
+      void this.recover();
+    };
     await this.client.init(options?.baseUrl, options?.onProgress);
     const initial = this.getDocument();
     this.prevDoc = initial;
@@ -91,6 +101,27 @@ export class RegenScheduler {
     this.unsubscribe = this.bus.onChange((state) => {
       void this.onChange(state);
     });
+  }
+
+  /**
+   * Re-init the freshly-spawned worker after a crash. It does NOT auto-rebuild:
+   * re-running the same timeline would re-execute the pathological op and crash
+   * again in a loop. Instead the last good meshes stay on screen and the next
+   * user edit (adjust the radius, or Undo the offending op) triggers a full
+   * rebuild on the healthy worker — the Fusion-style "that feature failed, fix
+   * it" recovery.
+   */
+  private async recover(): Promise<void> {
+    if (this.recovering) return;
+    this.recovering = true;
+    try {
+      await this.client.init(this.startOptions?.baseUrl, this.startOptions?.onProgress);
+      this.forceFull = true; // fresh worker has no bodies → next regen is full
+    } catch {
+      // Recovery itself failed — leave the last good meshes on screen.
+    } finally {
+      this.recovering = false;
+    }
   }
 
   stop(): void {
@@ -113,7 +144,8 @@ export class RegenScheduler {
       while (this.pending) {
         const doc = this.pending;
         this.pending = null;
-        const fromIndex = computeFromIndex(this.prevDoc, doc);
+        const fromIndex = this.forceFull ? 0 : computeFromIndex(this.prevDoc, doc);
+        this.forceFull = false;
         this.prevDoc = doc;
         await this.runRegen(doc, fromIndex);
       }

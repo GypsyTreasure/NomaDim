@@ -26,6 +26,7 @@ export * from './input/toolFields';
 export * from './dimensions';
 export * from './sketchTransform';
 export * from './edit/splitLine';
+export * from './edit/offset';
 export * from './marquee';
 export * from './profiles/hash';
 export * from './profiles/loops';

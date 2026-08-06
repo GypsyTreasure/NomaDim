@@ -23,7 +23,9 @@ export type SketchToolId =
   | 'spline'
   | 'change'
   | 'dimension'
-  | 'split';
+  | 'split'
+  | 'stretch'
+  | 'offset';
 
 const LENGTH = (id: string): FieldDef => ({ id, kind: 'length' });
 const ANGLE = (id: string): FieldDef => ({ id, kind: 'angle' });
@@ -51,9 +53,19 @@ export const LINE_FIELDS_CHAINED: readonly FieldDef[] = [
  * numeric-HUD fields at all.
  */
 export function fieldsForToolWithStart(tool: SketchToolId, chained = false): readonly FieldDef[] {
-  // Change/Dimension/Split operate on existing geometry (pick); Spline is a
-  // pure click-through-points tool — none expose numeric-HUD or start fields.
-  if (tool === 'change' || tool === 'dimension' || tool === 'spline' || tool === 'split') return [];
+  // Change/Dimension/Split/Stretch/Offset operate on existing geometry (pick);
+  // Spline is a pure click-through-points tool — none expose numeric-HUD or
+  // start fields.
+  if (
+    tool === 'change' ||
+    tool === 'dimension' ||
+    tool === 'spline' ||
+    tool === 'split' ||
+    tool === 'stretch' ||
+    tool === 'offset'
+  ) {
+    return [];
+  }
   return [...fieldsForTool(tool, chained), ...START_POINT_FIELDS];
 }
 
@@ -76,6 +88,8 @@ export function fieldsForTool(tool: SketchToolId, chained = false): readonly Fie
     case 'dimension':
     case 'spline':
     case 'split':
+    case 'stretch':
+    case 'offset':
       return [];
     case 'polygon':
       return [COUNT('sides'), LENGTH('diameter')];

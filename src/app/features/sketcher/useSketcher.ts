@@ -29,6 +29,9 @@ import {
   patternEntities,
   distanceToCurve,
   entitiesInMarquee,
+  offsetEntity,
+  offsetPreviewCurve,
+  pointIdsInMarquee,
   evaluateSketch,
   fieldsForToolWithStart,
   initialInputState,
@@ -279,6 +282,27 @@ export function useSketcher(): SketcherApi {
     dragRef.current = drag;
   }, [drag]);
 
+  // Offset tool (#8): the picked source entity, awaiting a second click that
+  // sets the side + distance (the offset passes through that point).
+  const [offsetSource, setOffsetSource] = useState<EntityId | null>(null);
+  const offsetSourceRef = useRef(offsetSource);
+  useEffect(() => {
+    offsetSourceRef.current = offsetSource;
+  }, [offsetSource]);
+
+  // Stretch tool (#7): the pool points captured by a crossing box, then a live
+  // drag translation (base → pos). Points in the set move; everything else
+  // stays, so lines with one end in the box rubber-band (shared-point topology).
+  const [stretch, setStretch] = useState<{
+    pointIds: readonly PointId[];
+    base: Vec2 | null;
+    pos: Vec2 | null;
+  } | null>(null);
+  const stretchRef = useRef(stretch);
+  useEffect(() => {
+    stretchRef.current = stretch;
+  }, [stretch]);
+
   // Dim tool: the chosen dimension kind + the first picked point (awaiting the
   // second). Both are read via refs inside the stable click callback.
   const [dimensionKind, setDimensionKindState] = useState<DimensionToolKind>('auto');
@@ -303,17 +327,32 @@ export function useSketcher(): SketcherApi {
   // ends (commit-to-close, tool switch, Escape, Finish Sketch).
   const lineStartRef = useRef<Vec2 | null>(null);
 
-  // While dragging (Change tool), render the sketch with the grabbed point
-  // moved to its live position; the command only fires on drop.
+  // While dragging (Change tool) render the grabbed point at its live position;
+  // while stretching (#7) translate every captured point by the live delta.
+  // Either way the command only fires on drop.
   const displaySketch = useMemo(() => {
-    if (!sketch || !drag) return sketch;
-    return {
-      ...sketch,
-      points: sketch.points.map((pt) =>
-        pt.id === drag.pointId ? { ...pt, x: drag.pos.x, y: drag.pos.y } : pt
-      ),
-    };
-  }, [sketch, drag]);
+    if (!sketch) return sketch;
+    if (drag) {
+      return {
+        ...sketch,
+        points: sketch.points.map((pt) =>
+          pt.id === drag.pointId ? { ...pt, x: drag.pos.x, y: drag.pos.y } : pt
+        ),
+      };
+    }
+    if (stretch?.base && stretch.pos) {
+      const dx = stretch.pos.x - stretch.base.x;
+      const dy = stretch.pos.y - stretch.base.y;
+      const moving = new Set(stretch.pointIds);
+      return {
+        ...sketch,
+        points: sketch.points.map((pt) =>
+          moving.has(pt.id) ? { ...pt, x: pt.x + dx, y: pt.y + dy } : pt
+        ),
+      };
+    }
+    return sketch;
+  }, [sketch, drag, stretch]);
 
   const evaluated = useMemo(
     () => (displaySketch ? evaluateSketch(displaySketch) : []),
@@ -481,6 +520,13 @@ export function useSketcher(): SketcherApi {
     (a: Vec2, b: Vec2, crossing: boolean) => {
       const current = liveSketch();
       if (!current) return;
+      // Stretch tool (#7): the box captures the pool points to move; the next
+      // press-drag translates them. No entity selection here.
+      if (useSessionStore.getState().activeTool === 'stretch') {
+        const pointIds = pointIdsInMarquee(current.points, a, b);
+        setStretch(pointIds.length > 0 ? { pointIds, base: null, pos: null } : null);
+        return;
+      }
       const hits = entitiesInMarquee(evaluateSketch(current), a, b, crossing);
       const ids = new Set<EntityId>();
       for (const id of hits) for (const c of connectedEntityIds(current, id)) ids.add(c);
@@ -711,6 +757,42 @@ export function useSketcher(): SketcherApi {
         });
         return;
       }
+      if (tool === 'offset') {
+        // Offset (#8): first click picks the nearest offsettable curve (line,
+        // circle or arc); the second click sets the side + distance — the new
+        // parallel curve passes through that point.
+        const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        const src = offsetSourceRef.current;
+        if (!src) {
+          let bestId: EntityId | null = null;
+          let bestDist = tolMm;
+          for (const ev of evaluateSketch(current)) {
+            const ent = current.entities.find((e) => e.id === ev.entityId);
+            if (!ent || ent.type === 'point' || ent.type === 'spline') continue;
+            const d = distanceToCurve(ev.curve, p);
+            if (d <= bestDist) {
+              bestDist = d;
+              bestId = ev.entityId;
+            }
+          }
+          if (bestId) {
+            setOffsetSource(bestId);
+            useSessionStore.getState().setSelection([bestId]);
+          }
+          return;
+        }
+        const delta = offsetEntity(current, src, p);
+        if (delta) {
+          commandBus.dispatch({
+            type: 'AddSketchGeometry',
+            payload: { sketchId: current.id, points: delta.points, entities: delta.entities },
+          });
+        }
+        setOffsetSource(null);
+        useSessionStore.getState().setSelection([]);
+        return;
+      }
+      if (tool === 'stretch') return; // box-select + drag, handled elsewhere
       const snap = snapResult.snap;
       const spec =
         snap?.sourceRef.type === 'point'
@@ -774,10 +856,20 @@ export function useSketcher(): SketcherApi {
     [applyStep, liveSketch, snapResult, toolState]
   );
 
-  // --- Change tool point drag (F2) -----------------------------------------
+  // --- Change tool point drag (F2) / Stretch group drag (#7) ----------------
   const onPointGrab = useCallback(
     (p: Vec2, scale: number): boolean => {
-      if (useSessionStore.getState().activeTool !== 'change') return false;
+      const tool = useSessionStore.getState().activeTool;
+      // Stretch: once a box has captured points, a press anywhere begins the
+      // group translation (base = grab point). No box captured → let the
+      // marquee arm instead (return false).
+      if (tool === 'stretch') {
+        const s = stretchRef.current;
+        if (!s || s.pointIds.length === 0) return false;
+        setStretch({ ...s, base: p, pos: p });
+        return true;
+      }
+      if (tool !== 'change') return false;
       const current = liveSketch();
       if (!current) return false;
       const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
@@ -790,12 +882,38 @@ export function useSketcher(): SketcherApi {
   );
 
   const onPointDrag = useCallback((p: Vec2) => {
+    if (stretchRef.current?.base) {
+      setStretch((s) => (s ? { ...s, pos: p } : s));
+      return;
+    }
     setDrag((d) => (d ? { ...d, pos: p } : d));
   }, []);
 
   const onPointDrop = useCallback(() => {
-    const d = dragRef.current;
+    const s = stretchRef.current;
     const current = liveSketch();
+    // Commit a stretch: move every captured point by (pos − base) to absolute
+    // coordinates. Clearing the set ends this stretch; re-box for another.
+    if (s?.base && s.pos && current) {
+      const dx = s.pos.x - s.base.x;
+      const dy = s.pos.y - s.base.y;
+      if (dx !== 0 || dy !== 0) {
+        const byId = pointMap(current);
+        const moves = s.pointIds.flatMap((pointId) => {
+          const pt = byId.get(pointId);
+          return pt ? [{ pointId, x: pt.x + dx, y: pt.y + dy }] : [];
+        });
+        if (moves.length > 0) {
+          commandBus.dispatch({
+            type: 'MoveSketchPoints',
+            payload: { sketchId: current.id, moves },
+          });
+        }
+      }
+      setStretch(null);
+      return;
+    }
+    const d = dragRef.current;
     if (d && current) {
       commandBus.dispatch({
         type: 'MoveSketchPoints',
@@ -813,6 +931,8 @@ export function useSketcher(): SketcherApi {
     useSessionStore.getState().setActiveTool(tool);
     setDimFirst(null); // switching tools cancels a half-placed dimension
     lineStartRef.current = null; // and ends any open line chain (#6)
+    setOffsetSource(null); // and any half-done offset (#8)
+    setStretch(null); // and any captured stretch set (#7)
     setToolState((prev) => ({
       ...initialToolState(tool ?? 'line'),
       constructionMode: prev.constructionMode,
@@ -933,6 +1053,8 @@ export function useSketcher(): SketcherApi {
         m: 'change',
         d: 'dimension',
         t: 'split',
+        e: 'stretch',
+        w: 'offset',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
       if (hotkey) {
@@ -1286,6 +1408,16 @@ export function useSketcher(): SketcherApi {
   // tracking the cursor until filled.
   const typedStart = startPointOf(inputState, effectiveCursor);
   const previewToolState = typedStart ? withStartPoint(toolState, typedStart) : toolState;
+  // Offset (#8): once a source curve is picked, ghost its parallel copy through
+  // the live cursor so the side + distance are visible before the second click.
+  const offsetPreview =
+    activeTool === 'offset' && offsetSource
+      ? (() => {
+          const ev = evaluated.find((e) => e.entityId === offsetSource);
+          const c = ev ? offsetPreviewCurve(ev.curve, effectiveCursor) : null;
+          return c ? [c] : [];
+        })()
+      : [];
   const viewportSketchMode: SketchModeProps | null =
     sketch && basis
       ? {
@@ -1294,15 +1426,17 @@ export function useSketcher(): SketcherApi {
             entities: evaluated,
             points: (displaySketch ?? sketch).points.map((p) => vec2(p.x, p.y)),
             basis,
-            previewCurves: activeTool
-              ? toolPreview(previewToolState, effectiveCursor, typedValues)
-              : [],
+            previewCurves: [
+              ...(activeTool ? toolPreview(previewToolState, effectiveCursor, typedValues) : []),
+              ...offsetPreview,
+            ],
             snap: snapResult.snap,
             guides: snapResult.guides,
             selectedEntityIds: new Set(selectedEntityIds),
             dimensions: overlayDimensions,
           },
-          selecting: activeTool === null,
+          // Marquee drag is the Select cursor (#6) and the Stretch box (#7).
+          selecting: activeTool === null || activeTool === 'stretch',
           onMarquee,
           onCursor,
           onClickPoint,

@@ -1,4 +1,4 @@
-import type { EntityId, Vec2 } from '../core';
+import type { EntityId, PointId, Vec2 } from '../core';
 import type { Curve, EvaluatedEntity } from './entities/curves';
 
 /**
@@ -123,4 +123,18 @@ export function entitiesInMarquee(
     }
   }
   return out;
+}
+
+/**
+ * Pool-point ids whose coordinates fall inside the box `a`→`b` (#7 Stretch).
+ * Unlike entity selection there is no window/crossing distinction — a point is
+ * either inside the rectangle or not — so this is the set AutoCAD Stretch moves.
+ */
+export function pointIdsInMarquee(
+  points: readonly { readonly id: PointId; readonly x: number; readonly y: number }[],
+  a: Vec2,
+  b: Vec2
+): PointId[] {
+  const r = rectOf(a, b);
+  return points.filter((p) => inRect(p, r)).map((p) => p.id);
 }

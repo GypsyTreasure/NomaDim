@@ -38,6 +38,8 @@ export const ICON_ACRONYMS: Record<IconName, string> = {
   change: 'CHG',
   dimension: 'DIM',
   split: 'SPL',
+  stretch: 'STR',
+  offset: 'OFS',
   line: 'LN',
   centerline: 'AX',
   rectangle: 'REC',

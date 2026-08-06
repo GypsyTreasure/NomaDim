@@ -57,7 +57,9 @@ export type IconName =
   | 'combine'
   | 'copyBody'
   | 'shell'
-  | 'move';
+  | 'move'
+  | 'stretch'
+  | 'offset';
 
 const P = ({ d }: { d: string }): React.JSX.Element => (
   <path
@@ -169,6 +171,10 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   move: (
     <P d="M12 3v18M3 12h18M12 3 9 6m3-3 3 3M12 21l-3-3m3 3 3-3M3 12l3-3m-3 3 3 3M21 12l-3-3m3 3-3 3" />
   ),
+  // Stretch (#7): a shape edge pulled sideways by an arrow — the box drag.
+  stretch: <P d="M5 6v12M13 6v12m0-6h7m0 0-2.5-2.5M20 12l-2.5 2.5M5 12h4" />,
+  // Offset (#8): two nested parallel outlines — a curve copied at a distance.
+  offset: <P d="M4 17h9a4 4 0 0 0 4-4V6M7 20h7a6 6 0 0 0 6-6V3" />,
 };
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }): React.JSX.Element {

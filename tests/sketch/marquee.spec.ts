@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { entitiesInMarquee } from '../../src/sketch';
+import { entitiesInMarquee, pointIdsInMarquee } from '../../src/sketch';
 import type { EvaluatedEntity } from '../../src/sketch';
-import type { EntityId, Vec2 } from '../../src/core';
+import type { EntityId, PointId, Vec2 } from '../../src/core';
 
 const id = (s: string): EntityId => s as EntityId;
+const pid = (s: string): PointId => s as PointId;
 const v = (x: number, y: number): Vec2 => ({ x, y });
 
 /** A straight segment entity from a→b. */
@@ -63,5 +64,25 @@ describe('entitiesInMarquee', () => {
     // Same box, corners given bottom-right → top-left.
     const out = entitiesInMarquee([inside], v(10, 10), v(0, 0), false);
     expect(out).toEqual([id('a')]);
+  });
+});
+
+describe('pointIdsInMarquee (#7 Stretch capture)', () => {
+  const points = [
+    { id: pid('p1'), x: 2, y: 2 }, // inside
+    { id: pid('p2'), x: 9, y: 1 }, // inside
+    { id: pid('p3'), x: 20, y: 20 }, // outside
+  ];
+
+  it('returns only the pool points inside the box', () => {
+    expect(pointIdsInMarquee(points, v(0, 0), v(10, 10)).sort()).toEqual([pid('p1'), pid('p2')]);
+  });
+
+  it('is direction agnostic (rect normalized from the two corners)', () => {
+    expect(pointIdsInMarquee(points, v(10, 10), v(0, 0)).sort()).toEqual([pid('p1'), pid('p2')]);
+  });
+
+  it('returns nothing for an empty box away from all points', () => {
+    expect(pointIdsInMarquee(points, v(30, 30), v(40, 40))).toEqual([]);
   });
 });

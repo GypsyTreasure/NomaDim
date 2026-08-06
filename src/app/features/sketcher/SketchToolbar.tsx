@@ -146,6 +146,24 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
             sketcher.setTool('split');
           }}
         />
+        <IconButton
+          icon="stretch"
+          label={t('sketch.tool.stretch')}
+          shortcut="E"
+          active={sketcher.tool === 'stretch'}
+          onClick={() => {
+            sketcher.setTool('stretch');
+          }}
+        />
+        <IconButton
+          icon="offset"
+          label={t('sketch.tool.offset')}
+          shortcut="W"
+          active={sketcher.tool === 'offset'}
+          onClick={() => {
+            sketcher.setTool('offset');
+          }}
+        />
       </div>
       <Divider />
       <div className={toolbarStyles.block}>

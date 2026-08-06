@@ -182,8 +182,9 @@ export function RevolveDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     (needsTarget && effectiveTargets.size === 0) ||
     (bodyType === 'thin' && wallThicknessMm <= 0);
 
-  // Live ghost preview (F3): a valid draft revolve (creating, not editing).
-  const previewSketchId = prior || okDisabled ? null : sketchId;
+  // Live ghost preview (F3, #12): a valid draft revolve, while creating AND
+  // editing — so changing the profile/axis refreshes the 3D view live.
+  const previewSketchId = okDisabled ? null : sketchId;
   const draft: RevolveOp | null =
     previewSketchId === null
       ? null

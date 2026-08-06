@@ -123,9 +123,11 @@ export function ExtrudeDialog({ editing, onClose }: OpDialogProps): React.JSX.El
     (needsTarget && effectiveTargets.size === 0) ||
     (bodyType === 'thin' && wallThicknessMm <= 0);
 
-  // Live ghost preview (F3): while creating (not editing), feed a draft op with
-  // stable sentinel ids to the preview pipeline whenever the params are valid.
-  const previewSketchId = prior || okDisabled ? null : sketchId;
+  // Live ghost preview (F3, #12): feed a draft op with stable sentinel ids to
+  // the preview pipeline whenever the params are valid — while CREATING and
+  // while EDITING, so choosing a different profile/params refreshes the 3D view
+  // live instead of only on OK.
+  const previewSketchId = okDisabled ? null : sketchId;
   const draft: ExtrudeOp | null =
     previewSketchId === null
       ? null

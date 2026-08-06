@@ -535,9 +535,7 @@ export function useSketcher(): SketcherApi {
             const d = distanceToCurve(ev.curve, p);
             if (d > bestRadial) continue;
             const centerPt = current.points.find((pt) => pt.id === ent.center);
-            const centerDist = centerPt
-              ? Math.hypot(p.x - centerPt.x, p.y - centerPt.y)
-              : Infinity;
+            const centerDist = centerPt ? Math.hypot(p.x - centerPt.x, p.y - centerPt.y) : Infinity;
             if (d < centerDist) {
               bestRadial = d;
               radialEnt = ent;

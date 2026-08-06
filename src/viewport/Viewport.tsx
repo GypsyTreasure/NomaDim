@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { viewOrientation, VIEW_IDS, type ViewId } from './viewOrientation';
 import { CameraRig, type ProjectionMode, type RigCamera } from './cameraRig';
 import type { BodyId, Vec2 } from '../core';
@@ -224,6 +227,7 @@ function pointSegmentDistancePx(
 const ORBIT_STEP_RAD = 0.3; // ~17° per orbit-widget nudge (#8)
 const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (tokens brand teal)
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
+const OP_HIGHLIGHT_WIDTH_PX = 3.5; // fat op-highlight outline width (#11)
 const SECTION_CSS = '#7b5ea7'; // violet — body cross-section on the sketch plane (#1), distinct from teal/navy/amber
 
 /**
@@ -268,6 +272,9 @@ export function Viewport({
   const datumGroupRef = useRef<THREE.Group | null>(null);
   const sectionGroupRef = useRef<THREE.Group | null>(null);
   const highlightGroupRef = useRef<THREE.Group | null>(null);
+  // Fat op-highlight line materials (#11): their pixel width needs the drawing
+  // buffer resolution, refreshed each frame by the render loop.
+  const fatMaterialsRef = useRef<Set<LineMaterial>>(new Set());
   const faceHoverGroupRef = useRef<THREE.Group | null>(null);
   const originPlanesRef = useRef<Record<OriginPlaneId, THREE.Group> | null>(null);
   const cameraRef = useRef<RigCamera | null>(null);
@@ -1003,6 +1010,13 @@ export function Viewport({
     document.addEventListener('visibilitychange', onVisibility);
 
     const drawFrame = (): void => {
+      // Fat op-highlight lines need the live drawing-buffer size to size their
+      // pixel width correctly (#11).
+      if (fatMaterialsRef.current.size > 0) {
+        const size = renderer.getSize(new THREE.Vector2());
+        const dpr = renderer.getPixelRatio();
+        for (const m of fatMaterialsRef.current) m.resolution.set(size.x * dpr, size.y * dpr);
+      }
       renderer.render(scene, camera);
       const mode = sketchModeRef.current;
       if (ctx) {
@@ -1232,25 +1246,30 @@ export function Viewport({
     if (!group) return;
     disposeSceneObjects(group);
     group.clear();
+    fatMaterialsRef.current = new Set();
     if (!opHighlight) return;
     const mapping = planeMapping(opHighlight.plane);
+    // Fat lines (#11): the selected profile loops / axis are drawn several
+    // pixels wide so the selection reads clearly over the body, not a hairline.
     const addPolyline = (polyline: readonly Vec2[], close: boolean): void => {
       if (polyline.length < 2) return;
       const pts = close ? [...polyline, polyline[0]] : [...polyline];
-      const positions = new Float32Array(pts.length * 3);
-      pts.forEach((p, i) => {
+      const positions: number[] = [];
+      for (const p of pts) {
         const world = planeToWorld(mapping, p ?? { x: 0, y: 0 });
-        positions[i * 3] = world.x;
-        positions[i * 3 + 1] = world.y;
-        positions[i * 3 + 2] = world.z;
-      });
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const material = new THREE.LineBasicMaterial({
+        positions.push(world.x, world.y, world.z);
+      }
+      const geometry = new LineGeometry();
+      geometry.setPositions(positions);
+      const material = new LineMaterial({
         color: OP_HIGHLIGHT_COLOR,
+        linewidth: OP_HIGHLIGHT_WIDTH_PX,
+        worldUnits: false,
         depthTest: false, // read even through a solid body
+        resolution: new THREE.Vector2(1, 1), // set live by the render loop
       });
-      const line = new THREE.Line(geometry, material);
+      fatMaterialsRef.current.add(material);
+      const line = new Line2(geometry, material);
       line.renderOrder = 999;
       group.add(line);
     };

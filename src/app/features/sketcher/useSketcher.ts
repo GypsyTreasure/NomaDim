@@ -522,6 +522,54 @@ export function useSketcher(): SketcherApi {
         // Reference dimensions annotate two existing pool points: each click must
         // land on a point (snap-assisted). First click arms; second commits.
         const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        // Fusion: clicking a circle/arc RIM dimensions its size in one click,
+        // even though the centre is a snappable pool point that would otherwise
+        // capture the click (#10). Detect the rim from the RAW cursor and prefer
+        // it whenever the click is nearer the rim than the centre.
+        if (!dimFirstRef.current) {
+          let radialEnt: (typeof current.entities)[number] | null = null;
+          let bestRadial = tolMm;
+          for (const ev of evaluateSketch(current)) {
+            const ent = current.entities.find((e) => e.id === ev.entityId);
+            if (ent?.type !== 'circle' && ent?.type !== 'arc') continue;
+            const d = distanceToCurve(ev.curve, p);
+            if (d > bestRadial) continue;
+            const centerPt = current.points.find((pt) => pt.id === ent.center);
+            const centerDist = centerPt
+              ? Math.hypot(p.x - centerPt.x, p.y - centerPt.y)
+              : Infinity;
+            if (d < centerDist) {
+              bestRadial = d;
+              radialEnt = ent;
+            }
+          }
+          if (radialEnt) {
+            const chosen = dimensionKindRef.current;
+            const radialKind: SketchDimensionKind =
+              chosen === 'radius' || chosen === 'diameter'
+                ? chosen
+                : radialEnt.type === 'circle'
+                  ? 'diameter'
+                  : 'radius';
+            const existingRadial = new Set<string>(current.dimensions.map((d) => d.id));
+            commandBus.dispatch({
+              type: 'AddSketchDimension',
+              payload: {
+                sketchId: current.id,
+                dimension: {
+                  id: createId<'DimensionId'>(existingRadial),
+                  kind: radialKind,
+                  a: radialEnt.center,
+                  b: radialEnt.center,
+                  offset: DEFAULT_DIMENSION_OFFSET_MM,
+                  entityId: radialEnt.id,
+                },
+              },
+            });
+            setDimFirst(null);
+            return;
+          }
+        }
         const dimTarget = snapResult.snap?.point ?? p;
         const picked = nearestPointId(current.points, dimTarget, tolMm);
         if (!picked) {

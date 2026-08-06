@@ -28,6 +28,7 @@ import {
   mirrorEntities,
   patternEntities,
   distanceToCurve,
+  entitiesInMarquee,
   evaluateSketch,
   fieldsForToolWithStart,
   initialInputState,
@@ -472,6 +473,21 @@ export function useSketcher(): SketcherApi {
     setCursor(p);
     setPxPerMm(scale);
   }, []);
+
+  // AutoCAD-style marquee selection (#6), active as the default Select tool.
+  // Left→right = window (wholly-enclosed only); right→left = crossing (touch).
+  // Selects whole connected shapes, matching a single Select click.
+  const onMarquee = useCallback(
+    (a: Vec2, b: Vec2, crossing: boolean) => {
+      const current = liveSketch();
+      if (!current) return;
+      const hits = entitiesInMarquee(evaluateSketch(current), a, b, crossing);
+      const ids = new Set<EntityId>();
+      for (const id of hits) for (const c of connectedEntityIds(current, id)) ids.add(c);
+      useSessionStore.getState().setSelection([...ids]);
+    },
+    [liveSketch]
+  );
 
   const onClickPoint = useCallback(
     (p: Vec2, scale: number) => {
@@ -1286,6 +1302,8 @@ export function useSketcher(): SketcherApi {
             selectedEntityIds: new Set(selectedEntityIds),
             dimensions: overlayDimensions,
           },
+          selecting: activeTool === null,
+          onMarquee,
           onCursor,
           onClickPoint,
           onPointGrab,

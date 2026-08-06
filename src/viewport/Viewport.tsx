@@ -84,6 +84,11 @@ export interface SketchModeProps {
   readonly onPointDrag?: (point: Vec2) => void;
   /** The grabbed point was released (commit the move). */
   readonly onPointDrop?: () => void;
+  /** True in Select mode (no draw tool) — enables marquee drag-selection (#6). */
+  readonly selecting?: boolean;
+  /** A marquee was dragged: select entities in plane-rect a→b. `crossing`
+   *  (right-to-left drag) selects anything touching; else fully-enclosed. */
+  readonly onMarquee?: (a: Vec2, b: Vec2, crossing: boolean) => void;
 }
 
 /** Active while a Fillet/Chamfer dialog is picking edges (F4). */
@@ -229,6 +234,12 @@ const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (to
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
 const OP_HIGHLIGHT_WIDTH_PX = 3.5; // fat op-highlight outline width (#11)
 const SECTION_CSS = '#7b5ea7'; // violet — body cross-section on the sketch plane (#1), distinct from teal/navy/amber
+// Marquee selection box (#6), AutoCAD convention: solid blue "window" (fully
+// enclosed) vs dashed green "crossing" (touch).
+const MARQUEE_WINDOW_CSS = '#3b82c4';
+const MARQUEE_WINDOW_FILL = 'rgba(59,130,196,0.12)';
+const MARQUEE_CROSSING_CSS = '#3fa86a';
+const MARQUEE_CROSSING_FILL = 'rgba(63,168,106,0.14)';
 
 /**
  * Owns the Three.js scene, camera/controls, picking, and the 2D sketch
@@ -854,8 +865,33 @@ export function Viewport({
     let downY = 0;
     let idleDown = false;
     let sketchDragging = false;
+    // Sketch marquee selection (#6): while dragging in Select mode we track the
+    // start/current corner (plane mm + screen px) and the drag direction; the
+    // overlay draws the box and pointerup commits window/crossing selection.
+    let marquee: {
+      a: Vec2;
+      b: Vec2;
+      px: number;
+      sx: number;
+      sy: number;
+      cx: number;
+      cy: number;
+      dragged: boolean;
+    } | null = null;
 
     const onPointerMove = (event: PointerEvent): void => {
+      if (marquee) {
+        const r = overlayCanvas.getBoundingClientRect();
+        marquee.cx = event.clientX - r.left;
+        marquee.cy = event.clientY - r.top;
+        const hit = pointerToPlane(event);
+        if (hit) marquee.b = hit.point;
+        if (Math.hypot(marquee.cx - marquee.sx, marquee.cy - marquee.sy) > 4) {
+          marquee.dragged = true;
+        }
+        requestRenderRef.current();
+        return;
+      }
       if (edgePickRef.current) {
         highlightHover(raycastEdge(event));
         return;
@@ -898,6 +934,23 @@ export function Viewport({
           overlayCanvas.setPointerCapture(event.pointerId);
           return;
         }
+        // Select mode (#6): arm a marquee. A no-drag release is a normal click
+        // (single select); a drag becomes a window/crossing box on release.
+        if (mode.selecting && mode.onMarquee) {
+          const r = overlayCanvas.getBoundingClientRect();
+          marquee = {
+            a: hit.point,
+            b: hit.point,
+            px: hit.pxPerMm,
+            sx: event.clientX - r.left,
+            sy: event.clientY - r.top,
+            cx: event.clientX - r.left,
+            cy: event.clientY - r.top,
+            dragged: false,
+          };
+          overlayCanvas.setPointerCapture(event.pointerId);
+          return;
+        }
         mode.onClickPoint(hit.point, hit.pxPerMm);
         return;
       }
@@ -907,6 +960,21 @@ export function Viewport({
       idleDown = true;
     };
     const onPointerUp = (event: PointerEvent): void => {
+      if (marquee) {
+        if (overlayCanvas.hasPointerCapture(event.pointerId)) {
+          overlayCanvas.releasePointerCapture(event.pointerId);
+        }
+        const m = marquee;
+        marquee = null;
+        requestRenderRef.current();
+        if (m.dragged) {
+          // Right-to-left drag = crossing (touch), left-to-right = window (#6).
+          sketchModeRef.current?.onMarquee?.(m.a, m.b, m.cx < m.sx);
+        } else {
+          sketchModeRef.current?.onClickPoint(m.a, m.px); // a plain click selects
+        }
+        return;
+      }
       if (sketchDragging) {
         sketchDragging = false;
         if (overlayCanvas.hasPointerCapture(event.pointerId)) {
@@ -1048,6 +1116,22 @@ export function Viewport({
               ctx.arc(s.x, s.y, 3.5, 0, Math.PI * 2);
               ctx.fill();
             }
+          }
+          // Marquee box (#6): solid blue window (L→R) vs dashed green crossing (R→L).
+          if (marquee?.dragged) {
+            const x = Math.min(marquee.sx, marquee.cx);
+            const y = Math.min(marquee.sy, marquee.cy);
+            const w = Math.abs(marquee.cx - marquee.sx);
+            const h = Math.abs(marquee.cy - marquee.sy);
+            const crossing = marquee.cx < marquee.sx;
+            ctx.save();
+            ctx.lineWidth = 1;
+            ctx.setLineDash(crossing ? [5, 4] : []);
+            ctx.strokeStyle = crossing ? MARQUEE_CROSSING_CSS : MARQUEE_WINDOW_CSS;
+            ctx.fillStyle = crossing ? MARQUEE_CROSSING_FILL : MARQUEE_WINDOW_FILL;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+            ctx.restore();
           }
         } else {
           ctx.clearRect(0, 0, width, height);

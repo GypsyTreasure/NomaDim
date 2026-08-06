@@ -229,6 +229,14 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
           testid="sketch-intersect"
           onClick={sketcher.toggleIntersect}
         />
+        <IconButton
+          icon="project"
+          label={t('sketch.projectSection')}
+          shortcut="Y"
+          disabled={!sketcher.canProjectSection}
+          testid="sketch-project-section"
+          onClick={sketcher.projectSection}
+        />
       </div>
       <Divider />
       <div className={toolbarStyles.block}>

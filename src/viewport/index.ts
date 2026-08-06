@@ -19,7 +19,8 @@ export {
 } from './scene';
 export { VIEW_IDS, viewOrientation, type ViewId, type ViewOrientation } from './viewOrientation';
 export { type ProjectionMode } from './cameraRig';
-export { sectionPlanePoints } from './section';
+export { sectionPlanePoints, sectionPlaneSegments, assembleSectionLoops } from './section';
+export type { SectionPt } from './section';
 export {
   originPlaneBasis,
   planeMapping,

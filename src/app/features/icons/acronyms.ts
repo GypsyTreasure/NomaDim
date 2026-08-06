@@ -40,6 +40,7 @@ export const ICON_ACRONYMS: Record<IconName, string> = {
   split: 'SPL',
   stretch: 'STR',
   offset: 'OFS',
+  project: 'PJS',
   line: 'LN',
   centerline: 'AX',
   rectangle: 'REC',

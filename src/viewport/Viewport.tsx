@@ -35,7 +35,13 @@ import {
   type SketchPlaneBasis,
 } from './planeMapping';
 import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
-import { sliceMesh, coplanarFaceOutline, pointInArea, MAX_SECTION_SEGMENTS } from './section';
+import {
+  sliceMesh,
+  coplanarFaceOutline,
+  pointInArea,
+  assembleSectionLoops,
+  MAX_SECTION_SEGMENTS,
+} from './section';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
@@ -51,6 +57,9 @@ const VIEW_KEY_HINT: Record<ViewId, string> = {
 };
 const CAMERA_INITIAL_POSITION = new THREE.Vector3(280, -280, 220); // Z-up isometric-ish
 const SKETCH_CAMERA_LERP = 0.18;
+/** Intersect-view clip bias (mm) toward the camera, so a body face coplanar with
+ * the sketch plane is clipped cleanly instead of z-fighting on the boundary (#3). */
+const SECTION_CLIP_BIAS_MM = 0.05;
 /**
  * Device-pixel-ratio ceiling for the drawing buffers (ADR-0050/0110). iPhones
  * report dpr 3, so an uncapped full-screen WebGL buffer + a same-size 2D overlay
@@ -234,6 +243,7 @@ const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (to
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
 const OP_HIGHLIGHT_WIDTH_PX = 3.5; // fat op-highlight outline width (#11)
 const SECTION_CSS = '#7b5ea7'; // violet — body cross-section on the sketch plane (#1), distinct from teal/navy/amber
+const SECTION_FILL = 'rgba(123,94,167,0.20)'; // translucent violet cap so a clipped solid reads solid, not a shell (#3)
 // Marquee selection box (#6), AutoCAD convention: solid blue "window" (fully
 // enclosed) vs dashed green "crossing" (touch).
 const MARQUEE_WINDOW_CSS = '#3b82c4';
@@ -327,6 +337,9 @@ export function Viewport({
   const sectionViewRef = useRef(false);
   const sectionSegRef = useRef<readonly (readonly [Vec2, Vec2])[]>([]);
   const sectionPtsRef = useRef<readonly Vec2[]>([]);
+  // Welded cut loops (#3): filled translucently so a clipped SOLID reads as solid
+  // material rather than a hollow shell.
+  const sectionLoopsRef = useRef<readonly (readonly Vec2[])[]>([]);
   useEffect(() => {
     sketchModeRef.current = sketchMode;
   }, [sketchMode]);
@@ -1048,6 +1061,16 @@ export function Viewport({
     // settles, then lets the loop idle.
     controls.addEventListener('change', requestRender);
 
+    // The sketch-entry camera animation (updateSketchCamera) lerps the camera to
+    // a fixed plane framing. If it keeps running while the user zooms/pans/orbits
+    // it fights them — the view snaps back to the entry framing on every wheel
+    // tick ("bounces to start"). OrbitControls fires 'start' the moment the user
+    // grabs the view (drag OR wheel), so cancel the in-flight entry lerp there:
+    // user input always wins, and the settle can't get stuck mid-flight.
+    controls.addEventListener('start', () => {
+      cameraTarget = null;
+    });
+
     // WebGL context loss (ADR-0050): under memory pressure iOS may reset the GPU
     // context. Without preventDefault the browser never fires a restore and the
     // canvas is permanently dead → a hard crash/blank. We suppress the default,
@@ -1098,6 +1121,22 @@ export function Viewport({
           if (sectionViewRef.current && sectionSegRef.current.length > 0) {
             const mapping = mappingFromBasis(mode.basis);
             const toScreen = (p: Vec2): Vec2 => planeToScreen(mapping, p, camera, width, height);
+            // Fill the welded cut loops FIRST (even-odd so inner holes subtract),
+            // so a clipped solid reads as filled material, not a hollow shell (#3).
+            const loops = sectionLoopsRef.current;
+            if (loops.length > 0) {
+              ctx.fillStyle = SECTION_FILL;
+              ctx.beginPath();
+              for (const loop of loops) {
+                loop.forEach((p, i) => {
+                  const s = toScreen(p);
+                  if (i === 0) ctx.moveTo(s.x, s.y);
+                  else ctx.lineTo(s.x, s.y);
+                });
+                ctx.closePath();
+              }
+              ctx.fill('evenodd');
+            }
             ctx.strokeStyle = SECTION_CSS;
             ctx.lineWidth = 3.5;
             ctx.lineCap = 'round';
@@ -1194,13 +1233,22 @@ export function Viewport({
     // the un-negated plane normal keeps the +normal (camera) side. Applied at
     // mesh creation (fresh local material) and rebuilt when toggle/plane change.
     const basis = sketchMode ? sketchModeRef.current?.basis : null;
-    const clip =
-      basis && sectionView
-        ? new THREE.Plane().setFromNormalAndCoplanarPoint(
-            new THREE.Vector3(basis.normal[0], basis.normal[1], basis.normal[2]),
-            new THREE.Vector3(basis.origin[0], basis.origin[1], basis.origin[2])
-          )
-        : null;
+    let clip: THREE.Plane | null = null;
+    if (basis && sectionView) {
+      const n = new THREE.Vector3(basis.normal[0], basis.normal[1], basis.normal[2]);
+      // Bias the cut a hair toward the camera (+normal). When the sketch sits ON
+      // a body face, that face is exactly coplanar with the cut, so at bias 0 it
+      // sits on the clip boundary and z-fights the plane grid / section — the
+      // "blinking/vibrating" background surface (#3). Nudging the plane by a tiny
+      // epsilon clips that coplanar face cleanly away instead of leaving it to
+      // flicker on the boundary.
+      const origin = new THREE.Vector3(
+        basis.origin[0],
+        basis.origin[1],
+        basis.origin[2]
+      ).addScaledVector(n, SECTION_CLIP_BIAS_MM);
+      clip = new THREE.Plane().setFromNormalAndCoplanarPoint(n, origin);
+    }
     for (const mesh of bodies) {
       const style = bodyStyles?.get(mesh.bodyId);
       if (style && !style.visible) continue; // F8 hidden body
@@ -1302,6 +1350,7 @@ export function Viewport({
     if (!basis || !sectionView) {
       sectionSegRef.current = [];
       sectionPtsRef.current = [];
+      sectionLoopsRef.current = [];
       return;
     }
     const mapping = mappingFromBasis(basis);
@@ -1321,6 +1370,8 @@ export function Viewport({
     }
     sectionSegRef.current = segs;
     sectionPtsRef.current = pts;
+    // Weld into loops once per rebuild (not per frame) for the solid-cap fill.
+    sectionLoopsRef.current = assembleSectionLoops(segs);
   }, [sketchMode?.basis.key, bodies, bodyStyles, sectionView]);
 
   // Rebuild the op-selection highlight (F3): selected profile loops + axis,

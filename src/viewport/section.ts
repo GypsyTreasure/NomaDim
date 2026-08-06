@@ -269,3 +269,86 @@ export function sectionPlanePoints(
   }
   return pts;
 }
+
+/** A section as sketch-plane (u, v) segment pairs — the same cut as
+ * `sectionPlanePoints`, but kept as ordered endpoint PAIRS so callers can weld
+ * them into loops (fill the cut face #3) or project them to real lines (#2). */
+export function sectionPlaneSegments(
+  positions: Float32Array,
+  indices: Uint32Array,
+  basis: PlaneBasisLite
+): (readonly [SectionPt, SectionPt])[] {
+  const world = sliceMesh(positions, indices, basis.origin, basis.normal);
+  const project = (i: number): SectionPt => {
+    const dx = (world[i] ?? 0) - basis.origin[0];
+    const dy = (world[i + 1] ?? 0) - basis.origin[1];
+    const dz = (world[i + 2] ?? 0) - basis.origin[2];
+    return {
+      x: dx * basis.uAxis[0] + dy * basis.uAxis[1] + dz * basis.uAxis[2],
+      y: dx * basis.vAxis[0] + dy * basis.vAxis[1] + dz * basis.vAxis[2],
+    };
+  };
+  const segs: (readonly [SectionPt, SectionPt])[] = [];
+  for (let i = 0; i + 5 < world.length; i += 6) segs.push([project(i), project(i + 3)]);
+  return segs;
+}
+
+export interface SectionPt {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Weld section segments (shared endpoints) into ordered loops, so the cut face
+ * can be FILLED (a clipped solid reads as solid, not a hollow shell — #3). Each
+ * cut vertex on a closed solid has degree 2, so a greedy chain walk recovers the
+ * boundary loops; open chains (a face-boundary outline) are returned too but
+ * only loops with ≥ 3 points are emitted. Pure — unit-testable without a canvas.
+ */
+export function assembleSectionLoops(
+  segments: readonly (readonly [SectionPt, SectionPt])[]
+): SectionPt[][] {
+  const Q = 1e3; // weld tolerance ~1e-3 mm (section endpoints from shared edges match closely)
+  const key = (p: SectionPt): string =>
+    `${String(Math.round(p.x * Q))}:${String(Math.round(p.y * Q))}`;
+  const adj = new Map<string, { toKey: string; seg: number; from: SectionPt; to: SectionPt }[]>();
+  const push = (
+    k: string,
+    e: { toKey: string; seg: number; from: SectionPt; to: SectionPt }
+  ): void => {
+    const bucket = adj.get(k);
+    if (bucket) bucket.push(e);
+    else adj.set(k, [e]);
+  };
+  segments.forEach((s, i) => {
+    const [a, b] = s;
+    const ka = key(a);
+    const kb = key(b);
+    if (ka === kb) return;
+    push(ka, { toKey: kb, seg: i, from: a, to: b });
+    push(kb, { toKey: ka, seg: i, from: b, to: a });
+  });
+  const used = new Set<number>();
+  const loops: SectionPt[][] = [];
+  for (let i = 0; i < segments.length; i += 1) {
+    if (used.has(i)) continue;
+    const startSeg = segments[i];
+    if (!startSeg) continue;
+    const startKey = key(startSeg[0]);
+    let curKey = startKey;
+    const loop: SectionPt[] = [];
+    let guard = 0;
+    while (guard <= segments.length) {
+      guard += 1;
+      const edges = adj.get(curKey);
+      const next = edges?.find((e) => !used.has(e.seg));
+      if (!next) break;
+      used.add(next.seg);
+      loop.push(next.from);
+      curKey = next.toKey;
+      if (curKey === startKey) break; // closed
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  return loops;
+}

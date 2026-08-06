@@ -55,7 +55,7 @@ import {
   type ImportLayer,
   type ImportPrimitive,
 } from '../../../sketch';
-import { sectionPlanePoints, type SketchModeProps } from '../../../viewport';
+import { sectionPlanePoints, sectionPlaneSegments, type SketchModeProps } from '../../../viewport';
 import { sketchPlaneBasis } from './planeBasis';
 import { addImportedPrimitives } from './importGeometry';
 import { commandBus, useDocumentStore } from '../../store/documentStore';
@@ -230,6 +230,10 @@ export interface SketcherApi {
   /** Intersect view (#1): clip the near half of bodies + show the plane section. */
   readonly intersect: boolean;
   readonly toggleIntersect: () => void;
+  /** Turn the Intersect cross-section into real sketch lines (#2). */
+  readonly projectSection: () => void;
+  /** True when Intersect is on and a section exists to project. */
+  readonly canProjectSection: boolean;
   /** Increments after a reference import to request a one-shot zoom-to-fit. */
   readonly fitNonce: number;
 }
@@ -269,6 +273,8 @@ export function useSketcher(): SketcherApi {
   // Lets the keydown handler invoke Finish Sketch (defined later) by its 'F'
   // shortcut without a use-before-define cycle.
   const finishRef = useRef<() => void>(() => undefined);
+  // Read by the keydown handler (Y), assigned once projectSection is defined.
+  const projectSectionRef = useRef<() => void>(() => undefined);
   const [cursor, setCursor] = useState<Vec2>(() => vec2(0, 0));
   const [pxPerMm, setPxPerMm] = useState(1);
   const [ctrlHeld, setCtrlHeld] = useState(false);
@@ -440,6 +446,25 @@ export function useSketcher(): SketcherApi {
     // basis identity is stable per plane; keying on its `key` avoids rebuilds.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intersect, bodies, basis?.key]);
+
+  // The Intersect cross-section as plane-space segment pairs (#2): the raw
+  // material for "Project Section", which turns them into real sketch lines.
+  const sectionSegments = useMemo<(readonly [Vec2, Vec2])[]>(() => {
+    if (!intersect || !basis) return [];
+    const segs: (readonly [Vec2, Vec2])[] = [];
+    for (const mesh of bodies) {
+      for (const [a, b] of sectionPlaneSegments(mesh.positions, mesh.indices, basis)) {
+        segs.push([vec2(a.x, a.y), vec2(b.x, b.y)]);
+      }
+    }
+    return segs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intersect, bodies, basis?.key]);
+  const canProjectSection = intersect && sectionSegments.length > 0;
+  const sectionSegmentsRef = useRef<readonly (readonly [Vec2, Vec2])[]>([]);
+  useEffect(() => {
+    sectionSegmentsRef.current = sectionSegments;
+  }, [sectionSegments]);
 
   const snapResult: SnapResult = useMemo(() => {
     if (!sketch || !snapEnabled || ctrlHeld) return { snap: null, guides: [] };
@@ -1110,6 +1135,10 @@ export function useSketcher(): SketcherApi {
         setIntersect((v) => !v); // Intersect view toggle (#1, ADR-0032)
         return;
       }
+      if (event.key === 'y' || event.key === 'Y') {
+        projectSectionRef.current(); // Project the Intersect section to lines (#2)
+        return;
+      }
       if (event.key === 's' || event.key === 'S') {
         setTool(null); // Select
         return;
@@ -1161,13 +1190,51 @@ export function useSketcher(): SketcherApi {
     setInputState((s) => reduceInput(s, { type: 'focus', index }).state);
   }, []);
 
+  // Construction toggle (X): with entities selected, flip THOSE entities between
+  // normal and construction (#2) — set all to construction if any is still
+  // normal, else all back to normal. With nothing selected, it toggles the draw
+  // mode (new geometry is construction) as before.
   const toggleConstruction = useCallback(() => {
+    const current = liveSketch();
+    const selected = useSessionStore.getState().selectedEntityIds;
+    if (current && selected.length > 0) {
+      const set = new Set(selected);
+      const anyNormal = current.entities.some((e) => set.has(e.id) && !e.construction);
+      for (const id of selected) {
+        commandBus.dispatch({
+          type: 'SetEntityConstruction',
+          payload: { sketchId: current.id, entityId: id, construction: anyNormal },
+        });
+      }
+      return;
+    }
     setToolState((s) => setConstructionMode(s, !s.constructionMode));
-  }, []);
+  }, [liveSketch]);
 
   const toggleIntersect = useCallback(() => {
     setIntersect((v) => !v);
   }, []);
+
+  // Project Section (#2): materialize the Intersect cross-section as REAL sketch
+  // line entities (normal), welding shared endpoints so they form closed
+  // profiles. Once real, they can be box-selected, flipped to construction (X),
+  // trimmed, and consumed by Extrude/Revolve like any drawn geometry.
+  const projectSection = useCallback(() => {
+    const current = liveSketch();
+    if (!current) return;
+    const segs = sectionSegmentsRef.current;
+    if (segs.length === 0) return;
+    const plan = new GeometryPlan(current);
+    for (const [a, b] of segs) plan.addLine({ p: a }, { p: b }, false);
+    if (plan.payload.entities.length === 0) return;
+    commandBus.dispatch({
+      type: 'AddSketchGeometry',
+      payload: { sketchId: current.id, ...plan.payload },
+    });
+  }, [liveSketch]);
+  useEffect(() => {
+    projectSectionRef.current = projectSection;
+  }, [projectSection]);
 
   const deleteSelection = useCallback(() => {
     const current = liveSketch();
@@ -1558,6 +1625,8 @@ export function useSketcher(): SketcherApi {
     hasSelection: selectedEntityIds.length > 0 || selectedDimensionIds.length > 0,
     intersect,
     toggleIntersect,
+    projectSection,
+    canProjectSection,
     fitNonce,
     newSketch,
     choosePlane,

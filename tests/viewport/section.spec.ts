@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   sliceMesh,
   sectionPlanePoints,
+  sectionPlaneSegments,
+  assembleSectionLoops,
   pointInArea,
   MAX_SECTION_SEGMENTS,
   type PlaneBasisLite,
+  type SectionPt,
   type Triple,
 } from '../../src/viewport/section';
 
@@ -180,5 +183,76 @@ describe('pointInArea (#11 click-to-pick)', () => {
 
   it('includes points between the hole and the outer boundary', () => {
     expect(pointInArea(1, 1, square, [hole])).toBe(true);
+  });
+});
+
+describe('assembleSectionLoops (#3 solid cap / #2 project)', () => {
+  const p = (x: number, y: number): SectionPt => ({ x, y });
+
+  it('welds four shared-endpoint segments into one closed loop', () => {
+    // A unit square given as 4 segments sharing corners (order shuffled).
+    const segs: (readonly [SectionPt, SectionPt])[] = [
+      [p(0, 0), p(10, 0)],
+      [p(10, 10), p(0, 10)],
+      [p(10, 0), p(10, 10)],
+      [p(0, 10), p(0, 0)],
+    ];
+    const loops = assembleSectionLoops(segs);
+    expect(loops).toHaveLength(1);
+    expect(loops[0]?.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('returns two loops for two disjoint squares (e.g. an outer + a hole ring)', () => {
+    const ring = (o: number): (readonly [SectionPt, SectionPt])[] => [
+      [p(o, o), p(o + 4, o)],
+      [p(o + 4, o), p(o + 4, o + 4)],
+      [p(o + 4, o + 4), p(o, o + 4)],
+      [p(o, o + 4), p(o, o)],
+    ];
+    const loops = assembleSectionLoops([...ring(0), ...ring(20)]);
+    expect(loops).toHaveLength(2);
+  });
+
+  it('ignores a lone open segment (no loop of ≥3 points)', () => {
+    expect(assembleSectionLoops([[p(0, 0), p(5, 0)]])).toEqual([]);
+  });
+});
+
+describe('sectionPlaneSegments', () => {
+  it('projects each world segment to a plane-space endpoint pair', () => {
+    // Two triangles straddling z=0 → two section segments.
+    const positions = new Float32Array([
+      -1,
+      0,
+      -1,
+      1,
+      0,
+      -1,
+      0,
+      0,
+      1, // tri 1
+      2,
+      0,
+      -1,
+      4,
+      0,
+      -1,
+      3,
+      0,
+      1, // tri 2
+    ]);
+    const indices = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    const basis: PlaneBasisLite = {
+      origin: [0, 0, 0],
+      uAxis: [1, 0, 0],
+      vAxis: [0, 1, 0],
+      normal: [0, 0, 1],
+    };
+    const segs = sectionPlaneSegments(positions, indices, basis);
+    expect(segs).toHaveLength(2);
+    for (const [a, b] of segs) {
+      expect(typeof a.x).toBe('number');
+      expect(typeof b.y).toBe('number');
+    }
   });
 });

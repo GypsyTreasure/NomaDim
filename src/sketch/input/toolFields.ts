@@ -25,7 +25,8 @@ export type SketchToolId =
   | 'dimension'
   | 'split'
   | 'stretch'
-  | 'offset';
+  | 'offset'
+  | 'move';
 
 const LENGTH = (id: string): FieldDef => ({ id, kind: 'length' });
 const ANGLE = (id: string): FieldDef => ({ id, kind: 'angle' });
@@ -62,7 +63,8 @@ export function fieldsForToolWithStart(tool: SketchToolId, chained = false): rea
     tool === 'spline' ||
     tool === 'split' ||
     tool === 'stretch' ||
-    tool === 'offset'
+    tool === 'offset' ||
+    tool === 'move'
   ) {
     return [];
   }
@@ -90,6 +92,7 @@ export function fieldsForTool(tool: SketchToolId, chained = false): readonly Fie
     case 'split':
     case 'stretch':
     case 'offset':
+    case 'move':
       return [];
     case 'polygon':
       return [COUNT('sides'), LENGTH('diameter')];

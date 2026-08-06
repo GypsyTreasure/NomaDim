@@ -164,6 +164,15 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
             sketcher.setTool('offset');
           }}
         />
+        <IconButton
+          icon="move"
+          label={t('sketch.tool.move')}
+          shortcut="V"
+          active={sketcher.tool === 'move'}
+          onClick={() => {
+            sketcher.setTool('move');
+          }}
+        />
       </div>
       <Divider />
       <div className={toolbarStyles.block}>

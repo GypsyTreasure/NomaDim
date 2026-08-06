@@ -16,6 +16,7 @@ import {
   getDatum,
   isDatumPlane,
   pointMap,
+  referencedPointIds,
   type Sketch,
   type SketchDimensionKind,
   type SketchPlaneRef,
@@ -276,7 +277,10 @@ export function useSketcher(): SketcherApi {
   const [pickingFace, setPickingFace] = useState(false);
   const [faceError, setFaceError] = useState<string | null>(null);
   // Change tool: the point currently being dragged + its live position.
-  const [drag, setDrag] = useState<{ pointId: PointId; pos: Vec2 } | null>(null);
+  // A Change-tool point drag: which point, and its ORIGINAL position (`base`),
+  // used as the snap anchor so ortho / alignment work like drawing (#2). The
+  // live target is the snapped cursor (`dragTarget`), not stored here.
+  const [drag, setDrag] = useState<{ pointId: PointId; base: Vec2 } | null>(null);
   const dragRef = useRef(drag);
   useEffect(() => {
     dragRef.current = drag;
@@ -290,13 +294,16 @@ export function useSketcher(): SketcherApi {
     offsetSourceRef.current = offsetSource;
   }, [offsetSource]);
 
-  // Stretch tool (#7): the pool points captured by a crossing box, then a live
-  // drag translation (base → pos). Points in the set move; everything else
-  // stays, so lines with one end in the box rubber-band (shared-point topology).
+  // Group point move shared by Stretch (#7) and Move (#3): the captured pool
+  // points, the entities they belong to (excluded from snap so the moving
+  // geometry can't snap to itself), and — once dragging — the grab `base`. The
+  // live target is the snapped cursor (`dragTarget`). Stretch captures only the
+  // points inside the box (partial → rubber-band); Move captures every point of
+  // the selected whole shapes (rigid translation).
   const [stretch, setStretch] = useState<{
     pointIds: readonly PointId[];
+    entityIds: readonly EntityId[];
     base: Vec2 | null;
-    pos: Vec2 | null;
   } | null>(null);
   const stretchRef = useRef(stretch);
   useEffect(() => {
@@ -327,22 +334,74 @@ export function useSketcher(): SketcherApi {
   // ends (commit-to-close, tool switch, Escape, Finish Sketch).
   const lineStartRef = useRef<Vec2 | null>(null);
 
+  // Snapping while MOVING geometry (#2): a point/group drag runs the same snap
+  // engine as drawing, so ortho H/V, alignment tracing and point/grid snap all
+  // apply. Queried against the ORIGINAL sketch (never the moved preview, to
+  // avoid a feedback loop) with the moving entities EXCLUDED so geometry can't
+  // snap to itself, and `anchor = base` so ortho is measured from the grab.
+  const baseEvaluated = useMemo(() => (sketch ? evaluateSketch(sketch) : []), [sketch]);
+  const dragBase = drag?.base ?? stretch?.base ?? null;
+  const dragExcludeIds = useMemo<ReadonlySet<EntityId>>(() => {
+    if (!sketch) return new Set();
+    if (stretch?.base) return new Set(stretch.entityIds);
+    if (drag) {
+      return new Set(
+        sketch.entities.filter((e) => referencedPointIds(e).includes(drag.pointId)).map((e) => e.id)
+      );
+    }
+    return new Set();
+  }, [sketch, drag, stretch]);
+  const dragSnap: SnapResult = useMemo(() => {
+    if (!sketch || !dragBase || !snapEnabled || ctrlHeld) return { snap: null, guides: [] };
+    const disabledKinds = orthoEnabled
+      ? undefined
+      : new Set<SnapKind>(['align-h', 'align-v', 'guide-intersection']);
+    return snapEngine.query({
+      sketch,
+      evaluated: baseEvaluated,
+      cursor,
+      toleranceMm: SNAP_TOLERANCE_PX / Math.max(pxPerMm, 1e-6),
+      angularToleranceRad: ANGULAR_TOLERANCE_RAD,
+      gridSpacingMm: GRID_SPACING_MM,
+      anchor: dragBase,
+      excludeEntityIds: dragExcludeIds,
+      disabledKinds,
+    });
+  }, [
+    sketch,
+    baseEvaluated,
+    cursor,
+    pxPerMm,
+    snapEnabled,
+    orthoEnabled,
+    ctrlHeld,
+    dragBase,
+    dragExcludeIds,
+  ]);
+  // The live snapped target of a drag; null when not dragging. Held in a ref so
+  // the pointer-up commit reads the same snapped value the preview showed.
+  const dragTarget = dragBase ? (dragSnap.snap?.point ?? cursor) : null;
+  const dragTargetRef = useRef(dragTarget);
+  useEffect(() => {
+    dragTargetRef.current = dragTarget;
+  }, [dragTarget]);
+
   // While dragging (Change tool) render the grabbed point at its live position;
-  // while stretching (#7) translate every captured point by the live delta.
-  // Either way the command only fires on drop.
+  // while stretching (#7) / moving (#3) translate every captured point by the
+  // live delta. Either way the command only fires on drop.
   const displaySketch = useMemo(() => {
     if (!sketch) return sketch;
-    if (drag) {
+    if (drag && dragTarget) {
       return {
         ...sketch,
         points: sketch.points.map((pt) =>
-          pt.id === drag.pointId ? { ...pt, x: drag.pos.x, y: drag.pos.y } : pt
+          pt.id === drag.pointId ? { ...pt, x: dragTarget.x, y: dragTarget.y } : pt
         ),
       };
     }
-    if (stretch?.base && stretch.pos) {
-      const dx = stretch.pos.x - stretch.base.x;
-      const dy = stretch.pos.y - stretch.base.y;
+    if (stretch?.base && dragTarget) {
+      const dx = dragTarget.x - stretch.base.x;
+      const dy = dragTarget.y - stretch.base.y;
       const moving = new Set(stretch.pointIds);
       return {
         ...sketch,
@@ -352,7 +411,7 @@ export function useSketcher(): SketcherApi {
       };
     }
     return sketch;
-  }, [sketch, drag, stretch]);
+  }, [sketch, drag, stretch, dragTarget]);
 
   const evaluated = useMemo(
     () => (displaySketch ? evaluateSketch(displaySketch) : []),
@@ -520,11 +579,31 @@ export function useSketcher(): SketcherApi {
     (a: Vec2, b: Vec2, crossing: boolean) => {
       const current = liveSketch();
       if (!current) return;
-      // Stretch tool (#7): the box captures the pool points to move; the next
-      // press-drag translates them. No entity selection here.
-      if (useSessionStore.getState().activeTool === 'stretch') {
+      const active = useSessionStore.getState().activeTool;
+      // Stretch (#7): the box captures the pool points INSIDE it — the next
+      // press-drag moves only those, so partially-boxed shapes rubber-band.
+      if (active === 'stretch') {
         const pointIds = pointIdsInMarquee(current.points, a, b);
-        setStretch(pointIds.length > 0 ? { pointIds, base: null, pos: null } : null);
+        const moving = new Set(pointIds);
+        const entityIds = current.entities
+          .filter((e) => referencedPointIds(e).some((id) => moving.has(id)))
+          .map((e) => e.id);
+        setStretch(pointIds.length > 0 ? { pointIds, entityIds, base: null } : null);
+        return;
+      }
+      // Move (#3, AutoCAD): the box selects WHOLE shapes; every one of their
+      // pool points is captured, so the next press-drag translates them rigidly.
+      if (active === 'move') {
+        const hits = entitiesInMarquee(evaluateSketch(current), a, b, crossing);
+        const ids = new Set<EntityId>();
+        for (const id of hits) for (const c of connectedEntityIds(current, id)) ids.add(c);
+        const entityIds = [...ids];
+        const pointSet = new Set<PointId>();
+        for (const e of current.entities) {
+          if (ids.has(e.id)) for (const pt of referencedPointIds(e)) pointSet.add(pt);
+        }
+        useSessionStore.getState().setSelection(entityIds);
+        setStretch(pointSet.size > 0 ? { pointIds: [...pointSet], entityIds, base: null } : null);
         return;
       }
       const hits = entitiesInMarquee(evaluateSketch(current), a, b, crossing);
@@ -792,7 +871,7 @@ export function useSketcher(): SketcherApi {
         useSessionStore.getState().setSelection([]);
         return;
       }
-      if (tool === 'stretch') return; // box-select + drag, handled elsewhere
+      if (tool === 'stretch' || tool === 'move') return; // box-select + drag, elsewhere
       const snap = snapResult.snap;
       const spec =
         snap?.sourceRef.type === 'point'
@@ -860,13 +939,13 @@ export function useSketcher(): SketcherApi {
   const onPointGrab = useCallback(
     (p: Vec2, scale: number): boolean => {
       const tool = useSessionStore.getState().activeTool;
-      // Stretch: once a box has captured points, a press anywhere begins the
-      // group translation (base = grab point). No box captured → let the
-      // marquee arm instead (return false).
-      if (tool === 'stretch') {
+      // Stretch (#7) / Move (#3): once a box has captured a point set, a press
+      // anywhere begins the group translation (base = grab point). No set yet →
+      // let the marquee arm instead (return false).
+      if (tool === 'stretch' || tool === 'move') {
         const s = stretchRef.current;
         if (!s || s.pointIds.length === 0) return false;
-        setStretch({ ...s, base: p, pos: p });
+        setStretch({ ...s, base: p });
         return true;
       }
       if (tool !== 'change') return false;
@@ -875,28 +954,28 @@ export function useSketcher(): SketcherApi {
       const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
       const pointId = nearestPointId(current.points, p, tolMm);
       if (!pointId) return false;
-      setDrag({ pointId, pos: p });
+      const pt = current.points.find((q) => q.id === pointId);
+      setDrag({ pointId, base: pt ? vec2(pt.x, pt.y) : p });
       return true;
     },
     [liveSketch]
   );
 
+  // Feed the live cursor into the shared pipeline so the snap engine re-runs at
+  // the drag location (#2); displaySketch reads the snapped `dragTarget`.
   const onPointDrag = useCallback((p: Vec2) => {
-    if (stretchRef.current?.base) {
-      setStretch((s) => (s ? { ...s, pos: p } : s));
-      return;
-    }
-    setDrag((d) => (d ? { ...d, pos: p } : d));
+    setCursor(p);
   }, []);
 
   const onPointDrop = useCallback(() => {
+    const target = dragTargetRef.current;
     const s = stretchRef.current;
     const current = liveSketch();
-    // Commit a stretch: move every captured point by (pos − base) to absolute
-    // coordinates. Clearing the set ends this stretch; re-box for another.
-    if (s?.base && s.pos && current) {
-      const dx = s.pos.x - s.base.x;
-      const dy = s.pos.y - s.base.y;
+    // Commit a group move (Stretch/Move): translate every captured point by the
+    // snapped (target − base) delta. Clearing the set ends it; re-box for more.
+    if (s?.base && target && current) {
+      const dx = target.x - s.base.x;
+      const dy = target.y - s.base.y;
       if (dx !== 0 || dy !== 0) {
         const byId = pointMap(current);
         const moves = s.pointIds.flatMap((pointId) => {
@@ -914,10 +993,13 @@ export function useSketcher(): SketcherApi {
       return;
     }
     const d = dragRef.current;
-    if (d && current) {
+    if (d && target && current) {
       commandBus.dispatch({
         type: 'MoveSketchPoints',
-        payload: { sketchId: current.id, moves: [{ pointId: d.pointId, x: d.pos.x, y: d.pos.y }] },
+        payload: {
+          sketchId: current.id,
+          moves: [{ pointId: d.pointId, x: target.x, y: target.y }],
+        },
       });
     }
     setDrag(null);
@@ -932,7 +1014,8 @@ export function useSketcher(): SketcherApi {
     setDimFirst(null); // switching tools cancels a half-placed dimension
     lineStartRef.current = null; // and ends any open line chain (#6)
     setOffsetSource(null); // and any half-done offset (#8)
-    setStretch(null); // and any captured stretch set (#7)
+    setStretch(null); // and any captured stretch/move set (#7/#3)
+    setDrag(null); // and any in-flight point drag
     setToolState((prev) => ({
       ...initialToolState(tool ?? 'line'),
       constructionMode: prev.constructionMode,
@@ -1055,6 +1138,7 @@ export function useSketcher(): SketcherApi {
         t: 'split',
         e: 'stretch',
         w: 'offset',
+        v: 'move',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
       if (hotkey) {
@@ -1430,13 +1514,17 @@ export function useSketcher(): SketcherApi {
               ...(activeTool ? toolPreview(previewToolState, effectiveCursor, typedValues) : []),
               ...offsetPreview,
             ],
-            snap: snapResult.snap,
-            guides: snapResult.guides,
+            // While moving geometry, show the DRAG snap/guides (anchored at the
+            // grab, moving geometry excluded) so ortho + tracing read live (#2).
+            snap: dragBase ? dragSnap.snap : snapResult.snap,
+            guides: dragBase ? dragSnap.guides : snapResult.guides,
             selectedEntityIds: new Set(selectedEntityIds),
             dimensions: overlayDimensions,
           },
-          // Marquee drag is the Select cursor (#6) and the Stretch box (#7).
-          selecting: activeTool === null || activeTool === 'stretch',
+          // Box-select is available in EVERY tool (#1): a drag rubber-bands
+          // shapes; a click still does the tool's action (draw/pick). Stretch
+          // and Move capture their point set from the same box.
+          selecting: true,
           onMarquee,
           onCursor,
           onClickPoint,

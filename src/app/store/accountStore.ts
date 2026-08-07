@@ -2,26 +2,26 @@ import { create } from 'zustand';
 import { getDeviceId, getDeviceLabel } from '../features/licensing/device';
 import { isAccountServiceConfigured } from '../features/account/config';
 import {
-  beginOAuth,
-  completeOAuthFromUrl,
   fetchAccount,
   listDevices,
+  login as loginRemote,
+  register as registerRemote,
   requestLease,
   revokeDevice,
   signOutRemote,
   type AccountError,
   type AccountProfile,
   type DeviceInfo,
-  type OAuthProvider,
 } from '../features/account/authClient';
+import { type Result, ok, err } from '../../core';
 import { useEntitlementStore } from './entitlementStore';
 
 /**
- * Account session store (M13, ADR-0123). Holds the signed-in profile + opaque
- * session token, and orchestrates the ONLY network touchpoints: sign-in
- * (OAuth redirect), lease issuance/renewal, and device management. When the
- * account service isn't configured this store is inert and the app stays on the
- * pure offline paste-a-key path (M11). A leased Pro token flows into the
+ * Account session store (M13, ADR-0124). Holds the signed-in profile + opaque
+ * session token, and orchestrates the ONLY network touchpoints: register / log
+ * in (email + password), lease issuance/renewal, and device management. When
+ * the account service isn't configured this store is inert and the app stays on
+ * the pure offline paste-a-key path (M11). A leased Pro token flows into the
  * entitlement store via `activate`, which then verifies it offline like any key.
  */
 
@@ -37,9 +37,11 @@ interface AccountState {
   readonly status: Status;
   readonly error: AccountError | null;
   readonly devices: readonly DeviceInfo[];
-  /** Begin OAuth (redirects away). */
-  readonly signIn: (provider: OAuthProvider) => void;
-  /** On load: pick up an OAuth return, else restore a persisted session; then lease. */
+  /** Create a new account (email + password), then lease. */
+  readonly register: (email: string, password: string) => Promise<Result<true, AccountError>>;
+  /** Log in to an existing account (email + password), then lease. */
+  readonly login: (email: string, password: string) => Promise<Result<true, AccountError>>;
+  /** On load: restore a persisted session and refresh the lease. */
   readonly init: () => Promise<void>;
   /** Ask the service for a fresh device-bound lease and apply it (Pro). */
   readonly refreshLease: () => Promise<void>;
@@ -74,84 +76,103 @@ function readStoredAccount(): AccountProfile | null {
   }
 }
 
-export const useAccountStore = create<AccountState>((set, get) => ({
-  configured: isAccountServiceConfigured,
-  account: readStoredAccount(),
-  session: readLS(SESSION_KEY),
-  status: 'idle',
-  error: null,
-  devices: [],
+export const useAccountStore = create<AccountState>((set, get) => {
+  /** Apply a successful auth result: persist session + profile, then lease. */
+  async function onAuthed(session: string, account: AccountProfile): Promise<void> {
+    writeLS(SESSION_KEY, session);
+    writeLS(ACCOUNT_KEY, JSON.stringify(account));
+    set({ session, account, status: 'idle', error: null });
+    await get().refreshLease();
+  }
 
-  signIn: (provider) => {
-    if (!isAccountServiceConfigured) return;
-    beginOAuth(provider, getDeviceId());
-  },
+  async function authFlow(
+    call: () => Promise<Result<{ session: string; account: AccountProfile }, AccountError>>
+  ): Promise<Result<true, AccountError>> {
+    if (!isAccountServiceConfigured) return err({ kind: 'unconfigured' });
+    set({ status: 'working', error: null });
+    const res = await call();
+    if (!res.ok) {
+      set({ status: 'error', error: res.error });
+      return err(res.error);
+    }
+    await onAuthed(res.value.session, res.value.account);
+    return ok(true);
+  }
 
-  init: async () => {
-    if (!isAccountServiceConfigured) return;
-    // A fresh OAuth return carries the session in the URL fragment.
-    const fromUrl = completeOAuthFromUrl();
-    const session = fromUrl ?? get().session;
-    if (!session) return;
-    if (fromUrl) writeLS(SESSION_KEY, fromUrl);
-    set({ session, status: 'working', error: null });
+  return {
+    configured: isAccountServiceConfigured,
+    account: readStoredAccount(),
+    session: readLS(SESSION_KEY),
+    status: 'idle',
+    error: null,
+    devices: [],
 
-    const profile = await fetchAccount(session);
-    if (!profile.ok) {
-      // A dead/expired session: forget it, stay free (offline grace may still
-      // carry a valid local lease until it lapses).
-      if (profile.error.kind === 'unauthorized') {
-        writeLS(SESSION_KEY, null);
-        writeLS(ACCOUNT_KEY, null);
-        set({ session: null, account: null, status: 'idle' });
+    register: (email, password) => authFlow(() => registerRemote(email, password)),
+    login: (email, password) => authFlow(() => loginRemote(email, password)),
+
+    init: async () => {
+      if (!isAccountServiceConfigured) return;
+      const session = get().session;
+      if (!session) return;
+      set({ status: 'working', error: null });
+
+      const profile = await fetchAccount(session);
+      if (!profile.ok) {
+        // A dead/expired session: forget it, stay free (offline grace may still
+        // carry a valid local lease until it lapses).
+        if (profile.error.kind === 'unauthorized') {
+          writeLS(SESSION_KEY, null);
+          writeLS(ACCOUNT_KEY, null);
+          set({ session: null, account: null, status: 'idle' });
+          return;
+        }
+        set({ status: 'error', error: profile.error });
         return;
       }
-      set({ status: 'error', error: profile.error });
-      return;
-    }
-    writeLS(ACCOUNT_KEY, JSON.stringify(profile.value));
-    set({ account: profile.value, status: 'idle' });
-    await get().refreshLease();
-  },
+      writeLS(ACCOUNT_KEY, JSON.stringify(profile.value));
+      set({ account: profile.value, status: 'idle' });
+      await get().refreshLease();
+    },
 
-  refreshLease: async () => {
-    const { session } = get();
-    if (!session || !isAccountServiceConfigured) return;
-    const leased = await requestLease(session, getDeviceId(), getDeviceLabel());
-    if (leased.ok) {
-      // Verified offline + persisted by the entitlement store.
-      await useEntitlementStore.getState().activate(leased.value);
-    } else if (leased.error.kind === 'notPaid') {
-      set({ error: leased.error });
-    }
-    // Other errors (network/server): keep any existing local lease (grace).
-  },
+    refreshLease: async () => {
+      const { session } = get();
+      if (!session || !isAccountServiceConfigured) return;
+      const leased = await requestLease(session, getDeviceId(), getDeviceLabel());
+      if (leased.ok) {
+        // Verified offline + persisted by the entitlement store.
+        await useEntitlementStore.getState().activate(leased.value);
+      } else if (leased.error.kind === 'notPaid') {
+        set({ error: leased.error });
+      }
+      // Other errors (network/server): keep any existing local lease (grace).
+    },
 
-  loadDevices: async () => {
-    const { session } = get();
-    if (!session) return;
-    const res = await listDevices(session);
-    if (res.ok) set({ devices: res.value });
-  },
+    loadDevices: async () => {
+      const { session } = get();
+      if (!session) return;
+      const res = await listDevices(session);
+      if (res.ok) set({ devices: res.value });
+    },
 
-  revoke: async (deviceId) => {
-    const { session } = get();
-    if (!session) return;
-    const res = await revokeDevice(session, deviceId);
-    if (res.ok) {
-      await get().loadDevices();
-      // Revoking THIS device drops us to free immediately.
-      if (deviceId === getDeviceId()) useEntitlementStore.getState().deactivate();
-    }
-  },
+    revoke: async (deviceId) => {
+      const { session } = get();
+      if (!session) return;
+      const res = await revokeDevice(session, deviceId);
+      if (res.ok) {
+        await get().loadDevices();
+        // Revoking THIS device drops us to free immediately.
+        if (deviceId === getDeviceId()) useEntitlementStore.getState().deactivate();
+      }
+    },
 
-  signOut: () => {
-    const { session } = get();
-    if (session) void signOutRemote(session);
-    writeLS(SESSION_KEY, null);
-    writeLS(ACCOUNT_KEY, null);
-    set({ session: null, account: null, devices: [], status: 'idle', error: null });
-    // Local lease is account-bound: drop Pro on sign-out.
-    useEntitlementStore.getState().deactivate();
-  },
-}));
+    signOut: () => {
+      const { session } = get();
+      if (session) void signOutRemote(session);
+      writeLS(SESSION_KEY, null);
+      writeLS(ACCOUNT_KEY, null);
+      set({ session: null, account: null, devices: [], status: 'idle', error: null });
+      // Local lease is account-bound: drop Pro on sign-out.
+      useEntitlementStore.getState().deactivate();
+    },
+  };
+});

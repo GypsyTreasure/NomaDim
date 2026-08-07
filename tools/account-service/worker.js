@@ -1,21 +1,17 @@
-// Cloudflare Worker: NomaDim account + license service (M13, ADR-0123).
+// Cloudflare Worker: NomaDim account + license service (M13, ADR-0124).
 //
 // Lives OUTSIDE the app bundle; deployed separately (wrangler). Touched only at
-// sign-in / lease-renew / device management — never on the app's hot path, so
-// the client still runs fully offline (prime directive #7).
+// register / log in / lease-renew / device management — never on the app's hot
+// path, so the client still runs fully offline (prime directive #7).
+//
+// Auth is a simple INTERNAL email + password scheme (no third-party providers):
+// passwords are hashed with PBKDF2-SHA256 (per-account random salt) and never
+// stored in the clear; sign-in returns an opaque bearer session token whose
+// SHA-256 hash is the only thing persisted.
 //
 // Secrets (Worker secrets, NEVER in the repo or the client):
 //   NOMADIM_LICENSE_PRIVATE_KEY  Ed25519 PKCS8 base64 — signs leases (same key
 //                                whose PUBLIC half is baked into the app).
-//   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
-//   GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET
-//   APPLE_CLIENT_ID (services id) / APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_PRIVATE_KEY
-//     Sign in with Apple has no static client secret: build a short-lived ES256
-//     JWT (header kid=APPLE_KEY_ID, iss=APPLE_TEAM_ID, sub=APPLE_CLIENT_ID)
-//     signed with APPLE_PRIVATE_KEY as the client_secret in the token exchange.
-//     Apple returns the user's name/email ONLY on the first authorization, so
-//     upsert on that first callback and rely on the account id (sub) after.
-//   ACCOUNT_ID_SALT              salt for hashing provider ids
 //   SESSION_TTL_DAYS (optional, default 60)
 // Bindings: DB (D1, see schema.sql).
 //
@@ -26,6 +22,8 @@
 const LEASE_DAYS = 30;
 const MAX_DEVICES = 3; // owner-tunable device cap per account
 const PRODUCT = 'nomadim';
+const PBKDF2_ITERATIONS = 210_000; // OWASP-recommended floor for PBKDF2-SHA256
+const MIN_PASSWORD_LEN = 8;
 
 const CORS = {
   'access-control-allow-origin': '*', // TODO(owner): pin to the app origin
@@ -38,16 +36,46 @@ const json = (body, status = 200) =>
     headers: { 'content-type': 'application/json', ...CORS },
   });
 
-const b64url = (buf) =>
-  btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64url = (buf) => b64(buf).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 async function sha256Hex(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
+
+// --- Password hashing (PBKDF2-SHA256) --------------------------------------
+async function hashPassword(password, saltBytes, iterations = PBKDF2_ITERATIONS) {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations },
+    keyMaterial,
+    256
+  );
+  return b64(bits);
+}
+
+// Constant-time compare (both operands are fixed-length base64 digests).
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function normalizeEmail(raw) {
+  return String(raw ?? '')
+    .trim()
+    .toLowerCase();
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Sign a device-bound Pro lease with the Worker's private key. The payload
 // shape matches the app's LicensePayload (license.ts): the app verifies it
@@ -67,10 +95,28 @@ async function signLease(env, account, deviceId, deviceLabel) {
     deviceLabel,
   };
   const seg = b64url(new TextEncoder().encode(JSON.stringify(payload)));
-  const pkcs8 = Uint8Array.from(atob(env.NOMADIM_LICENSE_PRIVATE_KEY), (c) => c.charCodeAt(0));
+  const pkcs8 = fromB64(env.NOMADIM_LICENSE_PRIVATE_KEY);
   const key = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'Ed25519' }, false, ['sign']);
   const sig = await crypto.subtle.sign({ name: 'Ed25519' }, key, new TextEncoder().encode(seg));
   return `${seg}.${b64url(sig)}`;
+}
+
+// Mint an opaque bearer session; store only its SHA-256 hash; return the raw token.
+async function mintSession(env, accountId) {
+  const raw = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const ttlDays = Number(env.SESSION_TTL_DAYS ?? 60);
+  const now = new Date();
+  const expires = new Date(now.getTime() + ttlDays * 86400_000);
+  await env.DB.prepare(
+    'INSERT INTO sessions (token_hash, account_id, created_at, expires_at) VALUES (?, ?, ?, ?)'
+  )
+    .bind(await sha256Hex(raw), accountId, now.toISOString(), expires.toISOString())
+    .run();
+  return raw;
+}
+
+function profileOf(account) {
+  return { id: account.id, email: account.email, paid: account.paid === 1 };
 }
 
 async function accountForSession(env, request) {
@@ -93,19 +139,63 @@ export default {
     const path = url.pathname.replace(/\/+$/, '');
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
-    // --- OAuth ------------------------------------------------------------
-    // GET /auth/:provider/start?return=<app>&device=<id>
-    //   Redirect to Google/GitHub with state = {return, device}. TODO(owner):
-    //   build the provider authorize URL from GOOGLE_/GITHUB_CLIENT_ID.
-    // GET /auth/:provider/callback?code=...&state=...
-    //   Exchange code → profile, upsert account, mint a session, then redirect
-    //   to `${return}#session=<token>` (fragment, not query).
-    if (path.startsWith('/auth/') && path.endsWith('/start')) {
-      return json({ todo: 'build provider authorize redirect', path }, 501);
+    // --- Auth: internal email + password ---------------------------------
+    // POST /auth/register {email, password} → { session, account }
+    if (path === '/auth/register' && request.method === 'POST') {
+      const { email: rawEmail, password } = await request.json().catch(() => ({}));
+      const email = normalizeEmail(rawEmail);
+      if (
+        !EMAIL_RE.test(email) ||
+        typeof password !== 'string' ||
+        password.length < MIN_PASSWORD_LEN
+      ) {
+        return json({ error: 'invalidInput' }, 400);
+      }
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const passwordHash = await hashPassword(password, salt);
+      const id = crypto.randomUUID();
+      const nowIso = new Date().toISOString();
+      try {
+        await env.DB.prepare(
+          `INSERT INTO accounts
+             (id, email, password_hash, password_salt, iterations, paid, order_id, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 0, NULL, ?, ?)`
+        )
+          .bind(id, email, passwordHash, b64(salt), PBKDF2_ITERATIONS, nowIso, nowIso)
+          .run();
+      } catch (e) {
+        // UNIQUE(email) violation → already registered.
+        if (String(e).includes('UNIQUE')) return json({ error: 'emailTaken' }, 409);
+        return json({ error: 'server' }, 500);
+      }
+      const account = { id, email, paid: 0, order_id: null };
+      const session = await mintSession(env, id);
+      return json({ session, account: profileOf(account) });
     }
-    if (path.startsWith('/auth/') && path.endsWith('/callback')) {
-      return json({ todo: 'exchange code, upsert account, redirect with #session' }, 501);
+
+    // POST /auth/login {email, password} → { session, account }
+    if (path === '/auth/login' && request.method === 'POST') {
+      const { email: rawEmail, password } = await request.json().catch(() => ({}));
+      const email = normalizeEmail(rawEmail);
+      if (!email || typeof password !== 'string' || !password) {
+        return json({ error: 'invalidInput' }, 400);
+      }
+      const account = await env.DB.prepare('SELECT * FROM accounts WHERE email = ?')
+        .bind(email)
+        .first();
+      if (!account) return json({ error: 'badCredentials' }, 401);
+      const candidate = await hashPassword(
+        password,
+        fromB64(account.password_salt),
+        account.iterations || PBKDF2_ITERATIONS
+      );
+      if (!timingSafeEqual(candidate, account.password_hash)) {
+        return json({ error: 'badCredentials' }, 401);
+      }
+      const session = await mintSession(env, account.id);
+      return json({ session, account: profileOf(account) });
     }
+
     if (path === '/auth/signout' && request.method === 'POST') {
       const auth = request.headers.get('authorization') || '';
       const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -122,14 +212,7 @@ export default {
 
     // GET /account → profile
     if (path === '/account' && request.method === 'GET') {
-      return json({
-        id: account.id,
-        email: account.email,
-        name: account.name ?? '',
-        avatarUrl: account.avatar_url ?? undefined,
-        provider: account.provider,
-        paid: account.paid === 1,
-      });
+      return json(profileOf(account));
     }
 
     // POST /license/lease {deviceId, deviceLabel} → { token }
@@ -194,7 +277,7 @@ export default {
   // MoR signature before trusting. Kept here for reference.
   async purchaseWebhook(request, env) {
     const event = await request.json();
-    const email = event.email ?? event.data?.customer?.email;
+    const email = normalizeEmail(event.email ?? event.data?.customer?.email);
     const orderId = String(event.orderId ?? event.data?.id ?? '');
     if (!email) return new Response('bad request', { status: 400 });
     const nowIso = new Date().toISOString();

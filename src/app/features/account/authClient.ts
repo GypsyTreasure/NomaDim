@@ -2,25 +2,20 @@ import { type Result, ok, err } from '../../../core';
 import { ACCOUNT_SERVICE_URL, isAccountServiceConfigured } from './config';
 
 /**
- * Thin client for the account/license service (M13, ADR-0123). Every call is
- * user-initiated (sign-in) or a background lease renewal — NEVER on the hot
- * path — so the app still runs fully offline. All functions fail loudly if the
- * service isn't configured, so callers must guard on `isAccountServiceConfigured`.
+ * Thin client for the account/license service (M13, ADR-0124). Every call is
+ * user-initiated (register / log in) or a background lease renewal — NEVER on
+ * the hot path — so the app still runs fully offline. All functions fail loudly
+ * if the service isn't configured, so callers must guard on
+ * `isAccountServiceConfigured`.
  *
- * OAuth uses a redirect flow: `beginOAuth` sends the browser to the Worker,
- * which runs Google/GitHub OAuth and redirects back to the app with an opaque
- * session token in the URL fragment (`#session=…`, never a query so it doesn't
- * hit logs). `completeOAuthFromUrl` picks it up on load.
+ * Auth is a simple internal email + password scheme: the Worker hashes the
+ * password (PBKDF2) and returns an opaque bearer session token, which the app
+ * treats as opaque and stores locally. No third-party providers.
  */
-
-export type OAuthProvider = 'google' | 'apple' | 'github';
 
 export interface AccountProfile {
   readonly id: string;
   readonly email: string;
-  readonly name: string;
-  readonly avatarUrl?: string;
-  readonly provider: OAuthProvider;
   /** Whether this account has a paid entitlement (drives lease issuance). */
   readonly paid: boolean;
 }
@@ -32,7 +27,15 @@ export interface DeviceInfo {
   readonly current: boolean;
 }
 
-export type AccountErrorKind = 'unconfigured' | 'network' | 'unauthorized' | 'notPaid' | 'server';
+export type AccountErrorKind =
+  | 'unconfigured'
+  | 'network'
+  | 'unauthorized'
+  | 'notPaid'
+  | 'emailTaken'
+  | 'badCredentials'
+  | 'invalidInput'
+  | 'server';
 export interface AccountError {
   readonly kind: AccountErrorKind;
   readonly message?: string;
@@ -43,29 +46,49 @@ function requireConfigured(): Result<true, AccountError> {
   return ok(true);
 }
 
-/** Redirect the browser into the provider's OAuth flow via the service. */
-export function beginOAuth(provider: OAuthProvider, deviceId: string): void {
-  if (!isAccountServiceConfigured) return;
-  const returnTo = `${window.location.origin}${window.location.pathname}`;
-  const url = new URL(`${ACCOUNT_SERVICE_URL}/auth/${provider}/start`);
-  url.searchParams.set('return', returnTo);
-  url.searchParams.set('device', deviceId);
-  window.location.assign(url.toString());
+/** Map an auth response status to an AccountError kind (register / login). */
+function authErrorFor(status: number): AccountError {
+  if (status === 401) return { kind: 'badCredentials' };
+  if (status === 409) return { kind: 'emailTaken' };
+  if (status === 400 || status === 422) return { kind: 'invalidInput' };
+  return { kind: 'server', message: `HTTP ${String(status)}` };
 }
 
-/**
- * If we just came back from OAuth, extract the session token from the URL
- * fragment and strip it from the address bar. Returns the token or null.
- */
-export function completeOAuthFromUrl(): string | null {
-  if (typeof window === 'undefined' || !window.location.hash) return null;
-  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  const session = params.get('session');
-  if (!session) return null;
-  // Remove the fragment so a reload / share doesn't carry the session.
-  const clean = `${window.location.pathname}${window.location.search}`;
-  window.history.replaceState(null, '', clean);
-  return session;
+async function postAuth(
+  path: string,
+  email: string,
+  password: string
+): Promise<Result<{ session: string; account: AccountProfile }, AccountError>> {
+  const guard = requireConfigured();
+  if (!guard.ok) return guard;
+  try {
+    const res = await fetch(`${ACCOUNT_SERVICE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) return err(authErrorFor(res.status));
+    const body = (await res.json()) as { session: string; account: AccountProfile };
+    return ok(body);
+  } catch (e) {
+    return err({ kind: 'network', message: e instanceof Error ? e.message : undefined });
+  }
+}
+
+/** Create a new account with email + password. */
+export function register(
+  email: string,
+  password: string
+): Promise<Result<{ session: string; account: AccountProfile }, AccountError>> {
+  return postAuth('/auth/register', email, password);
+}
+
+/** Log in to an existing account with email + password. */
+export function login(
+  email: string,
+  password: string
+): Promise<Result<{ session: string; account: AccountProfile }, AccountError>> {
+  return postAuth('/auth/login', email, password);
 }
 
 async function authedJson<T>(

@@ -257,12 +257,15 @@ export const en = {
   'license.invalid': 'That license key is not valid.',
   'license.proOnly': 'STEP export is a Pro feature. Enter a license key to unlock it.',
   'license.buy': 'Get Pro',
-  // Accounts (M13) — shown only when the account service is configured.
+  // Accounts (M13, ADR-0124) — shown only when the account service is configured.
   'account.heading': 'Account',
-  'account.signInGoogle': 'Sign in with Google',
-  'account.signInApple': 'Sign in with Apple',
-  'account.signInGithub': 'Sign in with GitHub',
-  'account.signInHint': 'Sign in to activate Pro on this device — no key to copy.',
+  'account.signInHint':
+    'Log in or create an account to activate Pro on this device — no key to copy.',
+  'account.email': 'Email',
+  'account.password': 'Password',
+  'account.login': 'Log in',
+  'account.register': 'Create account',
+  'account.loggedIn': 'Signed in',
   'account.signedInAs': 'Signed in as',
   'account.signOut': 'Sign out',
   'account.notPaid': 'This account has no Pro license yet.',
@@ -271,6 +274,11 @@ export const en = {
   'account.thisDevice': 'This device',
   'account.revoke': 'Revoke',
   'account.orKey': 'Or paste a license key',
+  'account.errEmailTaken': 'That email is already registered — log in instead.',
+  'account.errBadCredentials': 'Wrong email or password.',
+  'account.errInvalidInput': 'Enter a valid email and a password of at least 8 characters.',
+  'account.errNetwork': 'Could not reach the account service. Check your connection.',
+  'account.errServer': 'The account service had a problem. Try again later.',
   // Op precondition guards (M9): shown as the tooltip of a disabled op button.
   'guard.needSketch': 'Create a sketch first',
   'guard.needBody': 'Create a body first',

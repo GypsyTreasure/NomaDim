@@ -1,22 +1,23 @@
--- NomaDim account + license service — Cloudflare D1 schema (M13, ADR-0123).
+-- NomaDim account + license service — Cloudflare D1 schema (M13, ADR-0124).
 -- Apply with: wrangler d1 execute nomadim-accounts --file=./schema.sql
 --
 -- No secrets live here. The Ed25519 PRIVATE key that signs leases is a Worker
--- secret (NOMADIM_LICENSE_PRIVATE_KEY), never in the DB or the repo.
+-- secret (NOMADIM_LICENSE_PRIVATE_KEY), never in the DB or the repo. Passwords
+-- are stored only as PBKDF2-SHA256 hashes with a per-account random salt.
 
--- One row per signed-in person, keyed by a salted hash of provider+subject so
--- the raw OAuth id never lands in our store. `paid` is the entitlement flag set
--- by the Merchant-of-Record purchase webhook.
+-- One row per registered person, keyed by a random UUID. Auth is internal email
+-- + password (no third-party providers). `paid` is the entitlement flag set by
+-- the Merchant-of-Record purchase webhook.
 CREATE TABLE IF NOT EXISTS accounts (
-  id          TEXT PRIMARY KEY,           -- sha256(provider ':' subject ':' SALT)
-  email       TEXT NOT NULL,
-  name        TEXT,
-  avatar_url  TEXT,
-  provider    TEXT NOT NULL,              -- 'google' | 'github'
-  paid        INTEGER NOT NULL DEFAULT 0, -- 0 free, 1 has a Pro entitlement
-  order_id    TEXT,                       -- MoR order backing `paid` (audit)
-  created_at  TEXT NOT NULL,
-  updated_at  TEXT NOT NULL
+  id             TEXT PRIMARY KEY,           -- random UUID
+  email          TEXT NOT NULL UNIQUE,       -- normalized (trimmed, lowercased)
+  password_hash  TEXT NOT NULL,              -- base64(PBKDF2-SHA256(password, salt))
+  password_salt  TEXT NOT NULL,              -- base64 per-account random salt
+  iterations     INTEGER NOT NULL,           -- PBKDF2 iteration count used
+  paid           INTEGER NOT NULL DEFAULT 0, -- 0 free, 1 has a Pro entitlement
+  order_id       TEXT,                       -- MoR order backing `paid` (audit)
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
 );
 
 -- Opaque session tokens (bearer). Rotate/expire server-side; the app treats the

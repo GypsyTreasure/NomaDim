@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { t } from '../../i18n/t';
+import { LOCALES, LOCALE_LABELS } from '../../i18n/t';
+import type { AppLanguage } from '../../store/settingsStore';
 import { useDocumentStore } from '../../store/documentStore';
 import { isFolderAccessSupported, useFolderStore } from '../projects/folderStore';
 import { useSettings, useSettingsStore, type StlFormat } from '../../store/settingsStore';
@@ -89,8 +91,19 @@ export function AdminPanel({
             <h3 className={styles.sectionTitle}>{t('admin.general')}</h3>
             <label className={styles.row}>
               <span>{t('admin.language')}</span>
-              <select className={styles.control} value={settings.language} disabled>
-                <option value="en">English</option>
+              <select
+                className={styles.control}
+                data-testid="admin-language"
+                value={settings.language}
+                onChange={(e) => {
+                  update({ language: e.target.value as AppLanguage });
+                }}
+              >
+                {LOCALES.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {LOCALE_LABELS[loc]}
+                  </option>
+                ))}
               </select>
             </label>
           </section>

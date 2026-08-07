@@ -33,7 +33,7 @@ TypeScript strict · React 18 · Vite · Zustand · Three.js · OpenCascade.js (
 - Branded ID types from `core/ids.ts` in every signature — raw `string` ids are a review-blocker.
 - `Result<T,E>` in domain layers; exceptions only at async boundaries; error taxonomy per ARCHITECTURE §12; no silent catches.
 - Files ≤ ~300 lines, one concern per file, cross-layer imports only via layer barrels.
-- All user-visible strings through `t('key')` (EN catalog) from day one.
+- All user-visible strings through `t('key')`. **Five-language rule (ADR-0126):** English is the master catalog (`i18n/en.ts`); every key MUST also exist in `de.ts`, `fr.ts`, `uk.ts`, `pl.ts`. Those are typed `satisfies Record<TranslationKey, string>`, so a missing translation is a build failure — adding or changing an EN key without updating all four other catalogs is an incomplete change. Never leave a string outside the catalog.
 - CSS: tokens from `app/ui-tokens/tokens.css` only (brand: teal #1A6B5A, navy #0D1B2A, Barlow — MASTER_DOCUMENT §12).
 
 ## OCCT specifics

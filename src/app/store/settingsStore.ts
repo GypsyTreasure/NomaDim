@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isLocale, setLocale, type Locale } from '../i18n/t';
 
 /**
  * Application settings (Admin panel, post-M12). User-level preferences that are
@@ -9,8 +10,8 @@ import { create } from 'zustand';
  * dirties the open project.
  */
 
-/** Only English ships today; the field exists so the panel can offer it (F-i18n). */
-export type AppLanguage = 'en';
+/** UI language — English (master) plus DE/FR/UK/PL (ADR-0126). */
+export type AppLanguage = Locale;
 
 export type StlFormat = 'binary' | 'ascii';
 
@@ -59,7 +60,7 @@ function sanitize(raw: unknown): Settings {
   const bool = (v: unknown, fallback: boolean): boolean => (typeof v === 'boolean' ? v : fallback);
   const str = (v: unknown, fallback: string): string => (typeof v === 'string' ? v : fallback);
   return {
-    language: 'en',
+    language: isLocale(r.language) ? r.language : 'en',
     stlFormat: r.stlFormat === 'ascii' ? 'ascii' : 'binary',
     stlLinearDeflectionMm: num(r.stlLinearDeflectionMm, DEFAULT_SETTINGS.stlLinearDeflectionMm),
     stlAngularDeflectionDeg: num(
@@ -104,9 +105,22 @@ interface SettingsStore {
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   settings: load(),
   update: (patch) => {
-    const next = { ...get().settings, ...patch };
+    const prev = get().settings;
+    const next = { ...prev, ...patch };
     persist(next);
     set({ settings: next });
+    // Changing the UI language switches the active catalog. `t()` is read at
+    // render time from many memoized labels, so the simplest correct refresh is
+    // a reload — the document is autosaved and the new locale paints from the
+    // first frame (t.ts reads the persisted language on load).
+    if (patch.language !== undefined && patch.language !== prev.language) {
+      setLocale(patch.language);
+      try {
+        window.location.reload();
+      } catch {
+        /* non-browser (tests) — the catalog is already switched above */
+      }
+    }
   },
   reset: () => {
     persist(DEFAULT_SETTINGS);

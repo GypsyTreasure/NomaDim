@@ -28,10 +28,14 @@ function parseDsn(raw: string): Dsn | null {
   }
 }
 
-/** The user has opted out iff the flag is explicitly 'off'. Default: on (when a DSN exists). */
-function optedOut(): boolean {
+/**
+ * The user has opted IN iff the flag is explicitly 'on'. Default: OFF — GDPR
+ * treats crash telemetry as non-essential, so it requires prior consent (ADR-0128),
+ * never runs until the user turns it on in Settings.
+ */
+function optedIn(): boolean {
   try {
-    return window.localStorage.getItem(OPT_OUT_KEY) === 'off';
+    return window.localStorage.getItem(OPT_OUT_KEY) === 'on';
   } catch {
     return false;
   }
@@ -43,9 +47,9 @@ export function isErrorReportingAvailable(): boolean {
   return raw !== undefined && raw !== '' && parseDsn(raw) !== null;
 }
 
-/** Current effective state: available and not opted out. */
+/** Current effective state: available AND the user explicitly opted in. */
 export function isErrorReportingEnabled(): boolean {
-  return isErrorReportingAvailable() && !optedOut();
+  return isErrorReportingAvailable() && optedIn();
 }
 
 /** Persist the user's crash-reporting preference. */
@@ -103,12 +107,12 @@ function report(dsn: Dsn, error: Error): void {
 }
 
 /**
- * Install global crash reporting. No-op unless a DSN is configured and the user
- * has not opted out. Safe to call once at startup.
+ * Install global crash reporting. No-op unless a DSN is configured AND the user
+ * has explicitly opted in (GDPR consent, ADR-0128). Safe to call once at startup.
  */
 export function initErrorReporting(): void {
   const raw = import.meta.env.VITE_SENTRY_DSN;
-  if (raw === undefined || raw === '' || optedOut()) return;
+  if (raw === undefined || raw === '' || !optedIn()) return;
   const dsn = parseDsn(raw);
   if (dsn === null) return;
 

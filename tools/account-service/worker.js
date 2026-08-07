@@ -9,6 +9,12 @@
 //                                whose PUBLIC half is baked into the app).
 //   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
 //   GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET
+//   APPLE_CLIENT_ID (services id) / APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_PRIVATE_KEY
+//     Sign in with Apple has no static client secret: build a short-lived ES256
+//     JWT (header kid=APPLE_KEY_ID, iss=APPLE_TEAM_ID, sub=APPLE_CLIENT_ID)
+//     signed with APPLE_PRIVATE_KEY as the client_secret in the token exchange.
+//     Apple returns the user's name/email ONLY on the first authorization, so
+//     upsert on that first callback and rely on the account id (sub) after.
 //   ACCOUNT_ID_SALT              salt for hashing provider ids
 //   SESSION_TTL_DAYS (optional, default 60)
 // Bindings: DB (D1, see schema.sql).

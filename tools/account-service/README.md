@@ -10,7 +10,7 @@ See `ADR-0123` in `DECISIONS.md` for the design rationale.
 
 ## What it does
 
-- **Sign in with Google / GitHub** (OAuth) → creates/looks up an account.
+- **Sign in with Google / Apple / GitHub** (OAuth) → creates/looks up an account.
 - **Issues a device-bound Pro lease** — an Ed25519-signed token (same format the
   app already verifies offline) that carries `accountId`, `deviceId`, and an
   `expiresAt` ~30 days out. The app renews it silently when online and keeps
@@ -49,6 +49,12 @@ service can't be spoofed without the private key, and there's no runtime ping.
    wrangler secret put GOOGLE_CLIENT_SECRET
    wrangler secret put GITHUB_CLIENT_ID
    wrangler secret put GITHUB_CLIENT_SECRET
+   # Sign in with Apple (its client_secret is a short-lived ES256 JWT built in
+   # the Worker from these, not a static secret):
+   wrangler secret put APPLE_CLIENT_ID     # Services ID, e.g. pl.nomadirection.signin
+   wrangler secret put APPLE_TEAM_ID
+   wrangler secret put APPLE_KEY_ID
+   wrangler secret put APPLE_PRIVATE_KEY   # .p8 contents
    wrangler secret put ACCOUNT_ID_SALT
    ```
    Bake the matching **public** key into the app (`src/app/features/licensing/license.ts`,
@@ -66,11 +72,13 @@ service can't be spoofed without the private key, and there's no runtime ping.
 - **Done / illustrative:** routing, lease signing (matches the app's payload),
   device cap + revoke, session lookup, sign-out, D1 schema, the purchase-webhook
   handler.
-- **TODO(owner):** the two OAuth halves (`/auth/:provider/start` redirect and
+- **TODO(owner):** the OAuth halves (`/auth/:provider/start` redirect and
   `/auth/:provider/callback` code-exchange + account upsert + session mint +
-  redirect with `#session=`), the MoR webhook signature verification, and
-  pinning CORS to the app origin. These need the owner's OAuth app credentials
-  and MoR choice, so they're left as clearly marked stubs.
+  redirect with `#session=`) for **google / apple / github** — Apple additionally
+  needs the ES256-JWT `client_secret` built from `APPLE_*`, and only returns the
+  name/email on the first callback (upsert then). Plus the MoR webhook signature
+  verification and pinning CORS to the app origin. These need the owner's OAuth
+  credentials and MoR choice, so they're left as clearly marked stubs.
 
 ## Security notes
 

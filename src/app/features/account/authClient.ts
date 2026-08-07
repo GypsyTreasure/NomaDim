@@ -13,7 +13,7 @@ import { ACCOUNT_SERVICE_URL, isAccountServiceConfigured } from './config';
  * hit logs). `completeOAuthFromUrl` picks it up on load.
  */
 
-export type OAuthProvider = 'google' | 'github';
+export type OAuthProvider = 'google' | 'apple' | 'github';
 
 export interface AccountProfile {
   readonly id: string;

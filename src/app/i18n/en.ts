@@ -260,6 +260,7 @@ export const en = {
   // Accounts (M13) — shown only when the account service is configured.
   'account.heading': 'Account',
   'account.signInGoogle': 'Sign in with Google',
+  'account.signInApple': 'Sign in with Apple',
   'account.signInGithub': 'Sign in with GitHub',
   'account.signInHint': 'Sign in to activate Pro on this device — no key to copy.',
   'account.signedInAs': 'Signed in as',

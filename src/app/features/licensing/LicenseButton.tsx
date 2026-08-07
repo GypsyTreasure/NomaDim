@@ -100,6 +100,16 @@ export function LicenseButton(): React.JSX.Element {
                   <button
                     type="button"
                     className={styles.button}
+                    data-testid="signin-apple"
+                    onClick={() => {
+                      signIn('apple');
+                    }}
+                  >
+                    {t('account.signInApple')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.button}
                     data-testid="signin-github"
                     onClick={() => {
                       signIn('github');

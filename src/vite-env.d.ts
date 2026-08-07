@@ -11,6 +11,13 @@ interface ImportMetaEnv {
    * PII-scrubbed unless the user has opted out. Off by default.
    */
   readonly VITE_SENTRY_DSN?: string;
+  /**
+   * Optional account/license service base URL (M13). When unset, the app has
+   * NO accounts UI and behaves exactly like M11 (paste a key / GYP$Y, fully
+   * offline). When set, Sign in with Google/GitHub appears and the app leases
+   * a device-bound Pro token from the service. Only hit at sign-in/renew.
+   */
+  readonly VITE_ACCOUNT_SERVICE_URL?: string;
 }
 
 interface ImportMeta {

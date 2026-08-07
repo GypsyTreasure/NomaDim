@@ -20,11 +20,30 @@ export interface LicensePayload {
   readonly tier: 'pro';
   /** ISO issue timestamp. */
   readonly issuedAt: string;
-  /** Optional ISO expiry; absent = perpetual (the default, one-time license). */
+  /**
+   * Optional ISO expiry. Absent = perpetual (a legacy one-time key, M11). An
+   * ACCOUNT lease (M13) always sets this ~30 days out and is renewed silently
+   * online; the app keeps working offline through a grace window past it
+   * (ADR-0123) before falling back to free.
+   */
   readonly expiresAt?: string;
+  /**
+   * Account this license belongs to (M13) — a stable id from the OAuth
+   * provider (never the raw provider id; a salted hash). Absent on legacy keys.
+   */
+  readonly accountId?: string;
+  /**
+   * Device this lease is bound to (M13) — the app's local `deviceId`. A lease
+   * only unlocks Pro on the matching device, so a copied token is inert
+   * elsewhere. Absent = device-unlimited (legacy keys, GYP$Y).
+   */
+  readonly deviceId?: string;
+  /** Human-readable device name for the account's device list (display only). */
+  readonly deviceLabel?: string;
 }
 
-export type LicenseErrorKind = 'malformed' | 'badSignature' | 'wrongProduct' | 'expired';
+export type LicenseErrorKind =
+  'malformed' | 'badSignature' | 'wrongProduct' | 'expired' | 'badDevice';
 
 export interface LicenseError {
   readonly kind: LicenseErrorKind;
@@ -32,6 +51,17 @@ export interface LicenseError {
 
 /** This product's id — a license for anything else is rejected. */
 export const PRODUCT = 'nomadim';
+
+/**
+ * Account-lease windows (M13, ADR-0123). A lease is valid until `expiresAt`
+ * (~`LEASE_DAYS` out). The app keeps Pro working OFFLINE for `GRACE_DAYS` past
+ * expiry (so being offline at renewal time never locks you out), and starts
+ * trying to silently renew once within `REFRESH_BEFORE_DAYS` of expiry.
+ */
+export const LEASE_DAYS = 30;
+export const GRACE_DAYS = 14;
+export const REFRESH_BEFORE_DAYS = 7;
+export const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Baked Ed25519 **public** key (base64, raw 32 bytes). PLACEHOLDER — the owner
@@ -71,13 +101,17 @@ export function decodeToken(
     const payloadJson = new TextDecoder().decode(b64urlToBytes(parts[0]));
     const raw = JSON.parse(payloadJson) as Record<string, unknown>;
     // Validate the untrusted JSON shape before trusting it as a LicensePayload.
+    const optionalString = (v: unknown): boolean => v === undefined || typeof v === 'string';
     if (
       typeof raw.email !== 'string' ||
       typeof raw.orderId !== 'string' ||
       typeof raw.product !== 'string' ||
       typeof raw.issuedAt !== 'string' ||
       raw.tier !== 'pro' ||
-      (raw.expiresAt !== undefined && typeof raw.expiresAt !== 'string')
+      !optionalString(raw.expiresAt) ||
+      !optionalString(raw.accountId) ||
+      !optionalString(raw.deviceId) ||
+      !optionalString(raw.deviceLabel)
     ) {
       return err({ kind: 'malformed' });
     }
@@ -87,7 +121,10 @@ export function decodeToken(
       product: raw.product,
       tier: 'pro',
       issuedAt: raw.issuedAt,
-      ...(raw.expiresAt === undefined ? {} : { expiresAt: raw.expiresAt }),
+      ...(raw.expiresAt === undefined ? {} : { expiresAt: raw.expiresAt as string }),
+      ...(raw.accountId === undefined ? {} : { accountId: raw.accountId as string }),
+      ...(raw.deviceId === undefined ? {} : { deviceId: raw.deviceId as string }),
+      ...(raw.deviceLabel === undefined ? {} : { deviceLabel: raw.deviceLabel as string }),
     };
     return ok({
       payload,

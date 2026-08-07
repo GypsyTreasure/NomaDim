@@ -37,7 +37,8 @@ function syntheticTestPayload(): LicensePayload {
  */
 export async function verifyLicense(
   token: string,
-  publicKeyB64: string = LICENSE_PUBLIC_KEY_B64
+  publicKeyB64: string = LICENSE_PUBLIC_KEY_B64,
+  options: { readonly ignoreExpiry?: boolean } = {}
 ): Promise<Result<LicensePayload, LicenseError>> {
   if (token.trim() === UNIVERSAL_TEST_KEY) return ok(syntheticTestPayload());
 
@@ -49,7 +50,14 @@ export async function verifyLicense(
   if (!valid) return err({ kind: 'badSignature' });
 
   if (payload.product !== PRODUCT) return err({ kind: 'wrongProduct' });
-  if (payload.expiresAt !== undefined && Date.parse(payload.expiresAt) < Date.now()) {
+  // Expiry is enforced here for legacy/perpetual callers, but account leases
+  // (M13) pass `ignoreExpiry` so the grace layer (evaluateLicense) can apply the
+  // offline grace window instead of failing closed the instant a lease lapses.
+  if (
+    !options.ignoreExpiry &&
+    payload.expiresAt !== undefined &&
+    Date.parse(payload.expiresAt) < Date.now()
+  ) {
     return err({ kind: 'expired' });
   }
   return ok(payload);

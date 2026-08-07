@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { t } from '../../i18n/t';
 import { pushToast } from '../../store/toastStore';
 import { useEntitlementStore } from '../../store/entitlementStore';
+import { useAccountStore } from '../../store/accountStore';
 import { IconButton } from '../ui/IconButton';
 import { DialogFrame } from '../timeline/dialogShared';
 import styles from '../sketcher/Sketcher.module.css';
 
 /**
- * License menu + dialog (M11). Shows the current tier and lets the user paste a
- * Pro license key, which is verified **offline** (WebCrypto Ed25519) and, on
- * success, persisted so Pro survives reloads with no network. Invalid keys fail
- * closed with a toast; Pro can be removed to return to free.
+ * License + account menu (M11 + M13). Always offers the offline paste-a-key
+ * path (verified with WebCrypto Ed25519, persisted, no network — GYP$Y works
+ * here). When the account service is configured (M13), it ALSO offers Sign in
+ * with Google/GitHub, which leases a device-bound Pro token and shows account
+ * status + device management. Unconfigured builds show exactly the M11 dialog.
  */
 export function LicenseButton(): React.JSX.Element {
   const [open, setOpen] = useState(false);
@@ -19,6 +21,11 @@ export function LicenseButton(): React.JSX.Element {
   const activate = useEntitlementStore((s) => s.activate);
   const deactivate = useEntitlementStore((s) => s.deactivate);
   const [key, setKey] = useState('');
+
+  const accountConfigured = useAccountStore((s) => s.configured);
+  const account = useAccountStore((s) => s.account);
+  const signIn = useAccountStore((s) => s.signIn);
+  const accountSignOut = useAccountStore((s) => s.signOut);
 
   const isPro = tier === 'pro';
 
@@ -60,6 +67,50 @@ export function LicenseButton(): React.JSX.Element {
             setOpen(false);
           }}
         >
+          {accountConfigured && (
+            <div className={styles.licenseBody} data-testid="account-section">
+              {account ? (
+                <>
+                  <p className={styles.licenseEmail}>
+                    {t('account.signedInAs')} {account.email}
+                  </p>
+                  {!account.paid && !isPro && <p>{t('account.notPaid')}</p>}
+                  <button
+                    type="button"
+                    className={styles.button}
+                    data-testid="account-signout"
+                    onClick={accountSignOut}
+                  >
+                    {t('account.signOut')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p>{t('account.signInHint')}</p>
+                  <button
+                    type="button"
+                    className={styles.button}
+                    data-testid="signin-google"
+                    onClick={() => {
+                      signIn('google');
+                    }}
+                  >
+                    {t('account.signInGoogle')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.button}
+                    data-testid="signin-github"
+                    onClick={() => {
+                      signIn('github');
+                    }}
+                  >
+                    {t('account.signInGithub')}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           {isPro ? (
             <div className={styles.licenseBody} data-testid="license-status">
               <p>{t('license.statusPro')}</p>
@@ -78,7 +129,7 @@ export function LicenseButton(): React.JSX.Element {
             </div>
           ) : (
             <div className={styles.licenseBody} data-testid="license-status">
-              <p>{t('license.statusFree')}</p>
+              <p>{accountConfigured ? t('account.orKey') : t('license.statusFree')}</p>
               <textarea
                 className={styles.licenseInput}
                 data-testid="license-key"

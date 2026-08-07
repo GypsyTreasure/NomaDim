@@ -1,14 +1,17 @@
 import { create } from 'zustand';
 import { type Result, ok, err } from '../../core';
-import { verifyLicense } from '../features/licensing/verify';
+import { evaluateLicense } from '../features/licensing/lease';
+import { getDeviceId } from '../features/licensing/device';
 import type { LicenseError, LicensePayload, Tier } from '../features/licensing/license';
 
 /**
- * Entitlement store (M11): free vs pro, driven by an offline-verified license.
- * The token persists in localStorage and is re-verified on load, so Pro works
- * fully offline across sessions with no network call. Fails closed — an absent,
- * malformed, tampered, or expired token leaves the app in the (fully usable)
- * free tier.
+ * Entitlement store (M11 + M13): free vs pro, driven by an offline-verified
+ * license. The token persists in localStorage and is re-evaluated on load, so
+ * Pro works fully offline across sessions with no network call. Fails closed —
+ * an absent, malformed, tampered, expired-past-grace, or wrong-device token
+ * leaves the app in the (fully usable) free tier. Account leases (M13) add
+ * device binding + an offline grace window via `evaluateLicense`; the actual
+ * online renewal is orchestrated by the account layer, not here.
  */
 
 const STORAGE_KEY = 'nomadim.license';
@@ -62,11 +65,11 @@ export const useEntitlementStore = create<EntitlementStore>((set) => ({
   license: null,
   entitlements: entitlementsFor('free'),
   activate: async (token) => {
-    const result = await verifyLicense(token);
+    const result = await evaluateLicense(token, getDeviceId());
     if (result.ok) {
       writeStoredToken(token);
-      set({ tier: 'pro', license: result.value, entitlements: entitlementsFor('pro') });
-      return ok(result.value);
+      set({ tier: 'pro', license: result.value.payload, entitlements: entitlementsFor('pro') });
+      return ok(result.value.payload);
     }
     return err(result.error);
   },
@@ -77,11 +80,15 @@ export const useEntitlementStore = create<EntitlementStore>((set) => ({
   restore: () => {
     const token = readStoredToken();
     if (token === null) return;
-    void verifyLicense(token).then((result) => {
+    void evaluateLicense(token, getDeviceId()).then((result) => {
       if (result.ok) {
-        set({ tier: 'pro', license: result.value, entitlements: entitlementsFor('pro') });
+        set({ tier: 'pro', license: result.value.payload, entitlements: entitlementsFor('pro') });
       } else {
-        writeStoredToken(null); // drop a tampered/expired token
+        // A tampered/wrong-device/expired-past-grace token drops to free. We keep
+        // it in storage only when it's a recoverable lapse the account layer can
+        // renew (expired within-service) — but device/signature failures are
+        // permanent here, so clear them.
+        if (result.error.kind !== 'expired') writeStoredToken(null);
       }
     });
   },

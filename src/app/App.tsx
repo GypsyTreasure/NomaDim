@@ -50,6 +50,7 @@ import { IconButton } from './features/ui/IconButton';
 import { ToolbarGroup } from './features/ui/ToolbarGroup';
 import toolbarStyles from './features/ui/Toolbar.module.css';
 import { useEntitlementStore } from './store/entitlementStore';
+import { useAccountStore } from './store/accountStore';
 import { OpDialogHost } from './features/timeline/OpDialogHost';
 import { TimelineBar } from './features/timeline/TimelineBar';
 import { CreateOpsBar } from './features/timeline/CreateOpsBar';
@@ -155,6 +156,11 @@ export function App(): React.JSX.Element {
     restorePersistedDocument();
     // Re-verify a persisted Pro license offline (M11) — free tier otherwise.
     useEntitlementStore.getState().restore();
+    // Accounts (M13): if the account service is configured, pick up an OAuth
+    // return / restore the session and silently renew the device lease. Inert
+    // (no network) when unconfigured, so the offline paste-a-key path is
+    // unaffected.
+    void useAccountStore.getState().init();
     // Silently re-authorize the saved local project folder, if any (ADR-0089).
     void useFolderStore.getState().restore();
     // Defer the multi-MB WASM boot to idle so the shell + empty viewport paint

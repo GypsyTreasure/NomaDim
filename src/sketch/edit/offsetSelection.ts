@@ -189,7 +189,8 @@ export function offsetSelection(
     const p = pts.get(id);
     return vec2(p?.x ?? 0, p?.y ?? 0);
   };
-  const key = (p: Vec2): string => `${String(Math.round(p.x * 1e4))}:${String(Math.round(p.y * 1e4))}`;
+  const key = (p: Vec2): string =>
+    `${String(Math.round(p.x * 1e4))}:${String(Math.round(p.y * 1e4))}`;
 
   const taken = existingIds(sketch);
   const outPoints: SketchPoint[] = [];
@@ -298,7 +299,9 @@ export function offsetSelection(
         const bp = edgeBase[prevE];
         const dp = edgeDir[prevE];
         const vv = v[i];
-        newV.push(bp && dp && vv ? add(bp, scale(dp, distance(v[i - 1] ?? vv, vv))) : (vv ?? vec2(0, 0)));
+        newV.push(
+          bp && dp && vv ? add(bp, scale(dp, distance(v[i - 1] ?? vv, vv))) : (vv ?? vec2(0, 0))
+        );
       }
     }
     // Weld the offset vertices into shared points and emit connected lines.

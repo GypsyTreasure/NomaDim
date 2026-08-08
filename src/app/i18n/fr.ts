@@ -394,7 +394,8 @@ export const fr = {
   'sketch.tool.split': 'Scinder (diviser une ligne aux intersections)',
   'sketch.tool.stretch': 'Étirer (sélectionner des points par zone, puis glisser ou saisir ΔX/ΔY)',
   'sketch.tool.offset': 'Décalage (sélectionner la géométrie, puis saisir une distance)',
-  'sketch.tool.move': 'Déplacer (sélectionner des formes entières par zone, puis glisser ou saisir ΔX/ΔY)',
+  'sketch.tool.move':
+    'Déplacer (sélectionner des formes entières par zone, puis glisser ou saisir ΔX/ΔY)',
   'sketch.tool.explode': 'Décomposer (éclater une forme en lignes/arcs séparés)',
   'sketch.offset.distance': 'Distance (mm)',
   'sketch.offset.side': 'Côté',

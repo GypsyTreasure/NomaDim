@@ -41,7 +41,9 @@ function circleSketch(): Sketch {
     id: 'sk1' as never,
     plane: { kind: 'origin', plane: 'XY' },
     points: [p('c', 0, 0)],
-    entities: [{ type: 'circle', id: 'c1' as never, center: 'c' as never, r: 5, construction: false }],
+    entities: [
+      { type: 'circle', id: 'c1' as never, center: 'c' as never, r: 5, construction: false },
+    ],
     dimensions: [],
   } as unknown as Sketch;
 }
@@ -50,7 +52,12 @@ function circleSketch(): Sketch {
 function bbox(pts: readonly { x: number; y: number }[]) {
   const xs = pts.map((q) => q.x);
   const ys = pts.map((q) => q.y);
-  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
 }
 
 describe('offsetSelection', () => {

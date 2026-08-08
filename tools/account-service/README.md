@@ -65,6 +65,28 @@ service can't be spoofed without the private key, and there's no runtime ping.
 No OAuth apps, client IDs, or external identity providers are needed — the login
 system is fully self-contained. Cloudflare is the only external dependency.
 
+## License-seat lock (ADR-0129) — optional "one active device per key"
+
+The same Worker also serves an **optional seat lock** that enforces _one active
+device per license key at a time_ (multiple tabs on the same device share the
+seat). It is independent of accounts and needs **no login**:
+
+- Endpoints: `POST /session/claim`, `/session/heartbeat`, `/session/release`,
+  each `{ keyId, deviceId }` where `keyId = base64url(SHA-256(key))` — the raw
+  key never reaches the server. Grants the seat if free / expired / already this
+  device's, else `409 inUse`. Seat TTL 120 s; the app heartbeats every 45 s and
+  releases on tab close.
+- Schema: the `seats` table in `schema.sql` (apply the schema as above).
+- Turn it on in the app build with its own URL (can be the same Worker):
+  ```
+  VITE_LICENSE_SEAT_URL="https://accounts.your-domain.workers.dev" npm run build
+  ```
+  Unset ⇒ a Pro key unlocks on every device offline (the default). The test key
+  `GYP$Y` never claims a seat.
+
+Note: concurrency **cannot** be enforced for a fully-offline client — this is a
+runtime online check for Pro when enabled; Free always works offline.
+
 ## What's a stub vs done
 
 - **Done:** register + log in (PBKDF2 hashing, opaque sessions), routing, lease

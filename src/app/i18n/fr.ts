@@ -263,6 +263,8 @@ export const fr = {
   'license.proOnly':
     "L'export STEP est une fonction Pro. Saisissez une clé de licence pour la débloquer.",
   'license.buy': 'Obtenir Pro',
+  'license.seatInUse':
+    'Cette licence est déjà active sur un autre appareil. Fermez NomaDim là-bas (ou patientez un instant), puis rechargez pour utiliser Pro ici.',
   'account.heading': 'Compte',
   'account.signInHint':
     'Connectez-vous ou créez un compte pour activer Pro sur cet appareil — aucune clé à copier.',

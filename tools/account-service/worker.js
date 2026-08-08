@@ -24,6 +24,7 @@ const MAX_DEVICES = 3; // owner-tunable device cap per account
 const PRODUCT = 'nomadim';
 const PBKDF2_ITERATIONS = 210_000; // OWASP-recommended floor for PBKDF2-SHA256
 const MIN_PASSWORD_LEN = 8;
+const SEAT_TTL_MS = 120_000; // a seat lapses this long after the last heartbeat
 
 const CORS = {
   'access-control-allow-origin': '*', // TODO(owner): pin to the app origin
@@ -138,6 +139,48 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '');
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+
+    // --- License-seat concurrency (ADR-0129) -----------------------------
+    // "One active DEVICE per key at a time." `keyId` is a SHA-256 of the license
+    // key (the raw key never reaches us); `deviceId` is the app's local id, which
+    // every tab in a browser profile shares — so multiple tabs = one seat. A
+    // second device is refused (409) until the first releases or its seat lapses.
+    // No account/session needed: only holders of the key know its keyId.
+    if ((path === '/session/claim' || path === '/session/heartbeat') && request.method === 'POST') {
+      const { keyId, deviceId } = await request.json().catch(() => ({}));
+      if (typeof keyId !== 'string' || typeof deviceId !== 'string' || !keyId || !deviceId) {
+        return json({ error: 'invalidInput' }, 400);
+      }
+      const now = Date.now();
+      const row = await env.DB.prepare('SELECT device_id, expires_at FROM seats WHERE key_id = ?')
+        .bind(keyId)
+        .first();
+      const free = !row || Number(row.expires_at) <= now || row.device_id === deviceId;
+      if (!free) return json({ error: 'inUse', until: Number(row.expires_at) }, 409);
+      const until = now + SEAT_TTL_MS;
+      await env.DB.prepare(
+        `INSERT INTO seats (key_id, device_id, expires_at, updated_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(key_id) DO UPDATE SET
+           device_id = excluded.device_id,
+           expires_at = excluded.expires_at,
+           updated_at = excluded.updated_at`
+      )
+        .bind(keyId, deviceId, until, new Date(now).toISOString())
+        .run();
+      return json({ ok: true, until });
+    }
+
+    // POST /session/release {keyId, deviceId} → free the seat if this device holds it
+    if (path === '/session/release' && request.method === 'POST') {
+      const { keyId, deviceId } = await request.json().catch(() => ({}));
+      if (typeof keyId === 'string' && typeof deviceId === 'string' && keyId && deviceId) {
+        await env.DB.prepare('DELETE FROM seats WHERE key_id = ? AND device_id = ?')
+          .bind(keyId, deviceId)
+          .run();
+      }
+      return json({ ok: true });
+    }
 
     // --- Auth: internal email + password ---------------------------------
     // POST /auth/register {email, password} → { session, account }

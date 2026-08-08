@@ -30,12 +30,21 @@ interface EntitlementStore {
   readonly tier: Tier;
   readonly license: LicensePayload | null;
   readonly entitlements: Entitlements;
+  /**
+   * Seat concurrency (ADR-0129): true when a valid Pro license is held but the
+   * one active seat for this key is currently taken by ANOTHER device. Pro is
+   * withheld (effective tier free) while blocked, but the license + token are
+   * kept so the seat manager can reclaim it when the other device releases.
+   */
+  readonly seatBlocked: boolean;
   /** Verify + apply a pasted token; persists on success. */
   readonly activate: (token: string) => Promise<Result<LicensePayload, LicenseError>>;
   /** Drop Pro and clear the stored token (back to free). */
   readonly deactivate: () => void;
   /** Re-verify the persisted token on startup (call once on mount). */
   readonly restore: () => void;
+  /** Seat manager hook: withhold / restore Pro based on the active-seat check. */
+  readonly setSeatBlocked: (blocked: boolean) => void;
 }
 
 function entitlementsFor(tier: Tier): Entitlements {
@@ -60,22 +69,35 @@ function writeStoredToken(token: string | null): void {
   }
 }
 
-export const useEntitlementStore = create<EntitlementStore>((set) => ({
+export const useEntitlementStore = create<EntitlementStore>((set, get) => ({
   tier: 'free',
   license: null,
   entitlements: entitlementsFor('free'),
+  seatBlocked: false,
   activate: async (token) => {
     const result = await evaluateLicense(token, getDeviceId());
     if (result.ok) {
       writeStoredToken(token);
-      set({ tier: 'pro', license: result.value.payload, entitlements: entitlementsFor('pro') });
+      // A fresh activation re-opens the seat question; the manager (if seat
+      // enforcement is configured) will claim and may set seatBlocked.
+      set({
+        tier: 'pro',
+        license: result.value.payload,
+        entitlements: entitlementsFor('pro'),
+        seatBlocked: false,
+      });
       return ok(result.value.payload);
     }
     return err(result.error);
   },
   deactivate: () => {
     writeStoredToken(null);
-    set({ tier: 'free', license: null, entitlements: entitlementsFor('free') });
+    set({
+      tier: 'free',
+      license: null,
+      entitlements: entitlementsFor('free'),
+      seatBlocked: false,
+    });
   },
   restore: () => {
     const token = readStoredToken();
@@ -91,6 +113,13 @@ export const useEntitlementStore = create<EntitlementStore>((set) => ({
         if (result.error.kind !== 'expired') writeStoredToken(null);
       }
     });
+  },
+  setSeatBlocked: (blocked) => {
+    const { license } = get();
+    // No license → nothing to gate. With a license, blocked withholds Pro while
+    // keeping the license so we can reclaim the seat later.
+    const proTier: Tier = license !== null && !blocked ? 'pro' : 'free';
+    set({ seatBlocked: blocked, tier: proTier, entitlements: entitlementsFor(proTier) });
   },
 }));
 

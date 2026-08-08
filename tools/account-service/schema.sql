@@ -42,3 +42,15 @@ CREATE TABLE IF NOT EXISTS devices (
   PRIMARY KEY (account_id, device_id)
 );
 CREATE INDEX IF NOT EXISTS idx_devices_account ON devices(account_id);
+
+-- License-seat concurrency (ADR-0129): one active seat per license key. `key_id`
+-- is a SHA-256 of the key (the raw key is never stored); `device_id` is whoever
+-- currently holds it; `expires_at` (ms epoch) is refreshed by heartbeats and the
+-- seat is considered free once it lapses. Independent of accounts — used by the
+-- signed-key model to enforce "one active device at a time".
+CREATE TABLE IF NOT EXISTS seats (
+  key_id      TEXT PRIMARY KEY,          -- sha256(license key)
+  device_id   TEXT NOT NULL,             -- the app's local deviceId holding the seat
+  expires_at  INTEGER NOT NULL,          -- ms epoch; seat is free once now > this
+  updated_at  TEXT NOT NULL
+);

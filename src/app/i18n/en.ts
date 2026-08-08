@@ -257,6 +257,8 @@ export const en = {
   'license.invalid': 'That license key is not valid.',
   'license.proOnly': 'STEP export is a Pro feature. Enter a license key to unlock it.',
   'license.buy': 'Get Pro',
+  'license.seatInUse':
+    'This license is already active on another device. Close NomaDim there (or wait a moment), then reload to use Pro here.',
   // Accounts (M13, ADR-0124) — shown only when the account service is configured.
   'account.heading': 'Account',
   'account.signInHint':

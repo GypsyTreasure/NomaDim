@@ -43,6 +43,7 @@ import { isSafeMode, markBootStable } from './features/persistence/resilience';
 import { NewProjectButton } from './features/persistence/NewProjectButton';
 import { ExportStlButton } from './features/timeline/ExportStlButton';
 import { LicenseButton } from './features/licensing/LicenseButton';
+import { startSeatManager } from './features/licensing/seatManager';
 import { SettingsButton } from './features/admin/SettingsButton';
 import { ProjectsButton } from './features/projects/ProjectsButton';
 import { useFolderStore } from './features/projects/folderStore';
@@ -156,6 +157,10 @@ export function App(): React.JSX.Element {
     restorePersistedDocument();
     // Re-verify a persisted Pro license offline (M11) — free tier otherwise.
     useEntitlementStore.getState().restore();
+    // Seat concurrency (ADR-0129): if a seat service is configured, claim the
+    // one active seat for this key + heartbeat to hold it. Inert (no network)
+    // when unconfigured, so the offline default is unchanged.
+    startSeatManager();
     // Accounts (M13): if the account service is configured, pick up an OAuth
     // return / restore the session and silently renew the device lease. Inert
     // (no network) when unconfigured, so the offline paste-a-key path is

@@ -18,6 +18,15 @@ interface ImportMetaEnv {
    * a device-bound Pro token from the service. Only hit at sign-in/renew.
    */
   readonly VITE_ACCOUNT_SERVICE_URL?: string;
+  /**
+   * Optional license-seat service base URL (ADR-0129). When unset, a Pro key
+   * unlocks on every device with no runtime check (the offline default). When
+   * set, the app claims ONE active seat per key at a time — multiple tabs on the
+   * same device share the seat; a second device is blocked until the first
+   * releases or its heartbeat lapses. This is the only runtime online touch and
+   * only fires for a real Pro key (never GYP$Y), with an offline grace.
+   */
+  readonly VITE_LICENSE_SEAT_URL?: string;
 }
 
 interface ImportMeta {

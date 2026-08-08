@@ -54,6 +54,7 @@ export function LicenseButton(): React.JSX.Element {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const seatBlocked = useEntitlementStore((s) => s.seatBlocked);
   const isPro = tier === 'pro';
   const busy = accountStatus === 'working';
   const canSubmit = email.trim().length > 0 && password.length > 0 && !busy;
@@ -197,7 +198,13 @@ export function LicenseButton(): React.JSX.Element {
             </div>
           ) : (
             <div className={styles.licenseBody} data-testid="license-status">
-              <p>{accountConfigured ? t('account.orKey') : t('license.statusFree')}</p>
+              <p>
+                {seatBlocked
+                  ? t('license.seatInUse')
+                  : accountConfigured
+                    ? t('account.orKey')
+                    : t('license.statusFree')}
+              </p>
               <textarea
                 className={styles.licenseInput}
                 data-testid="license-key"

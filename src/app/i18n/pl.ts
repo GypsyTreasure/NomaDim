@@ -259,6 +259,8 @@ export const pl = {
   'license.invalid': 'Ten klucz licencyjny jest nieprawidłowy.',
   'license.proOnly': 'Eksport STEP to funkcja Pro. Wprowadź klucz licencyjny, aby ją odblokować.',
   'license.buy': 'Kup Pro',
+  'license.seatInUse':
+    'Ta licencja jest już aktywna na innym urządzeniu. Zamknij tam NomaDim (lub poczekaj chwilę), a następnie przeładuj, aby korzystać z Pro tutaj.',
   'account.heading': 'Konto',
   'account.signInHint':
     'Zaloguj się lub utwórz konto, aby aktywować Pro na tym urządzeniu — bez kopiowania klucza.',

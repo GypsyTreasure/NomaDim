@@ -904,3 +904,14 @@ Also updated the landing FAQ (no-account/offline-key/all-devices, refund link). 
 3. the **visible shell** now renders **front-side only** (previously DoubleSide) + clipped, so no see-through interior remains.
 Render order is spaced per body (`clippedIndex*4`). It is geometry- and orientation-independent (works for extrudes, revolves, any plane) and needs no loop welding. `renderer.localClippingEnabled` and the WebGLRenderer's default stencil buffer are already in place. The 2D section outline + pivot dots stay (useful while sketching); the old translucent 2D fill is now redundant but harmless.
 **Consequences:** A clipped solid reads as solid in Intersect view, matching Fusion's section look, for any body. Cost: three extra draw passes per clipped body while Intersect is on (section view is transient and typically few bodies), well within the M5 fps budget. Pure-geometry `section.ts` (and its tests) are untouched; this is a rendering-only change, so no unit test covers the GPU stencil — verified via build + manual QA. Supersedes the ADR-0122 #3 2D-fill cap.
+
+**ADR-0130 fix (2026-08-08):** first ship of the cap flooded the whole viewport
+because three r185 defaults `WebGLRenderer({stencil})` to **false** — with no
+stencil buffer the cap's `NotEqual 0` test always passes. Fixed by constructing
+the renderer with `stencil: true`; also set `depthTest:false` on the two stencil
+passes (canonical recipe, correct face parity), switched the cap to an unlit
+flat fill so it never renders dark, and **flipped the retained half** (clip with
+the negated sketch normal) so Intersect keeps the far side and caps the face
+toward the viewer. Verified headless (Playwright + the pre-installed Chromium):
+no full-screen flood, cut reads solid, no console errors. The redundant 2D
+overlay fill was removed.

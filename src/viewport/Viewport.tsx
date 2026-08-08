@@ -36,13 +36,7 @@ import {
   type SketchPlaneBasis,
 } from './planeMapping';
 import { buildMeasureCandidates, type MeasureCandidate } from './measureSnap';
-import {
-  sliceMesh,
-  coplanarFaceOutline,
-  pointInArea,
-  assembleSectionLoops,
-  MAX_SECTION_SEGMENTS,
-} from './section';
+import { sliceMesh, coplanarFaceOutline, pointInArea, MAX_SECTION_SEGMENTS } from './section';
 import { drawSketchOverlay, type SketchOverlayState } from './sketchOverlay';
 import styles from './Viewport.module.css';
 
@@ -244,7 +238,6 @@ const SKETCH_PREVIEW_COLOR = 0x1a6b5a; // teal — sketch reference geometry (to
 const OP_HIGHLIGHT_COLOR = 0xffa62b; // amber — op selection highlight, reads over teal + bodies
 const OP_HIGHLIGHT_WIDTH_PX = 3.5; // fat op-highlight outline width (#11)
 const SECTION_CSS = '#7b5ea7'; // violet — body cross-section on the sketch plane (#1), distinct from teal/navy/amber
-const SECTION_FILL = 'rgba(123,94,167,0.20)'; // translucent violet cap so a clipped solid reads solid, not a shell (#3)
 // Marquee selection box (#6), AutoCAD convention: solid blue "window" (fully
 // enclosed) vs dashed green "crossing" (touch).
 const MARQUEE_WINDOW_CSS = '#3b82c4';
@@ -338,9 +331,6 @@ export function Viewport({
   const sectionViewRef = useRef(false);
   const sectionSegRef = useRef<readonly (readonly [Vec2, Vec2])[]>([]);
   const sectionPtsRef = useRef<readonly Vec2[]>([]);
-  // Welded cut loops (#3): filled translucently so a clipped SOLID reads as solid
-  // material rather than a hollow shell.
-  const sectionLoopsRef = useRef<readonly (readonly Vec2[])[]>([]);
   useEffect(() => {
     sketchModeRef.current = sketchMode;
   }, [sketchMode]);
@@ -402,7 +392,10 @@ export function Viewport({
     // to single-digit fps. On a real GPU neither matters, but the guard can't
     // tell the two apart, so edge smoothing is deferred to a GPU/body-count-
     // gated quality toggle rather than shipped globally.
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+    // `stencil: true` is REQUIRED for the Intersect cross-section cap (ADR-0130):
+    // three r185 defaults it to false, and without a stencil buffer the cap's
+    // NotEqual test always passes and the cap quad floods the whole screen.
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, stencil: true });
     renderer.setClearColor(0x000000, 0); // transparent → CSS gradient backdrop shows
     renderer.localClippingEnabled = true; // Intersect view clips the near body half (#1)
     renderer.setPixelRatio(renderDpr());
@@ -1122,22 +1115,8 @@ export function Viewport({
           if (sectionViewRef.current && sectionSegRef.current.length > 0) {
             const mapping = mappingFromBasis(mode.basis);
             const toScreen = (p: Vec2): Vec2 => planeToScreen(mapping, p, camera, width, height);
-            // Fill the welded cut loops FIRST (even-odd so inner holes subtract),
-            // so a clipped solid reads as filled material, not a hollow shell (#3).
-            const loops = sectionLoopsRef.current;
-            if (loops.length > 0) {
-              ctx.fillStyle = SECTION_FILL;
-              ctx.beginPath();
-              for (const loop of loops) {
-                loop.forEach((p, i) => {
-                  const s = toScreen(p);
-                  if (i === 0) ctx.moveTo(s.x, s.y);
-                  else ctx.lineTo(s.x, s.y);
-                });
-                ctx.closePath();
-              }
-              ctx.fill('evenodd');
-            }
+            // The cut face itself is now filled in 3D by the stencil cap
+            // (ADR-0130); here we only stroke the section outline + pivots on top.
             ctx.strokeStyle = SECTION_CSS;
             ctx.lineWidth = 3.5;
             ctx.lineCap = 'round';
@@ -1228,15 +1207,15 @@ export function Viewport({
     if (!bodyGroup) return;
     disposeSceneObjects(bodyGroup);
     bodyGroup.clear();
-    // Intersect view (#1, #9): clip away the half BEHIND the sketch plane
-    // (the −normal side) and keep the camera-side half, so the cut face reads
-    // front-on. A THREE.Plane keeps the side where normal·(p−origin) ≥ 0, so
-    // the un-negated plane normal keeps the +normal (camera) side. Applied at
-    // mesh creation (fresh local material) and rebuilt when toggle/plane change.
+    // Intersect view (#1, #9, ADR-0130): keep the half on the −normal side of
+    // the sketch plane and clip away the +normal half, so the retained body is
+    // the far side and its cut face is capped toward the viewer. A THREE.Plane
+    // keeps the side where normal·(p−origin) ≥ 0, so we clip with the NEGATED
+    // sketch normal. Rebuilt when the toggle / plane changes.
     const basis = sketchMode ? sketchModeRef.current?.basis : null;
     let clip: THREE.Plane | null = null;
     if (basis && sectionView) {
-      const n = new THREE.Vector3(basis.normal[0], basis.normal[1], basis.normal[2]);
+      const n = new THREE.Vector3(-basis.normal[0], -basis.normal[1], -basis.normal[2]);
       // Bias the cut a hair toward the camera (+normal). When the sketch sits ON
       // a body face, that face is exactly coplanar with the cut, so at bias 0 it
       // sits on the clip boundary and z-fights the plane grid / section — the
@@ -1366,7 +1345,6 @@ export function Viewport({
     if (!basis || !sectionView) {
       sectionSegRef.current = [];
       sectionPtsRef.current = [];
-      sectionLoopsRef.current = [];
       return;
     }
     const mapping = mappingFromBasis(basis);
@@ -1386,8 +1364,6 @@ export function Viewport({
     }
     sectionSegRef.current = segs;
     sectionPtsRef.current = pts;
-    // Weld into loops once per rebuild (not per frame) for the solid-cap fill.
-    sectionLoopsRef.current = assembleSectionLoops(segs);
   }, [sketchMode?.basis.key, bodies, bodyStyles, sectionView]);
 
   // Rebuild the op-selection highlight (F3): selected profile loops + axis,

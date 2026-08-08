@@ -268,12 +268,16 @@ export function createSectionCappedBody(
   // non-zero region is exactly the solid's cross-section at the plane.
   const stencilBase = (): {
     depthWrite: boolean;
+    depthTest: boolean;
     colorWrite: boolean;
     clippingPlanes: THREE.Plane[];
     stencilWrite: boolean;
     stencilFunc: THREE.StencilFunc;
   } => ({
     depthWrite: false,
+    // Count every front/back face regardless of occlusion so the parity is
+    // correct across the whole cut region (canonical stencil-cap recipe).
+    depthTest: false,
     colorWrite: false,
     clippingPlanes: [plane],
     stencilWrite: true,
@@ -305,9 +309,14 @@ export function createSectionCappedBody(
   // Cap quad on the plane: drawn where the stencil is non-zero, and resets it to
   // 0 so the next body starts clean. Shaded like the body so the cut face reads
   // as material. Not itself clipped (it lies on the plane).
-  const capMat = new THREE.MeshLambertMaterial({
-    color: col,
-    emissive: new THREE.Color(selected ? 0x2fa78d : 0x101014),
+  // Unlit flat fill so the cut face reads as solid material from any angle
+  // (a lit cap can render near-black when the lights sit behind the plane).
+  // Slightly brightened body hue, or the selection teal when selected.
+  const capColor = selected
+    ? new THREE.Color(0x2fa78d)
+    : col.clone().lerp(new THREE.Color(0xffffff), 0.12);
+  const capMat = new THREE.MeshBasicMaterial({
+    color: capColor,
     side: THREE.DoubleSide,
     stencilWrite: true,
     stencilRef: 0,

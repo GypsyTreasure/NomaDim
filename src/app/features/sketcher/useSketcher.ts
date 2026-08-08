@@ -32,6 +32,7 @@ import {
   entitiesInMarquee,
   offsetEntity,
   offsetPreviewCurve,
+  explodeEntities,
   pointIdsInMarquee,
   evaluateSketch,
   fieldsForToolWithStart,
@@ -896,6 +897,48 @@ export function useSketcher(): SketcherApi {
         useSessionStore.getState().setSelection([]);
         return;
       }
+      if (tool === 'explode') {
+        // Explode ("bomb", AutoCAD): click a shape → un-weld it into individually
+        // selectable entities. Picks the whole connected shape under the cursor
+        // (or the current multi-selection), gives each entity private points, and
+        // rebuilds via delete + add through the write path.
+        const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        const selected = useSessionStore.getState().selectedEntityIds;
+        let targetIds: EntityId[] = [];
+        if (selected.length > 0) {
+          const set = new Set<EntityId>();
+          for (const id of selected) for (const c of connectedEntityIds(current, id)) set.add(c);
+          targetIds = [...set];
+        } else {
+          let bestId: EntityId | null = null;
+          let bestDist = tolMm;
+          for (const ev of evaluateSketch(current)) {
+            const d = distanceToCurve(ev.curve, p);
+            if (d <= bestDist) {
+              bestDist = d;
+              bestId = ev.entityId;
+            }
+          }
+          if (bestId) targetIds = connectedEntityIds(current, bestId);
+        }
+        const result = targetIds.length > 0 ? explodeEntities(current, targetIds) : null;
+        if (result) {
+          commandBus.dispatch({
+            type: 'DeleteSketchEntities',
+            payload: { sketchId: current.id, entityIds: result.removeEntityIds },
+          });
+          commandBus.dispatch({
+            type: 'AddSketchGeometry',
+            payload: {
+              sketchId: current.id,
+              points: result.add.points,
+              entities: result.add.entities,
+            },
+          });
+        }
+        useSessionStore.getState().setSelection([]);
+        return;
+      }
       if (tool === 'stretch' || tool === 'move') return; // box-select + drag, elsewhere
       const snap = snapResult.snap;
       const spec =
@@ -1168,6 +1211,7 @@ export function useSketcher(): SketcherApi {
         e: 'stretch',
         w: 'offset',
         v: 'move',
+        k: 'explode',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
       if (hotkey) {

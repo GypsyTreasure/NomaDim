@@ -109,6 +109,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'E', desc: 'help.tool.stretch' },
       { keys: 'W', desc: 'help.tool.offset' },
       { keys: 'V', desc: 'help.tool.move' },
+      { keys: 'K', desc: 'help.tool.explode' },
       { keys: 'X', desc: 'help.construction' },
       { keys: 'Q', desc: 'help.snap' },
       { keys: 'O', desc: 'help.ortho' },

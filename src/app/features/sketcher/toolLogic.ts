@@ -253,6 +253,7 @@ export function toolClick(state: ToolState, spec: PointSpec): ToolStep {
     case 'stretch':
     case 'offset':
     case 'move':
+    case 'explode':
       // Editing / annotation / split / stretch / offset / move tools: clicks
       // pick existing geometry (handled in the hook), never place geometry here.
       return noCommit(state);
@@ -384,6 +385,7 @@ export function toolEnter(
     case 'stretch':
     case 'offset':
     case 'move':
+    case 'explode':
       return noCommit(state);
     default: {
       const exhaustive: never = state.tool;
@@ -488,6 +490,7 @@ export function toolPreview(
     case 'stretch':
     case 'offset':
     case 'move':
+    case 'explode':
       return [];
     default: {
       const exhaustive: never = state.tool;

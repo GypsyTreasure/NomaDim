@@ -173,6 +173,15 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
             sketcher.setTool('move');
           }}
         />
+        <IconButton
+          icon="explode"
+          label={t('sketch.tool.explode')}
+          shortcut="K"
+          active={sketcher.tool === 'explode'}
+          onClick={() => {
+            sketcher.setTool('explode');
+          }}
+        />
       </div>
       <Divider />
       <div className={toolbarStyles.block}>

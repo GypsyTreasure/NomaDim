@@ -7,6 +7,7 @@ import type { IconName } from '../icons/Icon';
 import type { DimensionToolKind, SketcherApi } from './useSketcher';
 import { SketchImportButton } from './SketchImportButton';
 import { SketchTransformControls } from './SketchTransformControls';
+import { SketchEditPanels } from './SketchEditPanels';
 import styles from './Sketcher.module.css';
 import toolbarStyles from '../ui/Toolbar.module.css';
 
@@ -258,6 +259,7 @@ export function SketchToolbar({ sketcher }: { sketcher: SketcherApi }): React.JS
         />
         <SketchImportButton onImport={sketcher.importReference} />
         <SketchTransformControls sketcher={sketcher} />
+        <SketchEditPanels sketcher={sketcher} />
       </div>
     </div>
   );

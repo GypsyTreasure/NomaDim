@@ -233,6 +233,112 @@ export function createBodyMesh(
   return object;
 }
 
+/**
+ * A clipped body WITH a solid cross-section cap (Intersect view, ADR-0130).
+ * A bare clipping plane just discards fragments, so a cut solid reads as a
+ * hollow shell (you see its interior wall). This builds the standard stencil
+ * cap: two colour-less passes write the solid's cut region into the stencil
+ * buffer (back faces increment, front faces decrement, both clipped by the
+ * plane), then a plane-aligned quad fills exactly that region — so the cut face
+ * reads as solid material for ANY solid and ANY plane orientation. Returns a
+ * Group (stencil writers + cap + the visible front-side shell).
+ *
+ * `order` spaces each body's stencil/cap passes apart so overlapping bodies
+ * don't bleed (each cap resets the stencil to 0 as it draws).
+ */
+const SECTION_CAP_SIZE_MM = 100_000; // large quad; the stencil masks it to the cut
+
+export function createSectionCappedBody(
+  mesh: MeshTransfer,
+  color: string | undefined,
+  selected: boolean,
+  plane: THREE.Plane,
+  order = 0
+): THREE.Group {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
+  geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+  const col = new THREE.Color(color ?? BODY_COLOR);
+  const group = new THREE.Group();
+  group.name = `Body:${mesh.bodyId}`;
+
+  // Stencil writers: no colour/depth, clipped by the plane, so only the kept
+  // half's shell tallies. Back faces increment, front faces decrement → the net
+  // non-zero region is exactly the solid's cross-section at the plane.
+  const stencilBase = (): {
+    depthWrite: boolean;
+    colorWrite: boolean;
+    clippingPlanes: THREE.Plane[];
+    stencilWrite: boolean;
+    stencilFunc: THREE.StencilFunc;
+  } => ({
+    depthWrite: false,
+    colorWrite: false,
+    clippingPlanes: [plane],
+    stencilWrite: true,
+    stencilFunc: THREE.AlwaysStencilFunc,
+  });
+  const back = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({
+      ...stencilBase(),
+      side: THREE.BackSide,
+      stencilFail: THREE.IncrementWrapStencilOp,
+      stencilZFail: THREE.IncrementWrapStencilOp,
+      stencilZPass: THREE.IncrementWrapStencilOp,
+    })
+  );
+  back.renderOrder = order + 1;
+  const front = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({
+      ...stencilBase(),
+      side: THREE.FrontSide,
+      stencilFail: THREE.DecrementWrapStencilOp,
+      stencilZFail: THREE.DecrementWrapStencilOp,
+      stencilZPass: THREE.DecrementWrapStencilOp,
+    })
+  );
+  front.renderOrder = order + 1;
+
+  // Cap quad on the plane: drawn where the stencil is non-zero, and resets it to
+  // 0 so the next body starts clean. Shaded like the body so the cut face reads
+  // as material. Not itself clipped (it lies on the plane).
+  const capMat = new THREE.MeshLambertMaterial({
+    color: col,
+    emissive: new THREE.Color(selected ? 0x2fa78d : 0x101014),
+    side: THREE.DoubleSide,
+    stencilWrite: true,
+    stencilRef: 0,
+    stencilFunc: THREE.NotEqualStencilFunc,
+    stencilFail: THREE.ReplaceStencilOp,
+    stencilZFail: THREE.ReplaceStencilOp,
+    stencilZPass: THREE.ReplaceStencilOp,
+  });
+  const cap = new THREE.Mesh(
+    new THREE.PlaneGeometry(SECTION_CAP_SIZE_MM, SECTION_CAP_SIZE_MM),
+    capMat
+  );
+  cap.renderOrder = order + 2;
+  // Orient the quad to the plane and sit it on the plane.
+  cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), plane.normal.clone());
+  cap.position.copy(plane.normal).multiplyScalar(-plane.constant);
+
+  // The visible shell: front-side only (no see-through interior) + clipped.
+  const visible = new THREE.Mesh(
+    geometry,
+    new THREE.MeshLambertMaterial({
+      color: col,
+      emissive: new THREE.Color(selected ? 0x2fa78d : 0x000000),
+      clippingPlanes: [plane],
+    })
+  );
+
+  group.add(back, front, cap, visible);
+  return group;
+}
+
 const GHOST_COLOR = 0xffa62b; // amber — matches the op-selection highlight (F3)
 
 /**

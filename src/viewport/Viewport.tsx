@@ -15,6 +15,7 @@ import {
 } from '../kernel';
 import {
   createBodyMesh,
+  createSectionCappedBody,
   createDatumObject,
   createGhostMesh,
   createGrid,
@@ -1249,12 +1250,27 @@ export function Viewport({
       ).addScaledVector(n, SECTION_CLIP_BIAS_MM);
       clip = new THREE.Plane().setFromNormalAndCoplanarPoint(n, origin);
     }
+    let clippedIndex = 0;
     for (const mesh of bodies) {
       const style = bodyStyles?.get(mesh.bodyId);
       if (style && !style.visible) continue; // F8 hidden body
-      bodyGroup.add(
-        createBodyMesh(mesh, style?.color, style?.selected ?? false, clip ? [clip] : undefined)
-      );
+      if (clip) {
+        // Intersect view: solid stencil cap so the cut reads as material, not a
+        // hollow shell (#3, ADR-0130). `clippedIndex*4` spaces each body's
+        // stencil/cap render-order band so overlapping cuts don't bleed.
+        bodyGroup.add(
+          createSectionCappedBody(
+            mesh,
+            style?.color,
+            style?.selected ?? false,
+            clip,
+            clippedIndex * 4
+          )
+        );
+        clippedIndex += 1;
+      } else {
+        bodyGroup.add(createBodyMesh(mesh, style?.color, style?.selected ?? false));
+      }
     }
   }, [bodies, bodyStyles, sketchMode, sectionView]);
 

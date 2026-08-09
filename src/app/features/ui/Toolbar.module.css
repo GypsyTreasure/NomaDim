@@ -5,17 +5,27 @@
 
 /* A cluster of control blocks. Flat like the sketch dock (#1) — the buttons sit
    directly on the header surface, with no rounded pill outline around them. */
+/* Overflow policy (#5, ADR-0136): when the tools don't fit, the bar SLIDES
+   horizontally rather than wrapping to a second row — so the header never grows
+   taller and the viewport keeps its height on small laptops. */
 .bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: calc(var(--grid-unit) * 0.25);
   padding: calc(var(--grid-unit) * 0.35);
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 
-/* A group of related icon buttons inside a bar. */
+/* A group of related icon buttons inside a bar. Never shrink — the bar scrolls
+   instead, so icons keep their full size and hit area (#5). */
 .block {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: calc(var(--grid-unit) * 0.15);
 }
@@ -23,6 +33,7 @@
 /* MS-Office-style named ribbon group (#5c): a row of icons over a caption. */
 .group {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
   gap: 1px;
@@ -144,6 +155,16 @@
   font-family: var(--font-mono);
   font-size: 9px;
   line-height: 1;
+}
+
+/* Compact icons on smaller laptops (#5): a 14" panel shows more tools before
+   the bar needs to scroll, so everything is usable at 100% browser zoom. */
+@media (min-width: 561px) and (max-width: 1440px) {
+  .iconBtn {
+    width: 36px;
+    min-height: 38px;
+    padding: 2px 1px;
+  }
 }
 
 /* Touch targets grow on phones (min-height keeps the caption row). */

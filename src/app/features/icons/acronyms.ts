@@ -41,6 +41,7 @@ export const ICON_ACRONYMS: Record<IconName, string> = {
   stretch: 'STR',
   offset: 'OFS',
   explode: 'BMB',
+  group: 'GRP',
   project: 'PJS',
   line: 'LN',
   centerline: 'AX',

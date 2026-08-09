@@ -29,6 +29,7 @@ export * from './edit/splitLine';
 export * from './edit/offset';
 export * from './edit/offsetSelection';
 export * from './edit/explode';
+export * from './edit/group';
 export * from './marquee';
 export * from './profiles/hash';
 export * from './profiles/loops';

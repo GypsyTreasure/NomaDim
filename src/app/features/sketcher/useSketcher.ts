@@ -32,6 +32,7 @@ import {
   entitiesInMarquee,
   offsetSelection,
   explodeEntities,
+  groupEntities,
   pointIdsInMarquee,
   evaluateSketch,
   fieldsForToolWithStart,
@@ -48,7 +49,7 @@ import {
   type SnapResult,
   type SnapKind,
   type SketchToolId,
-  type OffsetSide,
+  type SketchGeometryDelta,
 } from '../../../sketch';
 import {
   parseReferenceFile,
@@ -224,12 +225,6 @@ export interface SketcherApi {
   readonly mirrorSelection: (axis: MirrorAxis) => void;
   /** Array the selected entities linearly or circularly (#2). */
   readonly patternSelection: (spec: SketchPatternInput) => void;
-  /** Offset the whole selection by an exact distance + side (#2, AutoCAD). */
-  readonly applyOffset: (distanceMm: number, side: OffsetSide) => void;
-  /** Translate the box-captured Move/Stretch points by an exact ΔX/ΔY (#3). */
-  readonly applyMove: (dx: number, dy: number) => void;
-  /** True once a Move/Stretch box has captured a point set awaiting a value. */
-  readonly moveArmed: boolean;
   /** True when one or more sketch entities are selected. */
   readonly hasSelection: boolean;
   /** True when exactly one selected entity is a line (enables Mirror-across-line). */
@@ -543,6 +538,36 @@ export function useSketcher(): SketcherApi {
       applyStep(toolEnter(toolState, [], effectiveCursor));
       return;
     }
+    // Move/Stretch (#1): the parameters window's ΔX/ΔY commit an EXACT rigid
+    // translation of the box-captured point set (AutoCAD). Enter reads the typed
+    // values and moves through the write path; the drag path is unchanged.
+    if (activeTool === 'move' || activeTool === 'stretch') {
+      const vals = parsedValues(inputStateRef.current);
+      const dx = vals[0] ?? null;
+      const dy = vals[1] ?? null;
+      const current = liveSketch();
+      const s = stretchRef.current;
+      if (current && s && s.pointIds.length > 0 && (dx !== null || dy !== null)) {
+        const byId = pointMap(current);
+        const moves = s.pointIds.flatMap((pointId) => {
+          const pt = byId.get(pointId);
+          return pt ? [{ pointId, x: pt.x + (dx ?? 0), y: pt.y + (dy ?? 0) }] : [];
+        });
+        if (moves.length > 0) {
+          commandBus.dispatch({
+            type: 'MoveSketchPoints',
+            payload: { sketchId: current.id, moves },
+          });
+        }
+        setStretch(null);
+      }
+      setInputState(initialInputState(inputStateRef.current.fields));
+      return;
+    }
+    // Offset (#1): the distance lives in the parameters window; the SIDE is the
+    // click on the plane (AutoCAD). Enter alone has no side, so it's inert here
+    // and keeps the typed distance for the next side click.
+    if (activeTool === 'offset') return;
     const before = inputStateRef.current;
     const transition = reduceInput(before, { type: 'enter' });
     setInputState(transition.state);
@@ -566,7 +591,7 @@ export function useSketcher(): SketcherApi {
       setInputState(initialInputState([]));
       lineStartRef.current = null;
     }
-  }, [applyStep, toolState, effectiveCursor]);
+  }, [applyStep, toolState, effectiveCursor, liveSketch]);
 
   // Esc always exits the active tool back to Select/navigate so the view can be
   // rotated (#6): it clears any in-progress chain/dimension AND deactivates the
@@ -600,7 +625,7 @@ export function useSketcher(): SketcherApi {
   // Left→right = window (wholly-enclosed only); right→left = crossing (touch).
   // Selects whole connected shapes, matching a single Select click.
   const onMarquee = useCallback(
-    (a: Vec2, b: Vec2, crossing: boolean) => {
+    (a: Vec2, b: Vec2, crossing: boolean, additive = false) => {
       const current = liveSketch();
       if (!current) return;
       const active = useSessionStore.getState().activeTool;
@@ -633,13 +658,17 @@ export function useSketcher(): SketcherApi {
       const hits = entitiesInMarquee(evaluateSketch(current), a, b, crossing);
       const ids = new Set<EntityId>();
       for (const id of hits) for (const c of connectedEntityIds(current, id)) ids.add(c);
+      // Ctrl/Cmd+box adds the boxed shapes to the current selection (#2).
+      if (additive) {
+        for (const id of useSessionStore.getState().selectedEntityIds) ids.add(id);
+      }
       useSessionStore.getState().setSelection([...ids]);
     },
     [liveSketch]
   );
 
   const onClickPoint = useCallback(
-    (p: Vec2, scale: number) => {
+    (p: Vec2, scale: number, additive = false) => {
       setCursor(p);
       setPxPerMm(scale);
       const current = liveSketch();
@@ -675,12 +704,25 @@ export function useSketcher(): SketcherApi {
           useSessionStore.getState().setSelectedDimensions([bestDimId]);
           return;
         }
-        const selection = bestId
-          ? tool === 'change'
-            ? [bestId]
-            : connectedEntityIds(current, bestId)
-          : [];
-        useSessionStore.getState().setSelection(selection);
+        // Ctrl/Cmd+click adds the clicked shape to the selection (or removes it
+        // if already fully selected), like AutoCAD (#2). Change stays single-pick.
+        const picked =
+          bestId !== null
+            ? tool === 'change'
+              ? [bestId]
+              : connectedEntityIds(current, bestId)
+            : [];
+        if (additive && tool !== 'change') {
+          const set = new Set(useSessionStore.getState().selectedEntityIds);
+          const allIn = picked.length > 0 && picked.every((id) => set.has(id));
+          for (const id of picked) {
+            if (allIn) set.delete(id);
+            else set.add(id);
+          }
+          useSessionStore.getState().setSelection([...set]);
+          return;
+        }
+        useSessionStore.getState().setSelection(picked);
         return;
       }
       if (tool === 'dimension') {
@@ -861,36 +903,60 @@ export function useSketcher(): SketcherApi {
         return;
       }
       if (tool === 'offset') {
-        // Offset (#2, AutoCAD parity): the tool now works on a whole SELECTION —
-        // many lines, a closed loop, circles/arcs — offset at once by a typed
-        // distance from the Offset panel. A click here toggles the nearest
-        // connected shape into the selection (marquee adds too); the panel's
-        // Apply then calls `applyOffset`. This click never mutates geometry.
+        // Offset (#1/#3, AutoCAD parity): works on the current SELECTION (many
+        // lines, a loop, circles/arcs) at once. The distance is typed in the
+        // parameters window; THIS click chooses the SIDE and applies. With no
+        // selection yet, the first click picks the nearest connected shape so
+        // the tool still works standalone. (Preselect + click side is the #3
+        // flow.)
         const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
-        let bestId: EntityId | null = null;
-        let bestDist = tolMm;
-        for (const ev of evaluateSketch(current)) {
-          const ent = current.entities.find((e) => e.id === ev.entityId);
-          if (!ent || ent.type === 'point' || ent.type === 'spline') continue;
-          const d = distanceToCurve(ev.curve, p);
-          if (d <= bestDist) {
-            bestDist = d;
-            bestId = ev.entityId;
-          }
-        }
         const session = useSessionStore.getState();
-        if (bestId) {
-          const shape = connectedEntityIds(current, bestId);
-          const cur = new Set(session.selectedEntityIds);
-          // Toggle the whole shape: remove if already fully selected, else add.
-          const allIn = shape.every((id) => cur.has(id));
-          for (const id of shape) {
-            if (allIn) cur.delete(id);
-            else cur.add(id);
+        const selected = session.selectedEntityIds;
+        if (selected.length === 0) {
+          let bestId: EntityId | null = null;
+          let bestDist = tolMm;
+          for (const ev of evaluateSketch(current)) {
+            const ent = current.entities.find((e) => e.id === ev.entityId);
+            if (!ent || ent.type === 'point' || ent.type === 'spline') continue;
+            const d = distanceToCurve(ev.curve, p);
+            if (d <= bestDist) {
+              bestDist = d;
+              bestId = ev.entityId;
+            }
           }
-          session.setSelection([...cur]);
-        } else {
-          session.setSelection([]);
+          if (bestId) session.setSelection(connectedEntityIds(current, bestId));
+          return;
+        }
+        // Distance: the typed value, else the perpendicular distance from the
+        // click to the nearest selected curve (AutoCAD "through point").
+        const typed = parseField(
+          { id: 'distance', kind: 'length' },
+          inputStateRef.current.values[0] ?? ''
+        );
+        let dist = typed;
+        if (dist === null) {
+          let best = Infinity;
+          const selSet = new Set(selected);
+          for (const ev of evaluateSketch(current)) {
+            if (!selSet.has(ev.entityId)) continue;
+            best = Math.min(best, distanceToCurve(ev.curve, p));
+          }
+          dist = Number.isFinite(best) ? best : null;
+        }
+        if (dist === null || !(dist > 0)) return;
+        // Side = whichever offset lands nearer the click point.
+        const near = (delta: SketchGeometryDelta | null): number =>
+          delta && delta.points.length > 0
+            ? Math.min(...delta.points.map((q) => Math.hypot(q.x - p.x, q.y - p.y)))
+            : Infinity;
+        const da = offsetSelection(current, selected, dist, 'a');
+        const db = offsetSelection(current, selected, dist, 'b');
+        const chosen = near(da) <= near(db) ? da : db;
+        if (chosen && chosen.entities.length > 0) {
+          commandBus.dispatch({
+            type: 'AddSketchGeometry',
+            payload: { sketchId: current.id, points: chosen.points, entities: chosen.entities },
+          });
         }
         return;
       }
@@ -919,6 +985,44 @@ export function useSketcher(): SketcherApi {
           if (bestId) targetIds = connectedEntityIds(current, bestId);
         }
         const result = targetIds.length > 0 ? explodeEntities(current, targetIds) : null;
+        if (result) {
+          commandBus.dispatch({
+            type: 'DeleteSketchEntities',
+            payload: { sketchId: current.id, entityIds: result.removeEntityIds },
+          });
+          commandBus.dispatch({
+            type: 'AddSketchGeometry',
+            payload: {
+              sketchId: current.id,
+              points: result.add.points,
+              entities: result.add.entities,
+            },
+          });
+        }
+        useSessionStore.getState().setSelection([]);
+        return;
+      }
+      if (tool === 'group') {
+        // Group / Join (#4, inverse of Explode): weld the selected entities'
+        // coincident endpoints into shared points so touching lines/arcs become
+        // one connected shape. Uses the current multi-selection (preselect →
+        // click), or the shape under the cursor. Delete + add via the write path.
+        const tolMm = SNAP_TOLERANCE_PX / Math.max(scale, 1e-6);
+        const selected = useSessionStore.getState().selectedEntityIds;
+        let targetIds: EntityId[] = [...selected];
+        if (targetIds.length < 2) {
+          let bestId: EntityId | null = null;
+          let bestDist = tolMm;
+          for (const ev of evaluateSketch(current)) {
+            const d = distanceToCurve(ev.curve, p);
+            if (d <= bestDist) {
+              bestDist = d;
+              bestId = ev.entityId;
+            }
+          }
+          if (bestId) targetIds = connectedEntityIds(current, bestId);
+        }
+        const result = targetIds.length >= 2 ? groupEntities(current, targetIds) : null;
         if (result) {
           commandBus.dispatch({
             type: 'DeleteSketchEntities',
@@ -1074,18 +1178,43 @@ export function useSketcher(): SketcherApi {
   // clears the HUD + disarms the machine so a click/drag navigates rather than
   // drawing (#2). Chaining (applyStep) mutates toolState without going through
   // here, so the free-shape Line keeps its anchor between segments.
-  const setTool = useCallback((tool: SketchToolId | null) => {
-    useSessionStore.getState().setActiveTool(tool);
-    setDimFirst(null); // switching tools cancels a half-placed dimension
-    lineStartRef.current = null; // and ends any open line chain (#6)
-    setStretch(null); // and any captured stretch/move set (#7/#3)
-    setDrag(null); // and any in-flight point drag
-    setToolState((prev) => ({
-      ...initialToolState(tool ?? 'line'),
-      constructionMode: prev.constructionMode,
-    }));
-    setInputState(initialInputState(tool ? fieldsForToolWithStart(tool, false) : []));
-  }, []);
+  const setTool = useCallback(
+    (tool: SketchToolId | null) => {
+      useSessionStore.getState().setActiveTool(tool);
+      setDimFirst(null); // switching tools cancels a half-placed dimension
+      lineStartRef.current = null; // and ends any open line chain (#6)
+      setDrag(null); // and any in-flight point drag
+      // Preselection → Move/Stretch (#3): activating Move/Stretch with entities
+      // already selected seeds the captured point set from that selection, so you
+      // can preselect, pick the tool and type an exact ΔX/ΔY (or drag) at once.
+      // Move captures whole shapes; Stretch captures the selected entities' points.
+      const current = liveSketch();
+      const preselected = useSessionStore.getState().selectedEntityIds;
+      if ((tool === 'move' || tool === 'stretch') && current && preselected.length > 0) {
+        const set = new Set<EntityId>();
+        if (tool === 'move') {
+          for (const id of preselected) for (const c of connectedEntityIds(current, id)) set.add(c);
+        } else {
+          for (const id of preselected) set.add(id);
+        }
+        const pointSet = new Set<PointId>();
+        for (const e of current.entities) {
+          if (set.has(e.id)) for (const pt of referencedPointIds(e)) pointSet.add(pt);
+        }
+        const entityIds = [...set];
+        if (tool === 'move') useSessionStore.getState().setSelection(entityIds);
+        setStretch(pointSet.size > 0 ? { pointIds: [...pointSet], entityIds, base: null } : null);
+      } else {
+        setStretch(null); // any captured stretch/move set is cleared (#7/#3)
+      }
+      setToolState((prev) => ({
+        ...initialToolState(tool ?? 'line'),
+        constructionMode: prev.constructionMode,
+      }));
+      setInputState(initialInputState(tool ? fieldsForToolWithStart(tool, false) : []));
+    },
+    [liveSketch]
+  );
 
   const setDimensionKind = useCallback((kind: DimensionToolKind) => {
     setDimensionKindState(kind);
@@ -1208,6 +1337,7 @@ export function useSketcher(): SketcherApi {
         w: 'offset',
         v: 'move',
         k: 'explode',
+        u: 'group',
       };
       const hotkey = toolHotkeys[event.key.toLowerCase()];
       if (hotkey) {
@@ -1360,55 +1490,6 @@ export function useSketcher(): SketcherApi {
         type: 'AddSketchGeometry',
         payload: { sketchId: current.id, points: delta.points, entities: delta.entities },
       });
-    },
-    [liveSketch]
-  );
-
-  // Sketch Offset (#2, AutoCAD parity): offset the WHOLE selection at once by a
-  // typed distance and side — connected line chains offset as mitred parallel
-  // loops/polylines, circles/arcs concentrically. Driven by the Offset panel's
-  // dialog value (exact); adds geometry via the same AddSketchGeometry path.
-  const applyOffset = useCallback(
-    (distanceMm: number, side: OffsetSide) => {
-      const current = liveSketch();
-      if (!current) return;
-      const selected = useSessionStore.getState().selectedEntityIds;
-      if (selected.length === 0) return;
-      const delta = offsetSelection(current, selected, distanceMm, side);
-      if (!delta || delta.entities.length === 0) return;
-      commandBus.dispatch({
-        type: 'AddSketchGeometry',
-        payload: { sketchId: current.id, points: delta.points, entities: delta.entities },
-      });
-    },
-    [liveSketch]
-  );
-
-  // Sketch Move / Stretch typed translation (#3, AutoCAD parity): after a box
-  // has captured a point set, apply an EXACT ΔX/ΔY from the Move panel instead
-  // of a mouse drag. Stretch moves only the boxed points (rubber-band); Move
-  // moves whole shapes. Clears the captured set so a fresh box starts the next.
-  const applyMove = useCallback(
-    (dx: number, dy: number) => {
-      const current = liveSketch();
-      const s = stretchRef.current;
-      if (!current || !s || s.pointIds.length === 0) return;
-      if (dx === 0 && dy === 0) {
-        setStretch(null);
-        return;
-      }
-      const byId = pointMap(current);
-      const moves = s.pointIds.flatMap((pointId) => {
-        const pt = byId.get(pointId);
-        return pt ? [{ pointId, x: pt.x + dx, y: pt.y + dy }] : [];
-      });
-      if (moves.length > 0) {
-        commandBus.dispatch({
-          type: 'MoveSketchPoints',
-          payload: { sketchId: current.id, moves },
-        });
-      }
-      setStretch(null);
     },
     [liveSketch]
   );
@@ -1720,9 +1801,6 @@ export function useSketcher(): SketcherApi {
     cancelImport,
     mirrorSelection,
     patternSelection,
-    applyOffset,
-    applyMove,
-    moveArmed: stretch !== null && stretch.pointIds.length > 0,
     mirrorLineAvailable,
   };
 }

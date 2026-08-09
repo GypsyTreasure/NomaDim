@@ -80,8 +80,9 @@ export interface SketchModeProps {
   readonly overlay: SketchOverlayState;
   /** Cursor moved over the sketch plane (sketch-local mm + current px/mm scale, R11). */
   readonly onCursor: (point: Vec2, pxPerMm: number) => void;
-  /** Primary click on the sketch plane. */
-  readonly onClickPoint: (point: Vec2, pxPerMm: number) => void;
+  /** Primary click on the sketch plane. `additive` (Ctrl/Cmd held) adds to the
+   *  current selection instead of replacing it (#2, AutoCAD-style). */
+  readonly onClickPoint: (point: Vec2, pxPerMm: number, additive: boolean) => void;
   /** Change tool (F2): grab the nearest point for dragging; true if one was grabbed. */
   readonly onPointGrab?: (point: Vec2, pxPerMm: number) => boolean;
   /** A grabbed point is being dragged to `point`. */
@@ -91,8 +92,9 @@ export interface SketchModeProps {
   /** True in Select mode (no draw tool) — enables marquee drag-selection (#6). */
   readonly selecting?: boolean;
   /** A marquee was dragged: select entities in plane-rect a→b. `crossing`
-   *  (right-to-left drag) selects anything touching; else fully-enclosed. */
-  readonly onMarquee?: (a: Vec2, b: Vec2, crossing: boolean) => void;
+   *  (right-to-left drag) selects anything touching; else fully-enclosed.
+   *  `additive` (Ctrl/Cmd held) adds to the current selection (#2). */
+  readonly onMarquee?: (a: Vec2, b: Vec2, crossing: boolean, additive: boolean) => void;
 }
 
 /** Active while a Fillet/Chamfer dialog is picking edges (F4). */
@@ -884,6 +886,7 @@ export function Viewport({
       cx: number;
       cy: number;
       dragged: boolean;
+      additive: boolean;
     } | null = null;
 
     const onPointerMove = (event: PointerEvent): void => {
@@ -954,11 +957,12 @@ export function Viewport({
             cx: event.clientX - r.left,
             cy: event.clientY - r.top,
             dragged: false,
+            additive: event.ctrlKey || event.metaKey,
           };
           overlayCanvas.setPointerCapture(event.pointerId);
           return;
         }
-        mode.onClickPoint(hit.point, hit.pxPerMm);
+        mode.onClickPoint(hit.point, hit.pxPerMm, event.ctrlKey || event.metaKey);
         return;
       }
       // Idle: arm a possible body-select, resolved on pointerup if not dragged.
@@ -976,9 +980,9 @@ export function Viewport({
         requestRenderRef.current();
         if (m.dragged) {
           // Right-to-left drag = crossing (touch), left-to-right = window (#6).
-          sketchModeRef.current?.onMarquee?.(m.a, m.b, m.cx < m.sx);
+          sketchModeRef.current?.onMarquee?.(m.a, m.b, m.cx < m.sx, m.additive);
         } else {
-          sketchModeRef.current?.onClickPoint(m.a, m.px); // a plain click selects
+          sketchModeRef.current?.onClickPoint(m.a, m.px, m.additive); // a plain click selects
         }
         return;
       }

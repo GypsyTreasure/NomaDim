@@ -61,6 +61,7 @@ export type IconName =
   | 'stretch'
   | 'offset'
   | 'explode'
+  | 'group'
   | 'project';
 
 const P = ({ d }: { d: string }): React.JSX.Element => (
@@ -179,6 +180,8 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   offset: <P d="M4 17h9a4 4 0 0 0 4-4V6M7 20h7a6 6 0 0 0 6-6V3" />,
   // A burst — "explode a shape into its individual pieces".
   explode: <P d="M12 12 5 5m7 7 7-7m-7 7-7 7m7-7 7 7M12 3v3m0 12v3M3 12h3m12 0h3" />,
+  // Group / Join: four separate corner pieces pulled together into one frame.
+  group: <P d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M8 8h8v8H8z" />,
   // Project (#2): a body edge dropping onto the sketch plane as a line.
   project: <P d="M6 4h12M6 4v6M18 4v6M4 20h16M8 14l-2 6m10-6 2 6M8 14h8" />,
 };

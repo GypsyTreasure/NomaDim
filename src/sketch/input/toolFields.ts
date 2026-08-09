@@ -27,7 +27,8 @@ export type SketchToolId =
   | 'stretch'
   | 'offset'
   | 'move'
-  | 'explode';
+  | 'explode'
+  | 'group';
 
 const LENGTH = (id: string): FieldDef => ({ id, kind: 'length' });
 const ANGLE = (id: string): FieldDef => ({ id, kind: 'angle' });
@@ -55,20 +56,22 @@ export const LINE_FIELDS_CHAINED: readonly FieldDef[] = [
  * numeric-HUD fields at all.
  */
 export function fieldsForToolWithStart(tool: SketchToolId, chained = false): readonly FieldDef[] {
-  // Change/Dimension/Split/Stretch/Offset operate on existing geometry (pick);
-  // Spline is a pure click-through-points tool — none expose numeric-HUD or
-  // start fields.
+  // Change/Dimension/Split/Explode operate purely on picked geometry; Spline is
+  // a click-through-points tool — none expose numeric-HUD or start fields.
   if (
     tool === 'change' ||
     tool === 'dimension' ||
     tool === 'spline' ||
     tool === 'split' ||
-    tool === 'stretch' ||
-    tool === 'offset' ||
-    tool === 'move' ||
-    tool === 'explode'
+    tool === 'explode' ||
+    tool === 'group'
   ) {
     return [];
+  }
+  // Offset/Move/Stretch DO take numeric values (distance, ΔX/ΔY) in the
+  // parameters window (#1), but act on existing geometry — no start-point.
+  if (tool === 'offset' || tool === 'move' || tool === 'stretch') {
+    return fieldsForTool(tool);
   }
   return [...fieldsForTool(tool, chained), ...START_POINT_FIELDS];
 }
@@ -87,15 +90,20 @@ export function fieldsForTool(tool: SketchToolId, chained = false): readonly Fie
       return [LENGTH('radius')];
     case 'arc-center':
       return [LENGTH('radius'), ANGLE('angle')];
+    case 'offset':
+      // Offset distance typed in the parameters window (#1); side is the click.
+      return [LENGTH('distance')];
+    case 'move':
+    case 'stretch':
+      // Exact translation typed in the parameters window (#1).
+      return [COORD('moveDx'), COORD('moveDy')];
     case 'point':
     case 'change':
     case 'dimension':
     case 'spline':
     case 'split':
-    case 'stretch':
-    case 'offset':
-    case 'move':
     case 'explode':
+    case 'group':
       return [];
     case 'polygon':
       return [COUNT('sides'), LENGTH('diameter')];

@@ -539,35 +539,82 @@ export function useSketcher(): SketcherApi {
       return;
     }
     // Move/Stretch (#1): the parameters window's ΔX/ΔY commit an EXACT rigid
-    // translation of the box-captured point set (AutoCAD). Enter reads the typed
-    // values and moves through the write path; the drag path is unchanged.
+    // translation of the captured point set (AutoCAD). Enter reads the typed
+    // values and moves through the write path; the drag path is unchanged. If no
+    // box was drawn, fall back to the current selection so Enter still works
+    // after a preselect (Move = whole shapes, Stretch = the selected entities).
     if (activeTool === 'move' || activeTool === 'stretch') {
       const vals = parsedValues(inputStateRef.current);
       const dx = vals[0] ?? null;
       const dy = vals[1] ?? null;
       const current = liveSketch();
-      const s = stretchRef.current;
-      if (current && s && s.pointIds.length > 0 && (dx !== null || dy !== null)) {
-        const byId = pointMap(current);
-        const moves = s.pointIds.flatMap((pointId) => {
-          const pt = byId.get(pointId);
-          return pt ? [{ pointId, x: pt.x + (dx ?? 0), y: pt.y + (dy ?? 0) }] : [];
-        });
-        if (moves.length > 0) {
-          commandBus.dispatch({
-            type: 'MoveSketchPoints',
-            payload: { sketchId: current.id, moves },
-          });
+      if (current && (dx !== null || dy !== null)) {
+        let pointIds = stretchRef.current?.pointIds ?? [];
+        if (pointIds.length === 0) {
+          const selected = useSessionStore.getState().selectedEntityIds;
+          const set = new Set<EntityId>();
+          if (activeTool === 'move') {
+            for (const id of selected) for (const c of connectedEntityIds(current, id)) set.add(c);
+          } else {
+            for (const id of selected) set.add(id);
+          }
+          const pointSet = new Set<PointId>();
+          for (const e of current.entities) {
+            if (set.has(e.id)) for (const pt of referencedPointIds(e)) pointSet.add(pt);
+          }
+          pointIds = [...pointSet];
         }
-        setStretch(null);
+        if (pointIds.length > 0) {
+          const byId = pointMap(current);
+          const moves = pointIds.flatMap((pointId) => {
+            const pt = byId.get(pointId);
+            return pt ? [{ pointId, x: pt.x + (dx ?? 0), y: pt.y + (dy ?? 0) }] : [];
+          });
+          if (moves.length > 0) {
+            commandBus.dispatch({
+              type: 'MoveSketchPoints',
+              payload: { sketchId: current.id, moves },
+            });
+          }
+          setStretch(null);
+        }
       }
       setInputState(initialInputState(inputStateRef.current.fields));
       return;
     }
-    // Offset (#1): the distance lives in the parameters window; the SIDE is the
-    // click on the plane (AutoCAD). Enter alone has no side, so it's inert here
-    // and keeps the typed distance for the next side click.
-    if (activeTool === 'offset') return;
+    // Offset (#1): the distance is typed in the parameters window; Enter / the ✓
+    // button apply it to the selection, choosing the side nearest the cursor (a
+    // click on the plane picks the side the same way). So the Approve button and
+    // Enter both commit, like every other tool.
+    if (activeTool === 'offset') {
+      const current = liveSketch();
+      const selected = useSessionStore.getState().selectedEntityIds;
+      const dist = parseField(
+        { id: 'distance', kind: 'length' },
+        inputStateRef.current.values[0] ?? ''
+      );
+      if (current && selected.length > 0 && dist !== null && dist > 0) {
+        const near = (delta: SketchGeometryDelta | null): number =>
+          delta && delta.points.length > 0
+            ? Math.min(
+                ...delta.points.map((q) =>
+                  Math.hypot(q.x - effectiveCursor.x, q.y - effectiveCursor.y)
+                )
+              )
+            : Infinity;
+        const da = offsetSelection(current, selected, dist, 'a');
+        const db = offsetSelection(current, selected, dist, 'b');
+        const chosen = near(da) <= near(db) ? da : db;
+        if (chosen && chosen.entities.length > 0) {
+          commandBus.dispatch({
+            type: 'AddSketchGeometry',
+            payload: { sketchId: current.id, points: chosen.points, entities: chosen.entities },
+          });
+        }
+        setInputState(initialInputState(inputStateRef.current.fields));
+      }
+      return;
+    }
     const before = inputStateRef.current;
     const transition = reduceInput(before, { type: 'enter' });
     setInputState(transition.state);

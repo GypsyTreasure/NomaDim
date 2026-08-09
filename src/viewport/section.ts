@@ -144,12 +144,59 @@ export function sliceMesh(
   return out;
 }
 
+/** A coplanar triangle's world-space corner coordinates. */
+type Tri = readonly [number, number, number, number, number, number, number, number, number];
+
 /**
- * Boundary outline of the mesh triangles that lie ON the plane (origin+normal) —
- * i.e. the face under a face-pick cursor (#10). Returns world-space segment
- * endpoints `[x0,y0,z0,x1,y1,z1,…]`: every edge used by exactly one on-plane
- * triangle (a face-perimeter edge). Pure numeric; `positions`/`indices` are the
- * transferred body mesh (already world-space, identity transform).
+ * True when point P lies within triangle ABC (all assumed coplanar). Uses the
+ * sign of the three edge-cross-products projected on the triangle normal, with a
+ * small tolerance so a pick landing on an edge/vertex still counts.
+ */
+function pointInTri(px: number, py: number, pz: number, t: Tri): boolean {
+  const [ax, ay, az, bx, by, bz, cx, cy, cz] = t;
+  // Triangle normal = (B-A)×(C-A).
+  const abx = bx - ax;
+  const aby = by - ay;
+  const abz = bz - az;
+  const acx = cx - ax;
+  const acy = cy - ay;
+  const acz = cz - az;
+  const nx = aby * acz - abz * acy;
+  const ny = abz * acx - abx * acz;
+  const nz = abx * acy - aby * acx;
+  // Signed sub-triangle areas (edge × P-edge) dotted with the normal.
+  const edge = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): number => {
+    const e0x = x1 - x0;
+    const e0y = y1 - y0;
+    const e0z = z1 - z0;
+    const e1x = px - x0;
+    const e1y = py - y0;
+    const e1z = pz - z0;
+    const cxx = e0y * e1z - e0z * e1y;
+    const cyy = e0z * e1x - e0x * e1z;
+    const czz = e0x * e1y - e0y * e1x;
+    return cxx * nx + cyy * ny + czz * nz;
+  };
+  const w0 = edge(ax, ay, az, bx, by, bz);
+  const w1 = edge(bx, by, bz, cx, cy, cz);
+  const w2 = edge(cx, cy, cz, ax, ay, az);
+  const tol = -1e-6 * (Math.abs(nx) + Math.abs(ny) + Math.abs(nz) + 1);
+  return (w0 >= tol && w1 >= tol && w2 >= tol) || (w0 <= -tol && w1 <= -tol && w2 <= -tol);
+}
+
+/**
+ * Boundary outline of the ONE mesh face under a face-pick cursor (#10). Returns
+ * world-space segment endpoints `[x0,y0,z0,x1,y1,z1,…]`: every edge used by
+ * exactly one triangle of the connected coplanar region containing the pick
+ * point `origin`. Pure numeric; `positions`/`indices` are the transferred body
+ * mesh (already world-space, identity transform).
+ *
+ * Coplanarity alone is not enough: a body can have several distinct faces lying
+ * on the same infinite plane (a step, a slot, the opposite side of a thin wall),
+ * and gathering every on-plane triangle would splice a stray triangle from the
+ * original surface into the picked face's outline. So we seed at the triangle
+ * under the cursor and flood-fill only across SHARED edges, yielding the single
+ * contiguous face the user actually pointed at.
  */
 export function coplanarFaceOutline(
   positions: Float32Array,
@@ -158,19 +205,25 @@ export function coplanarFaceOutline(
   normal: Triple
 ): number[] {
   const eps = 1e-4; // mm — a mesh vertex "on" the picked plane
-  const edges = new Map<
-    string,
-    { n: number; c: readonly [number, number, number, number, number, number] }
-  >();
-  const add = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): void => {
+  const triCount = Math.floor(indices.length / 3);
+
+  // 1) Collect the on-plane triangles and index them by their (undirected) edge
+  //    keys so we can walk from a triangle to its coplanar neighbours.
+  const tris: Tri[] = [];
+  const triEdgeKeys: [string, string, string][] = [];
+  const edgeToTris = new Map<string, number[]>();
+  const edgeKey = (
+    x0: number,
+    y0: number,
+    z0: number,
+    x1: number,
+    y1: number,
+    z1: number
+  ): string => {
     const k0 = coordKey(x0, y0, z0);
     const k1 = coordKey(x1, y1, z1);
-    const key = k0 < k1 ? `${k0}|${k1}` : `${k1}|${k0}`;
-    const e = edges.get(key);
-    if (e) e.n += 1;
-    else edges.set(key, { n: 1, c: [x0, y0, z0, x1, y1, z1] });
+    return k0 < k1 ? `${k0}|${k1}` : `${k1}|${k0}`;
   };
-  const triCount = Math.floor(indices.length / 3);
   for (let t = 0; t < triCount; t += 1) {
     const ia = indices[t * 3] ?? 0;
     const ib = indices[t * 3 + 1] ?? 0;
@@ -191,9 +244,76 @@ export function coplanarFaceOutline(
     ) {
       continue;
     }
-    add(ax, ay, az, bx, by, bz);
-    add(bx, by, bz, cx, cy, cz);
-    add(cx, cy, cz, ax, ay, az);
+    const id = tris.length;
+    tris.push([ax, ay, az, bx, by, bz, cx, cy, cz]);
+    const e0 = edgeKey(ax, ay, az, bx, by, bz);
+    const e1 = edgeKey(bx, by, bz, cx, cy, cz);
+    const e2 = edgeKey(cx, cy, cz, ax, ay, az);
+    triEdgeKeys.push([e0, e1, e2]);
+    for (const k of [e0, e1, e2]) {
+      const l = edgeToTris.get(k);
+      if (l) l.push(id);
+      else edgeToTris.set(k, [id]);
+    }
+  }
+  if (tris.length === 0) return [];
+
+  // 2) Seed at the triangle under the cursor: the one containing the pick point,
+  //    else the nearest by centroid (robust to eps at edges/corners).
+  let seed = -1;
+  for (const [i, t] of tris.entries()) {
+    if (pointInTri(origin[0], origin[1], origin[2], t)) {
+      seed = i;
+      break;
+    }
+  }
+  if (seed === -1) {
+    let best = Infinity;
+    for (const [i, t] of tris.entries()) {
+      const cxm = (t[0] + t[3] + t[6]) / 3;
+      const cym = (t[1] + t[4] + t[7]) / 3;
+      const czm = (t[2] + t[5] + t[8]) / 3;
+      const d = (cxm - origin[0]) ** 2 + (cym - origin[1]) ** 2 + (czm - origin[2]) ** 2;
+      if (d < best) {
+        best = d;
+        seed = i;
+      }
+    }
+  }
+
+  // 3) Flood-fill from the seed across shared edges → the connected face only.
+  const connected = new Set<number>([seed]);
+  const stack = [seed];
+  while (stack.length) {
+    const cur = stack.pop();
+    if (cur === undefined) break;
+    for (const k of triEdgeKeys[cur] ?? []) {
+      for (const nb of edgeToTris.get(k) ?? []) {
+        if (!connected.has(nb)) {
+          connected.add(nb);
+          stack.push(nb);
+        }
+      }
+    }
+  }
+
+  // 4) Emit the boundary of the connected region: edges used by exactly one of
+  //    its triangles (shared interior edges are used twice and dropped).
+  const edges = new Map<
+    string,
+    { n: number; c: readonly [number, number, number, number, number, number] }
+  >();
+  const add = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): void => {
+    const key = edgeKey(x0, y0, z0, x1, y1, z1);
+    const e = edges.get(key);
+    if (e) e.n += 1;
+    else edges.set(key, { n: 1, c: [x0, y0, z0, x1, y1, z1] });
+  };
+  for (const [id, t] of tris.entries()) {
+    if (!connected.has(id)) continue;
+    add(t[0], t[1], t[2], t[3], t[4], t[5]);
+    add(t[3], t[4], t[5], t[6], t[7], t[8]);
+    add(t[6], t[7], t[8], t[0], t[1], t[2]);
   }
   const out: number[] = [];
   for (const e of edges.values()) {

@@ -152,6 +152,28 @@ describe('coplanarFaceOutline (#10 face-pick preview)', () => {
     const { coplanarFaceOutline } = await import('../../src/viewport/section');
     expect(coplanarFaceOutline(positions, indices, [0, 0, 5], [0, 0, 1])).toHaveLength(0);
   });
+
+  it('outlines only the picked face, not a disconnected coplanar region', async () => {
+    const { coplanarFaceOutline } = await import('../../src/viewport/section');
+    // Two separate unit squares on z=0: A near the origin, B far away (a step or
+    // the original surface). Same infinite plane, but not connected.
+    const twoSquares = new Float32Array([
+      // Square A: (0,0)–(2,2)
+      0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0,
+      // Square B: (10,10)–(12,12)
+      10, 10, 0, 12, 10, 0, 12, 12, 0, 10, 12, 0,
+    ]);
+    const idx = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+    // Pick inside square A only.
+    const segs = coplanarFaceOutline(twoSquares, idx, [1, 1, 0], [0, 0, 1]);
+    // Only A's 4 perimeter edges (24 coords); B is excluded even though coplanar.
+    expect(segs).toHaveLength(24);
+    // Every emitted coordinate must belong to square A (x,y ≤ 2), never B.
+    for (let i = 0; i < segs.length; i += 3) {
+      expect(segs[i]).toBeLessThanOrEqual(2 + 1e-6);
+      expect(segs[i + 1]).toBeLessThanOrEqual(2 + 1e-6);
+    }
+  });
 });
 
 describe('pointInArea (#11 click-to-pick)', () => {

@@ -186,7 +186,7 @@ const GLYPHS: Record<IconName, React.JSX.Element> = {
   project: <P d="M6 4h12M6 4v6M18 4v6M4 20h16M8 14l-2 6m10-6 2 6M8 14h8" />,
 };
 
-export function Icon({ name, size = 20 }: { name: IconName; size?: number }): React.JSX.Element {
+export function Icon({ name, size = 16 }: { name: IconName; size?: number }): React.JSX.Element {
   return (
     <svg
       width={size}

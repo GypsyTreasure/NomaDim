@@ -60,6 +60,85 @@ test('Offset applies on Enter from the parameters window', async ({ page }) => {
   await expect(page.getByTestId('finish-summary')).toContainText('Profiles: 2');
 });
 
+test('a preselection survives the tool switch (Offset on preselected shapes)', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 820 });
+  await page.goto('/app/');
+  await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
+  await page.waitForTimeout(250);
+  const canvas = page.locator('canvas').first();
+  const b = await canvas.boundingBox();
+  if (!b) throw new Error('no canvas');
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  await page.keyboard.press('c');
+  await page.mouse.click(cx, cy);
+  const dia = page.getByTestId('hud-field-diameter');
+  await dia.click();
+  await dia.fill('60');
+  await page.getByTestId('hud-commit').click();
+  await page.waitForTimeout(120);
+  await page.keyboard.press('Escape');
+  // Preselect the circle in SELECT mode, THEN pick Offset — selection must persist.
+  await page.mouse.move(cx - 250, cy - 250);
+  await page.mouse.down();
+  await page.mouse.move(cx + 250, cy + 250);
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+  await expect(page.getByTestId('sketch-delete')).toBeEnabled();
+  await page.keyboard.press('w');
+  await expect(page.getByTestId('sketch-delete')).toBeEnabled(); // still selected
+  const dist = page.getByTestId('hud-field-distance');
+  await dist.click();
+  await dist.fill('15');
+  await page.mouse.move(cx + 200, cy);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(120);
+  await page.getByRole('button', { name: 'Finish Sketch' }).click();
+  await expect(page.getByTestId('finish-summary')).toContainText('Profiles: 2');
+});
+
+test('Group re-welds an exploded rectangle from a preselection', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 820 });
+  await page.goto('/app/');
+  await page.getByRole('button', { name: 'New Sketch' }).click();
+  await page.getByTestId('plane-choice-XY').click();
+  await page.waitForTimeout(250);
+  const canvas = page.locator('canvas').first();
+  const b = await canvas.boundingBox();
+  if (!b) throw new Error('no canvas');
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  await page.keyboard.press('r');
+  await page.mouse.click(cx - 120, cy - 80);
+  await page.mouse.click(cx + 120, cy + 80);
+  await page.waitForTimeout(120);
+  await page.keyboard.press('Escape');
+  // Explode the whole rectangle (preselect → BMB), then Group it back (preselect → GRP).
+  const selectAll = async (): Promise<void> => {
+    await page.mouse.move(cx - 260, cy - 200);
+    await page.mouse.down();
+    await page.mouse.move(cx + 260, cy + 200);
+    await page.mouse.up();
+    await page.waitForTimeout(100);
+  };
+  await selectAll();
+  await page.keyboard.press('k'); // explode → 4 separate lines
+  await page.waitForTimeout(120);
+  await selectAll();
+  await page.keyboard.press('u'); // group → welds the corners back
+  await page.waitForTimeout(120);
+  // Clicking one edge now selects the whole (re-welded) rectangle; Delete clears
+  // all four lines → nothing open remains.
+  await page.mouse.click(cx, cy - 80);
+  await page.waitForTimeout(80);
+  await page.getByTestId('sketch-delete').click();
+  await page.waitForTimeout(100);
+  await page.getByRole('button', { name: 'Finish Sketch' }).click();
+  await expect(page.getByTestId('finish-summary')).toContainText('open: 0');
+  await expect(page.getByTestId('finish-summary')).toContainText('Profiles: 0');
+});
+
 test('the modeling ribbon slides horizontally instead of wrapping', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 800 });
   await page.goto('/app/');

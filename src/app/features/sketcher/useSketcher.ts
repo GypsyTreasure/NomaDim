@@ -1227,30 +1227,77 @@ export function useSketcher(): SketcherApi {
   // here, so the free-shape Line keeps its anchor between segments.
   const setTool = useCallback(
     (tool: SketchToolId | null) => {
+      // Capture the selection BEFORE switching — `setActiveTool` clears it, and
+      // the preselection tools (Offset/Move/Stretch/Group) need to keep it so an
+      // operation runs on shapes chosen before the tool was picked (#3).
+      const current = liveSketch();
+      const preselected = useSessionStore.getState().selectedEntityIds;
+      const keepsSelection =
+        tool === 'offset' || tool === 'move' || tool === 'stretch' || tool === 'group';
+      // Group/Explode are parameter-less one-shots: with shapes already selected,
+      // pressing the tool acts on them right away (no viewport click needed) and
+      // returns to Select. Group needs ≥2 entities; Explode needs ≥1.
+      if ((tool === 'group' || tool === 'explode') && current) {
+        const set = new Set<EntityId>();
+        for (const id of preselected) for (const c of connectedEntityIds(current, id)) set.add(c);
+        const ids = [...set];
+        const result =
+          tool === 'group'
+            ? ids.length >= 2
+              ? groupEntities(current, ids)
+              : null
+            : ids.length >= 1
+              ? explodeEntities(current, ids)
+              : null;
+        if (result) {
+          commandBus.dispatch({
+            type: 'DeleteSketchEntities',
+            payload: { sketchId: current.id, entityIds: result.removeEntityIds },
+          });
+          commandBus.dispatch({
+            type: 'AddSketchGeometry',
+            payload: {
+              sketchId: current.id,
+              points: result.add.points,
+              entities: result.add.entities,
+            },
+          });
+          useSessionStore.getState().setActiveTool(null);
+          setStretch(null);
+          setToolState((prev) => ({
+            ...initialToolState('line'),
+            constructionMode: prev.constructionMode,
+          }));
+          setInputState(initialInputState([]));
+          return;
+        }
+      }
       useSessionStore.getState().setActiveTool(tool);
       setDimFirst(null); // switching tools cancels a half-placed dimension
       lineStartRef.current = null; // and ends any open line chain (#6)
       setDrag(null); // and any in-flight point drag
-      // Preselection → Move/Stretch (#3): activating Move/Stretch with entities
-      // already selected seeds the captured point set from that selection, so you
-      // can preselect, pick the tool and type an exact ΔX/ΔY (or drag) at once.
-      // Move captures whole shapes; Stretch captures the selected entities' points.
-      const current = liveSketch();
-      const preselected = useSessionStore.getState().selectedEntityIds;
-      if ((tool === 'move' || tool === 'stretch') && current && preselected.length > 0) {
+      // Preserve the preselection for the tools that act on it, and seed the
+      // Move/Stretch captured point set from it (Move = whole shapes, Stretch =
+      // the selected entities' points) so a preselect → pick-tool → type flow
+      // works immediately.
+      if (keepsSelection && current && preselected.length > 0) {
         const set = new Set<EntityId>();
-        if (tool === 'move') {
+        if (tool === 'move' || tool === 'group') {
           for (const id of preselected) for (const c of connectedEntityIds(current, id)) set.add(c);
         } else {
           for (const id of preselected) set.add(id);
         }
-        const pointSet = new Set<PointId>();
-        for (const e of current.entities) {
-          if (set.has(e.id)) for (const pt of referencedPointIds(e)) pointSet.add(pt);
-        }
         const entityIds = [...set];
-        if (tool === 'move') useSessionStore.getState().setSelection(entityIds);
-        setStretch(pointSet.size > 0 ? { pointIds: [...pointSet], entityIds, base: null } : null);
+        useSessionStore.getState().setSelection(entityIds);
+        if (tool === 'move' || tool === 'stretch') {
+          const pointSet = new Set<PointId>();
+          for (const e of current.entities) {
+            if (set.has(e.id)) for (const pt of referencedPointIds(e)) pointSet.add(pt);
+          }
+          setStretch(pointSet.size > 0 ? { pointIds: [...pointSet], entityIds, base: null } : null);
+        } else {
+          setStretch(null);
+        }
       } else {
         setStretch(null); // any captured stretch/move set is cleared (#7/#3)
       }
